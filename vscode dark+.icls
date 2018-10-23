@@ -1,15 +1,17 @@
-<scheme name="vscode dark+" version="142" parent_scheme="Default">
-  <option name="FONT_SCALE" value="1.25" />
+<scheme name="vscode dark+ copy" version="142" parent_scheme="Default">
+  <option name="FONT_SCALE" value="1.0" />
   <metaInfo>
-    <property name="created">2017-07-31T22:13:23</property>
-    <property name="ide">WebStorm</property>
-    <property name="ideVersion">2017.2.0.0</property>
-    <property name="modified">2017-08-08T23:26:06</property>
+    <property name="created">2018-10-23T15:55:54</property>
+    <property name="ide">idea</property>
+    <property name="ideVersion">2018.1.0.0</property>
+    <property name="modified">2018-10-23T15:56:23</property>
+    <property name="originalScheme">vscode dark+ copy</property>
   </metaInfo>
-  <option name="EDITOR_FONT_SIZE" value="12" />
+  <option name="LINE_SPACING" value="1.1" />
+  <option name="EDITOR_FONT_SIZE" value="13" />
   <option name="EDITOR_FONT_NAME" value="Monospaced" />
   <option name="CONSOLE_FONT_NAME" value="DejaVu Sans Mono" />
-  <option name="CONSOLE_FONT_SIZE" value="15" />
+  <option name="CONSOLE_FONT_SIZE" value="12" />
   <colors>
     <option name="ADDED_LINES_COLOR" value="295622" />
     <option name="ANNOTATIONS_COLOR" value="8b999f" />
@@ -61,7 +63,7 @@
     </option>
     <option name="ANNOTATION_NAME_ATTRIBUTES">
       <value>
-        <option name="FOREGROUND" value="bbb529" />
+        <option name="FOREGROUND" value="dcdcaa" />
         <option name="EFFECT_TYPE" value="1" />
       </value>
     </option>
@@ -689,7 +691,7 @@
     </option>
     <option name="INSTANCE_FIELD_ATTRIBUTES">
       <value>
-        <option name="FOREGROUND" value="9876aa" />
+        <option name="FOREGROUND" value="9cdcfe" />
         <option name="EFFECT_TYPE" value="1" />
       </value>
     </option>
@@ -719,6 +721,12 @@
     <option name="JAVA_DOC_TAG">
       <value>
         <option name="EFFECT_TYPE" value="1" />
+      </value>
+    </option>
+    <option name="JAVA_KEYWORD">
+      <value>
+        <option name="FOREGROUND" value="569cd6" />
+        <option name="FONT_TYPE" value="1" />
       </value>
     </option>
     <option name="JS.FUNCTION_ARROW">
@@ -1055,7 +1063,7 @@
     </option>
     <option name="STATIC_FIELD_ATTRIBUTES">
       <value>
-        <option name="FOREGROUND" value="9876aa" />
+        <option name="FOREGROUND" value="9cdcfe" />
         <option name="FONT_TYPE" value="2" />
         <option name="EFFECT_TYPE" value="1" />
       </value>
