@@ -23,6 +23,8 @@ DATA_KEY_LAST_FHASH = 'last_fhash'
 DATA_KEY_LAST_BACKUP_FILE = 'last_backup_file'
 DATA_KEY_LAST_FILE_COUNT = 'last_file_count'
 
+args = {}
+
 
 def get_args():
     args = {}
@@ -75,9 +77,6 @@ def get_args():
         exit(3)
 
     return args
-
-
-args = get_args()
 
 
 def save_data(dataset):
@@ -152,28 +151,36 @@ def create_filename_with_timestamp(filename):
     return os.path.join(dir, targetfilename)
 
 
-print('')
-print('----------------------------------------------')
-print('Starting programm with args: {}'.format(args))
+def main():
+    args = get_args()
 
-data = load_data()
+    print('')
+    print('----------------------------------------------')
+    print('Starting programm with args: {}'.format(args))
 
-print('Last data: {}'.format(data))
-print('----------------------------------------------')
-print('')
+    data = load_data()
 
-all_files = get_all_file_paths(args[ARGS_KEY_INPUT])
-files_hash = calculate_md5(all_files)
+    print('Last data: {}'.format(data))
+    print('----------------------------------------------')
+    print('')
 
-if files_hash != data[DATA_KEY_LAST_FHASH] or \
-        not os.path.exists(data[DATA_KEY_LAST_BACKUP_FILE]) \
-        or data[DATA_KEY_LAST_FILE_COUNT] != len(all_files):
-    target_file = create_filename_with_timestamp(args[ARGS_KEY_OUTPUT])
-    print('Archiving paths {} to {}'.format(args[ARGS_KEY_INPUT], target_file))
-    archive_files(all_files, target_file)
-    data[DATA_KEY_LAST_FHASH] = files_hash
-    data[DATA_KEY_LAST_BACKUP_FILE] = target_file
-    data[DATA_KEY_LAST_FILE_COUNT] = len(all_files)
-    save_data(data)
-else:
-    print('Nothing changed, no need to backup')
+    all_files = get_all_file_paths(args[ARGS_KEY_INPUT])
+    files_hash = calculate_md5(all_files)
+
+    if files_hash != data[DATA_KEY_LAST_FHASH] or \
+            not os.path.exists(data[DATA_KEY_LAST_BACKUP_FILE]) \
+            or data[DATA_KEY_LAST_FILE_COUNT] != len(all_files):
+        target_file = create_filename_with_timestamp(args[ARGS_KEY_OUTPUT])
+        print('Archiving paths {} to {}'.format(
+            args[ARGS_KEY_INPUT], target_file))
+        archive_files(all_files, target_file)
+        data[DATA_KEY_LAST_FHASH] = files_hash
+        data[DATA_KEY_LAST_BACKUP_FILE] = target_file
+        data[DATA_KEY_LAST_FILE_COUNT] = len(all_files)
+        save_data(data)
+    else:
+        print('Nothing changed, no need to backup')
+
+
+if __name__ == "__main__":
+    main()
