@@ -6,7 +6,8 @@ import time
 import zipfile
 import os
 import hashlib
-import getopt, sys
+import getopt
+import sys
 
 # https://stackoverflow.com/questions/27913261/python-storing-data
 # https://www.geeksforgeeks.org/working-zip-files-python/
@@ -34,22 +35,24 @@ def get_args():
     argument_list = full_cmd_arguments[1:]
 
     short_options = "hi:o:c:d:"
-    long_options = ["help", ARGS_KEY_INPUT + "=", ARGS_KEY_OUTPUT + "=", ARGS_KEY_CWD + "=", ARGS_KEY_DATA_FILE + "="]
+    long_options = ["help", ARGS_KEY_INPUT + "=", ARGS_KEY_OUTPUT +
+                    "=", ARGS_KEY_CWD + "=", ARGS_KEY_DATA_FILE + "="]
 
-    arguments, values = getopt.getopt(argument_list, short_options, long_options)
+    arguments, values = getopt.getopt(
+        argument_list, short_options, long_options)
 
     for current_argument, current_value in arguments:
         if current_argument in ("-h", "--help"):
-            print ("Command line argument list:")
-            print ("")
-            print ("------------------------------------------")
-            print ("long argument   short argument  with value")
-            print ("------------------------------------------")
-            print ("--help           -h              no")
-            print ("--input          -o              yes")
-            print ("--output         -o              yes")
-            print ("--cwd            -c              yes")
-            print ("------------------------------------------")
+            print("Command line argument list:")
+            print("")
+            print("------------------------------------------")
+            print("long argument   short argument  with value")
+            print("------------------------------------------")
+            print("--help           -h              no")
+            print("--input          -o              yes")
+            print("--output         -o              yes")
+            print("--cwd            -c              yes")
+            print("------------------------------------------")
             exit(2)
         elif current_argument in ("-i", "--" + ARGS_KEY_INPUT):
             args[ARGS_KEY_INPUT] = current_value.split(',')
@@ -61,13 +64,14 @@ def get_args():
             try:
                 os.chdir(current_value)
             except OSError:
-                print("Can't change the Current Working Directory to ".format(current_value))
+                print("Can't change the Current Working Directory to {}".format(
+                    current_value))
 
     if ARGS_KEY_INPUT not in args:
-        print ('Input must be specified')
+        print('Input must be specified')
         exit(3)
     elif ARGS_KEY_OUTPUT not in args:
-        print ('Output must be specified')
+        print('Output must be specified')
         exit(3)
 
     return args
@@ -109,7 +113,7 @@ def get_all_file_paths(paths):
                     file_paths.append(filepath)
         else:
             if os.path.exists(p):
-                print ("File {} is a special file (socket, FIFO, device file)".format(p))
+                print("File {} is a special file (socket, FIFO, device file)".format(p))
 
     return file_paths
 
@@ -148,15 +152,15 @@ def create_filename_with_timestamp(filename):
     return os.path.join(dir, targetfilename)
 
 
-print ('')
-print ('----------------------------------------------')
-print ('Starting programm with args: {}'.format(args))
+print('')
+print('----------------------------------------------')
+print('Starting programm with args: {}'.format(args))
 
 data = load_data()
 
-print ('Last data: {}'.format(data))
-print ('----------------------------------------------')
-print ('')
+print('Last data: {}'.format(data))
+print('----------------------------------------------')
+print('')
 
 all_files = get_all_file_paths(args[ARGS_KEY_INPUT])
 files_hash = calculate_md5(all_files)
@@ -165,11 +169,11 @@ if files_hash != data[DATA_KEY_LAST_FHASH] or \
         not os.path.exists(data[DATA_KEY_LAST_BACKUP_FILE]) \
         or data[DATA_KEY_LAST_FILE_COUNT] != len(all_files):
     target_file = create_filename_with_timestamp(args[ARGS_KEY_OUTPUT])
-    print ('Archiving paths {} to {}'.format(args[ARGS_KEY_INPUT], target_file))
+    print('Archiving paths {} to {}'.format(args[ARGS_KEY_INPUT], target_file))
     archive_files(all_files, target_file)
     data[DATA_KEY_LAST_FHASH] = files_hash
     data[DATA_KEY_LAST_BACKUP_FILE] = target_file
     data[DATA_KEY_LAST_FILE_COUNT] = len(all_files)
     save_data(data)
 else:
-    print ('Nothing changed, no need to backup')
+    print('Nothing changed, no need to backup')
