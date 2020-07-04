@@ -27,7 +27,6 @@ args = {}
 
 
 def get_args():
-    args = {}
     args[ARGS_KEY_DATA_FILE] = DEFAULT_DATA_FILE
 
     # Get full command-line arguments
