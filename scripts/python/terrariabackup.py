@@ -17,6 +17,7 @@ ARGS_KEY_CWD = 'cwd'
 ARGS_KEY_INPUT = 'input'
 ARGS_KEY_OUTPUT = 'output'
 ARGS_KEY_DATA_FILE = 'data'
+ARGS_KEY_TIMESTAMP = 'timestamp'
 
 DEFAULT_DATA_FILE = 'terrariabackup.data'
 DATA_KEY_LAST_FHASH = 'last_fhash'
@@ -28,6 +29,7 @@ args = {}
 
 def get_args():
     args[ARGS_KEY_DATA_FILE] = DEFAULT_DATA_FILE
+    args[ARGS_KEY_TIMESTAMP] = 0
 
     # Get full command-line arguments
     full_cmd_arguments = sys.argv
@@ -35,9 +37,9 @@ def get_args():
     # Keep all but the first
     argument_list = full_cmd_arguments[1:]
 
-    short_options = "hi:o:c:d:"
+    short_options = "hi:o:c:d:t"
     long_options = ["help", ARGS_KEY_INPUT + "=", ARGS_KEY_OUTPUT +
-                    "=", ARGS_KEY_CWD + "=", ARGS_KEY_DATA_FILE + "="]
+                    "=", ARGS_KEY_CWD + "=", ARGS_KEY_DATA_FILE + "=", ARGS_KEY_TIMESTAMP]
 
     arguments, values = getopt.getopt(
         argument_list, short_options, long_options)
@@ -50,8 +52,9 @@ def get_args():
             print("long argument   short argument  with value")
             print("------------------------------------------")
             print("--help           -h              no")
-            print("--input          -o              yes")
+            print("--input          -i              yes")
             print("--output         -o              yes")
+            print("--timestamp      -t              no")
             print("--cwd            -c              yes")
             print("------------------------------------------")
             exit(2)
@@ -61,6 +64,8 @@ def get_args():
             args[ARGS_KEY_OUTPUT] = current_value
         elif current_argument in ("-d", "--" + ARGS_KEY_DATA_FILE):
             args[ARGS_KEY_DATA_FILE] = current_value
+        elif current_argument in ("-t", "--" + ARGS_KEY_TIMESTAMP):
+            args[ARGS_KEY_TIMESTAMP] = 1
         elif current_argument in ("-c", "--" + ARGS_KEY_CWD):
             try:
                 os.chdir(current_value)
@@ -169,7 +174,11 @@ def main():
     if files_hash != data[DATA_KEY_LAST_FHASH] or \
             not os.path.exists(data[DATA_KEY_LAST_BACKUP_FILE]) \
             or data[DATA_KEY_LAST_FILE_COUNT] != len(all_files):
-        target_file = create_filename_with_timestamp(args[ARGS_KEY_OUTPUT])
+
+        target_file = args[ARGS_KEY_OUTPUT]
+        if args[ARGS_KEY_TIMESTAMP] == 1:
+            target_file = create_filename_with_timestamp(target_file)
+
         print('Archiving paths {} to {}'.format(
             args[ARGS_KEY_INPUT], target_file))
         archive_files(all_files, target_file)
