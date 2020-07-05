@@ -20,7 +20,8 @@ ARGS_KEY_DATA_FILE = 'data'
 ARGS_KEY_TIMESTAMP = 'timestamp'
 ARGS_KEY_FORCE = 'force'
 
-DEFAULT_DATA_FILE = 'terrariabackup.data'
+DEFAULT_DATA_FILE = os.path.join(
+    os.path.dirname(os.path.abspath(__file__)), 'terrariabackup.data')
 DATA_KEY_LAST_FHASH = 'last_fhash'
 DATA_KEY_LAST_BACKUP_FILE = 'last_backup_file'
 DATA_KEY_LAST_FILE_COUNT = 'last_file_count'

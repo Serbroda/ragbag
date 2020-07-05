@@ -21,6 +21,6 @@ echo "sub1_2"    > $testdir/content/sub1/sub1_2.txt
 echo "subsub1_1" > $testdir/content/sub1/subsub1/subsub1_1.txt
 
 # Backup folder
-python ./terrariabackup.py -i "$testdir/content" -o "$testdir/content.zip" -t -f
+python ./terrariabackup.py -c "$testdir" -i "content" -o "content.zip" -f
 
 read
