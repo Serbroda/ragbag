@@ -14,10 +14,10 @@ touch $testdir/content/sub1/sub1_1.txt
 touch $testdir/content/sub1/sub1_2.txt
 touch $testdir/content/sub1/subsub1/subsub1_1.txt
 
-echo "content1" > $testdir/content/content1.txt
-echo "content2" > $testdir/content/content2.txt
-echo "sub1_1" > $testdir/content/sub1/sub1_1.txt
-echo "sub1_2" > $testdir/content/sub1/sub1_2.txt
+echo "content1"  > $testdir/content/content1.txt
+echo "content2"  > $testdir/content/content2.txt
+echo "sub1_1"    > $testdir/content/sub1/sub1_1.txt
+echo "sub1_2"    > $testdir/content/sub1/sub1_2.txt
 echo "subsub1_1" > $testdir/content/sub1/subsub1/subsub1_1.txt
 
 # Backup folder
