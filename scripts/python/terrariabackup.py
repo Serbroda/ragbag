@@ -19,6 +19,7 @@ ARGS_KEY_OUTPUT = 'output'
 ARGS_KEY_DATA_FILE = 'data'
 ARGS_KEY_TIMESTAMP = 'timestamp'
 ARGS_KEY_FORCE = 'force'
+ARGS_KEY_KOMPRESS = 'kompress'
 
 DEFAULT_DATA_FILE = os.path.join(
     os.path.dirname(os.path.abspath(__file__)), 'terrariabackup.data')
@@ -33,6 +34,7 @@ def get_args():
     args[ARGS_KEY_DATA_FILE] = DEFAULT_DATA_FILE
     args[ARGS_KEY_TIMESTAMP] = 0
     args[ARGS_KEY_FORCE] = 0
+    args[ARGS_KEY_KOMPRESS] = 0
 
     # Get full command-line arguments
     full_cmd_arguments = sys.argv
@@ -59,6 +61,7 @@ def get_args():
             print("--output         -o              yes")
             print("--timestamp      -t              no")
             print("--force          -f              no")
+            print("--kompress       -k              no")
             print("--cwd            -c              yes")
             print("------------------------------------------")
             exit(2)
@@ -72,6 +75,8 @@ def get_args():
             args[ARGS_KEY_TIMESTAMP] = 1
         elif current_argument in ("-f", "--" + ARGS_KEY_FORCE):
             args[ARGS_KEY_FORCE] = 1
+        elif current_argument in ("-k", "--" + ARGS_KEY_KOMPRESS):
+            args[ARGS_KEY_KOMPRESS] = 1
         elif current_argument in ("-c", "--" + ARGS_KEY_CWD):
             try:
                 os.chdir(current_value)
@@ -130,9 +135,14 @@ def get_all_file_paths(paths):
 def archive_files(paths, zip_name):
     files = get_all_file_paths(paths)
 
-    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
-        for f in files:
-            zip_file.write(f)
+    if args[ARGS_KEY_KOMPRESS]:
+        with zipfile.ZipFile(zip_name, 'w') as zip_file:
+            for f in files:
+                zip_file.write(f)
+    else:
+        with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+            for f in files:
+                zip_file.write(f)
 
 
 def calculate_md5(paths):
