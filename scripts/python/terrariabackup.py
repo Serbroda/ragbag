@@ -42,9 +42,9 @@ def get_args():
     # Keep all but the first
     argument_list = full_cmd_arguments[1:]
 
-    short_options = "hi:o:c:d:tf"
+    short_options = "hi:o:c:d:tfk"
     long_options = ["help", ARGS_KEY_INPUT + "=", ARGS_KEY_OUTPUT +
-                    "=", ARGS_KEY_CWD + "=", ARGS_KEY_DATA_FILE + "=", ARGS_KEY_TIMESTAMP, ARGS_KEY_FORCE]
+                    "=", ARGS_KEY_CWD + "=", ARGS_KEY_DATA_FILE + "=", ARGS_KEY_TIMESTAMP, ARGS_KEY_FORCE, ARGS_KEY_KOMPRESS]
 
     arguments, values = getopt.getopt(
         argument_list, short_options, long_options)
