@@ -130,7 +130,7 @@ def get_all_file_paths(paths):
 def archive_files(paths, zip_name):
     files = get_all_file_paths(paths)
 
-    with zipfile.ZipFile(zip_name, 'w') as zip_file:
+    with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
         for f in files:
             zip_file.write(f)
 
