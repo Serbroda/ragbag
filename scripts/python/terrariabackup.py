@@ -135,12 +135,12 @@ def get_all_file_paths(paths):
 def archive_files(paths, zip_name):
     files = get_all_file_paths(paths)
 
-    if args[ARGS_KEY_KOMPRESS]:
-        with zipfile.ZipFile(zip_name, 'w') as zip_file:
+    if args[ARGS_KEY_KOMPRESS] == 1:
+        with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
             for f in files:
                 zip_file.write(f)
     else:
-        with zipfile.ZipFile(zip_name, 'w', zipfile.ZIP_DEFLATED) as zip_file:
+        with zipfile.ZipFile(zip_name, 'w') as zip_file:
             for f in files:
                 zip_file.write(f)
 
