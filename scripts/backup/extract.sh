@@ -29,14 +29,14 @@ echo ---------------
 
 if [ -z "$INPUT_FILE" ]
 then
-    read -p 'Backup file to extract: ' INPUT_FILE
+    read -e -p 'Backup file to extract: ' INPUT_FILE
 else
     echo "Backup file to extract: : $INPUT_FILE"
 fi
 
 if [ -z "$OUT_DIR" ]
 then
-    read -p 'Ouput directory: ' OUT_DIR
+    read -e -p 'Ouput directory: ' OUT_DIR
 else
     echo "Ouput directory: : $OUT_DIR"
 fi

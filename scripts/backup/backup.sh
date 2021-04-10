@@ -42,14 +42,14 @@ FILENAME="$FILENAME_PREFIX"_"$NOW".tar.gz
 
 if [ -z "$INPUT_DIR" ]
 then
-    read -p 'Source directory: ' INPUT_DIR
+    read -e -p 'Source directory: ' INPUT_DIR
 else
     echo "Source directory: $INPUT_DIR"
 fi
 
 if [ -z "$OUT_DIR" ]
 then
-    read -p 'Ouput directory: ' OUT_DIR
+    read -e -p 'Ouput directory: ' OUT_DIR
 else
     echo "Ouput directory: $OUT_DIR"
 fi
