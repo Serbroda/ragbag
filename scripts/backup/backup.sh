@@ -80,7 +80,7 @@ echo
 
 mkdir -p $OUT_DIR
 
-#tar -cvpzf "$OUT_DIR/$FILENAME" -C $INPUT_DIR .
+tar -cvpzf "$OUT_DIR/$FILENAME" -C $INPUT_DIR .
 
 echo 
 echo Backup sucessfully created

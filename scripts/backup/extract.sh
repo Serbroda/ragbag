@@ -29,18 +29,24 @@ echo ---------------
 
 if [ -z "$INPUT_FILE" ]
 then
-    read -p 'Source Directory: ' INPUT_FILE
+    read -p 'Backup file to extract: ' INPUT_FILE
+else
+    echo "Backup file to extract: : $INPUT_FILE"
 fi
 
 if [ -z "$OUT_DIR" ]
 then
-    read -p 'Ouput Directory: ' OUT_DIR
+    read -p 'Ouput directory: ' OUT_DIR
+else
+    echo "Ouput directory: : $OUT_DIR"
 fi
 
-echo $INPUT_FILE
-echo $OUT_DIR
-echo $FILENAME
+echo
+echo "Starting extraction $INPUT_FILE -> $OUT_DIR ..."
 
 mkdir -p $OUT_DIR
 
 tar -xzvf $INPUT_FILE -C $OUT_DIR
+
+echo 
+echo Extraction successfull
