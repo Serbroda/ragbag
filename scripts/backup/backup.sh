@@ -64,7 +64,12 @@ then
         echo "- Source directory to created backup for:" $INPUT_DIR
         echo "- Target backup file:" "$OUT_DIR/$FILENAME"
         echo 
-        read -p "Start backup (y/n): " yn
+        read -p "Start backup (Y/n): " yn
+
+        if [ -z "$yn" ]
+        then
+            yn="y"
+        fi
 
         case $yn in
             [Yy]* ) break;;
