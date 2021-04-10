@@ -1,5 +1,8 @@
 #!/bin/bash
 
+echo Backup directory
+---------------------------
+
 FILENAME_PREFIX=backup
 
 POSITIONAL=()
