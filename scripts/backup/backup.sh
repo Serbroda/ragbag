@@ -92,3 +92,5 @@ tar -cvpzf "$OUT_DIR/$FILENAME" -C $INPUT_DIR .
 
 echo 
 echo Backup sucessfully created
+
+read junk

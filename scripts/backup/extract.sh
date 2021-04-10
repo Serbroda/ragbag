@@ -41,6 +41,11 @@ else
     echo "Ouput directory: : $OUT_DIR"
 fi
 
+FILENAME=$(basename -- "$INPUT_FILE")
+FILENAME="${FILENAME%%.*}"
+
+OUT_DIR=$OUT_DIR/$FILENAME
+
 echo
 echo "Starting extraction $INPUT_FILE -> $OUT_DIR ..."
 
@@ -50,3 +55,5 @@ tar -xzvf $INPUT_FILE -C $OUT_DIR
 
 echo 
 echo Extraction successfull
+
+read junk
