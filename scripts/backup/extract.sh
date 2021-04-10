@@ -27,9 +27,6 @@ esac
 done
 set -- "${POSITIONAL[@]}" # restore positional parameters
 
-echo Extract backup
-echo ---------------
-
 if [ -z "$INPUT_FILE" ]
 then
     read -e -p 'Backup file to extract: ' INPUT_FILE
