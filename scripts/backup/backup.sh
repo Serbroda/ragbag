@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo Backup directory
----------------------------
+echo ---------------------------
 
 FILENAME_PREFIX=backup
 

@@ -1,7 +1,7 @@
 #!/bin/bash
 
 echo Exctract backup file
----------------------------
+echo ---------------------------
 
 POSITIONAL=()
 while [[ $# -gt 0 ]]
