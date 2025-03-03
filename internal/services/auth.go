@@ -25,11 +25,12 @@ type AuthService interface {
 }
 
 type authService struct {
-	queries *sqlc.Queries
+	queries      *sqlc.Queries
+	spaceService SpaceService
 }
 
-func NewAuthService(queries *sqlc.Queries) AuthService {
-	return &authService{queries: queries}
+func NewAuthService(queries *sqlc.Queries, spaceService SpaceService) AuthService {
+	return &authService{queries: queries, spaceService: spaceService}
 }
 
 func (a authService) Register(ctx context.Context, params sqlc.InsertUserParams) (sqlc.User, error) {
@@ -51,7 +52,19 @@ func (a authService) Register(ctx context.Context, params sqlc.InsertUserParams)
 		params.Password = encryptedPassword
 	}
 
-	return a.queries.InsertUser(ctx, params)
+	user, err := a.queries.InsertUser(ctx, params)
+	if err != nil {
+		return sqlc.User{}, err
+	}
+
+	_, err = a.spaceService.Create(ctx, sqlc.InsertSpaceParams{
+		OwnerID: user.ID,
+		Name:    "Default",
+	})
+	if err != nil {
+		return sqlc.User{}, err
+	}
+	return user, nil
 }
 
 func (a authService) Login(ctx context.Context, email, password string) (security.TokenPair, error) {

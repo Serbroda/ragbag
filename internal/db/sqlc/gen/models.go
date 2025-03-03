@@ -8,6 +8,16 @@ import (
 	"time"
 )
 
+type Space struct {
+	ID        int64      `db:"id" json:"id"`
+	Sid       string     `db:"sid" json:"sid"`
+	OwnerID   int64      `db:"owner_id" json:"owner_id"`
+	Name      string     `db:"name" json:"name"`
+	CreatedAt *time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
+	DeletedAt *time.Time `db:"deleted_at" json:"deleted_at"`
+}
+
 type User struct {
 	ID        int64      `db:"id" json:"id"`
 	Sid       string     `db:"sid" json:"sid"`
