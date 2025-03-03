@@ -1,0 +1,41 @@
+-- name: InsertUser :one
+INSERT INTO users (created_at,
+                   updated_at,
+                   email,
+                   password)
+VALUES (CURRENT_TIMESTAMP,
+        CURRENT_TIMESTAMP,
+        sqlc.arg('email'),
+        sqlc.arg('password')) RETURNING *
+;
+
+-- name: FindUserById :one
+SELECT *
+FROM users u
+WHERE id = ?
+  AND deleted_at IS NULL LIMIT 1;
+
+-- name: FindUserByEmail :one
+SELECT *
+FROM users u
+WHERE email = ?
+  AND deleted_at IS NULL LIMIT 1;
+
+-- name: UpdateUser :exec
+UPDATE users
+SET password = COALESCE(sqlc.arg('name'), name)
+WHERE id = ?
+  AND deleted_at IS NULL
+;
+
+-- name: DeleteUserSoft :exec
+UPDATE users
+SET password = COALESCE(sqlc.arg('name'), name)
+WHERE id = ?
+  AND deleted_at IS NULL
+;
+
+-- name: DeleteUser :exec
+DELETE FROM users
+WHERE id = ?
+;

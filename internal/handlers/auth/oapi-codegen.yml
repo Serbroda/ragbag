@@ -1,0 +1,7 @@
+package: auth
+output: auth/auth.gen.go
+generate:
+  echo-server: true
+  models: true
+  #embedded-spec: true
+  #strict-server: true

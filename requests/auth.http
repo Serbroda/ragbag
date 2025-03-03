@@ -1,0 +1,45 @@
+@email=example@email.com
+@password=secret123
+
+###
+POST {{baseUrl}}/auth/signup
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+###
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "email": "{{email}}",
+  "password": "{{password}}"
+}
+
+> {%
+    if (response.status >= 200 && response.status <= 299) {
+        client.global.set("accessToken", response.body.accessToken);
+
+        const cookieString = response.headers.valuesOf("Set-Cookie")[0]
+        if (cookieString && cookieString.includes("=")) {
+            client.global.set("refreshToken", cookieString.split(";")[0].split("=")[1]);
+        }
+    }
+%}
+
+###
+POST {{baseUrl}}/auth/refresh_token
+
+> {%
+    if (response.status >= 200 && response.status <= 299) {
+        client.global.set("accessToken", response.body.accessToken);
+
+        const cookieString = response.headers.valuesOf("Set-Cookie")[0]
+        if (cookieString && cookieString.includes("=")) {
+            client.global.set("refreshToken", cookieString.split(";")[0].split("=")[1]);
+        }
+    }
+%}

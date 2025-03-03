@@ -1,0 +1,176 @@
+openapi: 3.0.3
+info:
+  title: Authentication Api
+  version: 1.0.0
+
+paths:
+  /auth/signup:
+    post:
+      summary: Register
+      description: Registers a new user
+      operationId: signUp
+      tags:
+        - auth
+      security: [ ] # No security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegistrationRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/login:
+    post:
+      summary: Login
+      description: Performs a login
+      operationId: login
+      tags:
+        - auth
+      security: [ ] # No security
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: |
+                Setzt das Authentifizierungs-Token als HTTP-Only-Cookie.
+                Beispiel: refreshToken=abc123; Path=/; HttpOnly; Secure
+              schema:
+                type: string
+                example: refreshToken=abc123; Path=/; HttpOnly; Secure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /auth/refresh_token:
+    post:
+      summary: Refresh token
+      description: |
+        Aktualisiert das Access-Token basierend auf dem im HttpOnly-Cookie gespeicherten refreshToken.
+        Der refreshToken wird **nicht** im Anfrage-Body erwartet, sondern automatisch als Cookie gesendet.
+      operationId: refreshToken
+      tags:
+        - auth
+      security: [ ] # Keine Authentifizierung erforderlich
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: |
+                Setzt das Authentifizierungs-Token als HTTP-Only-Cookie.
+                Beispiel: refreshToken=abc123; Path=/; HttpOnly; Secure
+              schema:
+                type: string
+                example: refreshToken=abc123; Path=/; HttpOnly; Secure
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+components:
+  schemas:
+
+    Id:
+      type: number
+      example: 234
+    JWT:
+      type: string
+      description: "JSON Web Token"
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9..."
+    Email:
+      type: string
+      format: email
+      example: "user@example.com"
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+    RegistrationRequest:
+      type: object
+      properties:
+        email:
+          $ref: '#/components/schemas/Email'
+        password:
+          type: string
+          example: secret
+      required:
+        - email
+        - password
+
+    LoginRequest:
+      type: object
+      properties:
+        email:
+          type: string
+          format: email
+          example: "user@example.com"
+          x-oapi-codegen-extra-tags:
+            validate: "required,min=1,max=256"
+        password:
+          type: string
+          example: secret
+          x-oapi-codegen-extra-tags:
+            validate: "required,min=6,max=256"
+      required:
+        - email
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        accessToken:
+          $ref: '#/components/schemas/JWT'
+      required:
+        - accessToken
+
+    UserDto:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        email:
+          type: string
+      required:
+        - id
+        - email
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+    Forbidden:
+      description: Forbidden
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'

@@ -1,0 +1,61 @@
+package main
+
+import (
+	"github.com/Serbroda/ragbag/internal/db"
+	"github.com/Serbroda/ragbag/internal/db/migrations"
+	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
+	"github.com/Serbroda/ragbag/internal/server"
+	"github.com/Serbroda/ragbag/internal/services"
+	"github.com/Serbroda/ragbag/internal/utils"
+	"github.com/joho/godotenv"
+	"os"
+)
+
+const defaultServerPort = "8080"
+
+func init() {
+	environment := os.Getenv("ENV")
+	if environment == "" {
+		environment = "development"
+	}
+
+	_ = godotenv.Load(".env." + environment + ".local")
+	if environment != "test" {
+		_ = godotenv.Load(".env.local")
+	}
+	_ = godotenv.Load(".env." + environment)
+	_ = godotenv.Load()
+}
+
+func main() {
+	dialect := utils.GetEnvFallback("DB_DIALECT", "sqlite3")
+
+	// Datenbankverbindung öffnen
+	con := db.OpenConnection(
+		dialect,
+		utils.MustGetEnv("DB_PATH"),
+	)
+	defer con.Close() // Ensure the database connection is closed when the program exits
+
+	// Run database migrations
+	migrations.Migrate(
+		con,
+		utils.GetEnvFallback("DB_DIALECT", "sqlite3"),
+		migrations.MigrationsCommon,
+		migrations.MigrationsCommonDir,
+	)
+
+	// Initialize SQLC queries
+	queries := sqlc.New(con)
+
+	// Setup and configure the HTTP server
+	e := server.NewServer(server.Config{
+		AuthService: services.NewAuthService(queries),
+	})
+
+	// Determine the server port (use default if not set)
+	port := utils.GetEnvFallback("SERVER_PORT", defaultServerPort)
+
+	// Start the server and log any fatal errors
+	e.Logger.Fatal(e.Start(":" + port))
+}
