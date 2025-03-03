@@ -17,7 +17,7 @@ type Error struct {
 }
 
 // Id defines model for Id.
-type Id = float32
+type Id = string
 
 // JWT JSON Web Token
 type JWT = string

@@ -2,12 +2,13 @@
 -- +goose StatementBegin
 CREATE TABLE users
 (
-    id           INTEGER PRIMARY KEY AUTOINCREMENT,
-    email        TEXT NOT NULL UNIQUE,
-    password     TEXT NOT NULL,
-    created_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at   DATETIME DEFAULT CURRENT_TIMESTAMP,
-    deleted_at   DATETIME
+    id         INTEGER PRIMARY KEY AUTOINCREMENT,
+    sid        TEXT NOT NULL UNIQUE,
+    email      TEXT NOT NULL UNIQUE,
+    password   TEXT NOT NULL,
+    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    deleted_at DATETIME
 );
 -- +goose StatementEnd
 

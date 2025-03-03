@@ -7,6 +7,7 @@ import (
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
 	"github.com/Serbroda/ragbag/internal/security"
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/teris-io/shortid"
 	"strings"
 )
 
@@ -39,6 +40,7 @@ func (a authService) Register(ctx context.Context, params sqlc.InsertUserParams)
 		return sqlc.User{}, err
 	}
 
+	params.Sid = shortid.MustGenerate()
 	params.Email = strings.TrimSpace(strings.ToLower(params.Email))
 
 	if !security.IsBcryptHash(params.Password) {
@@ -76,12 +78,12 @@ func (a authService) RefreshToken(ctx context.Context, token string) (security.T
 		return security.TokenPair{}, ErrInvalidToken
 	}
 
-	sub, ok := claims["sub"].(float64)
+	sub, ok := claims["sub"].(string)
 	if !ok {
 		return security.TokenPair{}, ErrInvalidToken
 	}
 
-	entity, err := a.queries.FindUserById(ctx, int64(sub))
+	entity, err := a.queries.FindUserById(ctx, sub)
 	if err != nil {
 		return security.TokenPair{}, ErrUserNotFound
 	}

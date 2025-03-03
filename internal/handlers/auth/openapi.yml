@@ -92,8 +92,8 @@ components:
   schemas:
 
     Id:
-      type: number
-      example: 234
+      type: string
+      example: "-NDveu-9Q"
     JWT:
       type: string
       description: "JSON Web Token"

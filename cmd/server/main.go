@@ -8,12 +8,19 @@ import (
 	"github.com/Serbroda/ragbag/internal/services"
 	"github.com/Serbroda/ragbag/internal/utils"
 	"github.com/joho/godotenv"
+	"github.com/teris-io/shortid"
 	"os"
 )
 
 const defaultServerPort = "8080"
 
 func init() {
+	sid, err := shortid.New(1, shortid.DefaultABC, 2342)
+	if err != nil {
+		panic(err)
+	}
+	shortid.SetDefault(sid)
+
 	environment := os.Getenv("ENV")
 	if environment == "" {
 		environment = "development"

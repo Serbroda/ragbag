@@ -40,7 +40,7 @@ func (a authServer) SignUp(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, UserDto{
 		Email: entity.Email,
-		Id:    Id(entity.ID),
+		Id:    entity.Sid,
 	})
 }
 

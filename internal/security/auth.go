@@ -13,7 +13,7 @@ var (
 )
 
 type Authentication struct {
-	Subject int64
+	Subject string
 }
 
 func CreateJwtConfig() echojwt.Config {
@@ -40,13 +40,13 @@ func ParseToken(token *jwt.Token) (Authentication, error) {
 		return Authentication{}, errors.New("failed to get claims of token")
 	}
 
-	sub, ok := claims["sub"].(float64)
+	sub, ok := claims["sub"].(string)
 	if !ok {
 		return Authentication{}, errors.New("failed to get sub from claims")
 	}
 
 	return Authentication{
-		Subject: int64(sub),
+		Subject: sub,
 	}, nil
 }
 
