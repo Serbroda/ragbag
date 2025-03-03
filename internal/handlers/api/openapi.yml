@@ -1,0 +1,97 @@
+openapi: 3.0.3
+info:
+  title: Authentication Api
+  version: 1.0.0
+
+paths:
+  /spaces:
+    get:
+      summary: Spaces
+      description: Get all spaces
+      operationId: getSpaces
+      tags:
+        - spaces
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDtoList'
+
+  /spaces/{spaceId}:
+    get:
+      summary: Space by id
+      description: Get space by id
+      operationId: getSpace
+      tags:
+        - spaces
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+components:
+  schemas:
+
+    Id:
+      type: string
+      example: "-NDveu-9Q"
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+    SpaceDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+      required:
+        - id
+        - name
+        -
+    SpaceDtoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/SpaceDto'
+
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Unauthorized:
+      description: Unauthorized
+    Forbidden:
+      description: Forbidden
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: [ ]

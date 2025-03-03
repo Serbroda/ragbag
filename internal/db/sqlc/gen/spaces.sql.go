@@ -9,6 +9,68 @@ import (
 	"context"
 )
 
+const findSpaceBySid = `-- name: FindSpaceBySid :one
+;
+
+SELECT id, sid, owner_id, name, created_at, updated_at, deleted_at
+FROM spaces u
+WHERE sid = ?
+  AND deleted_at IS NULL LIMIT 1
+`
+
+func (q *Queries) FindSpaceBySid(ctx context.Context, sid string) (Space, error) {
+	row := q.db.QueryRowContext(ctx, findSpaceBySid, sid)
+	var i Space
+	err := row.Scan(
+		&i.ID,
+		&i.Sid,
+		&i.OwnerID,
+		&i.Name,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.DeletedAt,
+	)
+	return i, err
+}
+
+const findSpacesByOwnerId = `-- name: FindSpacesByOwnerId :many
+SELECT id, sid, owner_id, name, created_at, updated_at, deleted_at
+FROM spaces u
+WHERE owner_id = ?
+  AND deleted_at IS NULL
+`
+
+func (q *Queries) FindSpacesByOwnerId(ctx context.Context, ownerID int64) ([]Space, error) {
+	rows, err := q.db.QueryContext(ctx, findSpacesByOwnerId, ownerID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Space
+	for rows.Next() {
+		var i Space
+		if err := rows.Scan(
+			&i.ID,
+			&i.Sid,
+			&i.OwnerID,
+			&i.Name,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertSpace = `-- name: InsertSpace :one
 INSERT INTO spaces (sid,
                     created_at,

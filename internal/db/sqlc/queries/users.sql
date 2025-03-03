@@ -11,7 +11,7 @@ VALUES (sqlc.arg('sid'),
         sqlc.arg('password')) RETURNING *
 ;
 
--- name: FindUserById :one
+-- name: FindUserBySid :one
 SELECT *
 FROM users u
 WHERE sid = ?

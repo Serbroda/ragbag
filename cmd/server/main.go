@@ -60,7 +60,8 @@ func main() {
 
 	// Setup and configure the HTTP server
 	e := server.NewServer(server.Config{
-		AuthService: authService,
+		AuthService:  authService,
+		SpaceService: spaceService,
 	})
 
 	// Determine the server port (use default if not set)

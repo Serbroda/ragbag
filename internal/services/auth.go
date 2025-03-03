@@ -96,7 +96,7 @@ func (a authService) RefreshToken(ctx context.Context, token string) (security.T
 		return security.TokenPair{}, ErrInvalidToken
 	}
 
-	entity, err := a.queries.FindUserById(ctx, sub)
+	entity, err := a.queries.FindUserBySid(ctx, sub)
 	if err != nil {
 		return security.TokenPair{}, ErrUserNotFound
 	}

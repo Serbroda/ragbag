@@ -10,3 +10,15 @@ VALUES (sqlc.arg('sid'),
         sqlc.arg('owner_id'),
         sqlc.arg('name')) RETURNING *
 ;
+
+-- name: FindSpaceBySid :one
+SELECT *
+FROM spaces u
+WHERE sid = ?
+  AND deleted_at IS NULL LIMIT 1;
+
+-- name: FindSpacesByOwnerId :many
+SELECT *
+FROM spaces u
+WHERE owner_id = ?
+  AND deleted_at IS NULL;

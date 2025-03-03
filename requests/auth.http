@@ -1,22 +1,22 @@
-@email=example@email.com
-@password=secret123
+@EMAIL=example@email.com
+@PASSWORD=secret123
 
-###
+### POST Sign Up
 POST {{baseUrl}}/auth/signup
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
-  "password": "{{password}}"
+  "email": "{{EMAIL}}",
+  "password": "{{PASSWORD}}"
 }
 
-###
+### POST Login
 POST {{baseUrl}}/auth/login
 Content-Type: application/json
 
 {
-  "email": "{{email}}",
-  "password": "{{password}}"
+  "email": "{{EMAIL}}",
+  "password": "{{PASSWORD}}"
 }
 
 > {%
@@ -30,7 +30,7 @@ Content-Type: application/json
     }
 %}
 
-###
+### POST Refresh Token
 POST {{baseUrl}}/auth/refresh_token
 
 > {%

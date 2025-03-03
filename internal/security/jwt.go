@@ -34,6 +34,7 @@ func GenerateJwtPair(user sqlc.User) (TokenPair, error) {
 	accessTokenExp := time.Now().Add(time.Minute * time.Duration(jwtAccessTokenExp))
 	accessToken, err := GenerateJwt(jwt.MapClaims{
 		"sub": user.Sid,
+		"uid": user.ID,
 		"exp": accessTokenExp.Unix(),
 		"iat": time.Now().Unix(),
 		//"roles": user.RolesAsStrings(),
@@ -45,6 +46,7 @@ func GenerateJwtPair(user sqlc.User) (TokenPair, error) {
 	refreshTokenExp := time.Now().Add(time.Minute * time.Duration(jwtRefreshTokenExp))
 	refreshToken, err := GenerateJwt(jwt.MapClaims{
 		"sub": user.Sid,
+		"uid": user.ID,
 		"exp": refreshTokenExp.Unix(),
 		"iat": time.Now().Unix(),
 	})

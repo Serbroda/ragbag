@@ -14,6 +14,7 @@ var (
 
 type Authentication struct {
 	Subject string
+	UserId  int64
 }
 
 func CreateJwtConfig() echojwt.Config {
@@ -45,8 +46,14 @@ func ParseToken(token *jwt.Token) (Authentication, error) {
 		return Authentication{}, errors.New("failed to get sub from claims")
 	}
 
+	uid, ok := claims["uid"].(float64)
+	if !ok {
+		return Authentication{}, errors.New("failed to get uid from claims")
+	}
+
 	return Authentication{
 		Subject: sub,
+		UserId:  int64(uid),
 	}, nil
 }
 

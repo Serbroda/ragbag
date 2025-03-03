@@ -63,7 +63,7 @@ func (q *Queries) FindUserByEmail(ctx context.Context, email string) (User, erro
 	return i, err
 }
 
-const findUserById = `-- name: FindUserById :one
+const findUserBySid = `-- name: FindUserBySid :one
 ;
 
 SELECT id, sid, email, password, created_at, updated_at, deleted_at
@@ -72,8 +72,8 @@ WHERE sid = ?
   AND deleted_at IS NULL LIMIT 1
 `
 
-func (q *Queries) FindUserById(ctx context.Context, sid string) (User, error) {
-	row := q.db.QueryRowContext(ctx, findUserById, sid)
+func (q *Queries) FindUserBySid(ctx context.Context, sid string) (User, error) {
+	row := q.db.QueryRowContext(ctx, findUserBySid, sid)
 	var i User
 	err := row.Scan(
 		&i.ID,
