@@ -14,37 +14,37 @@ INSERT INTO collections (sid,
                          created_at,
                          updated_at,
                          space_id,
-                         name,
-                         parent_id)
+                         parent_id,
+                         name)
 VALUES (?1,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         ?2,
         ?3,
-        ?4) RETURNING id, sid, space_id, name, parent_id, created_at, updated_at, deleted_at
+        ?4) RETURNING id, sid, space_id, parent_id, name, created_at, updated_at, deleted_at
 `
 
 type InsertCollectionParams struct {
 	Sid      string `db:"sid" json:"sid"`
 	SpaceID  int64  `db:"space_id" json:"space_id"`
-	Name     string `db:"name" json:"name"`
 	ParentID *int64 `db:"parent_id" json:"parent_id"`
+	Name     string `db:"name" json:"name"`
 }
 
 func (q *Queries) InsertCollection(ctx context.Context, arg InsertCollectionParams) (Collection, error) {
 	row := q.db.QueryRowContext(ctx, insertCollection,
 		arg.Sid,
 		arg.SpaceID,
-		arg.Name,
 		arg.ParentID,
+		arg.Name,
 	)
 	var i Collection
 	err := row.Scan(
 		&i.ID,
 		&i.Sid,
 		&i.SpaceID,
-		&i.Name,
 		&i.ParentID,
+		&i.Name,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

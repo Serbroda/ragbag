@@ -8,12 +8,24 @@ import (
 	"time"
 )
 
+type Bookmark struct {
+	ID           int64      `db:"id" json:"id"`
+	Sid          string     `db:"sid" json:"sid"`
+	CollectionID int64      `db:"collection_id" json:"collection_id"`
+	Url          string     `db:"url" json:"url"`
+	Title        *string    `db:"title" json:"title"`
+	Description  *string    `db:"description" json:"description"`
+	CreatedAt    *time.Time `db:"created_at" json:"created_at"`
+	UpdatedAt    *time.Time `db:"updated_at" json:"updated_at"`
+	DeletedAt    *time.Time `db:"deleted_at" json:"deleted_at"`
+}
+
 type Collection struct {
 	ID        int64      `db:"id" json:"id"`
 	Sid       string     `db:"sid" json:"sid"`
 	SpaceID   int64      `db:"space_id" json:"space_id"`
-	Name      string     `db:"name" json:"name"`
 	ParentID  *int64     `db:"parent_id" json:"parent_id"`
+	Name      string     `db:"name" json:"name"`
 	CreatedAt *time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt *time.Time `db:"updated_at" json:"updated_at"`
 	DeletedAt *time.Time `db:"deleted_at" json:"deleted_at"`
