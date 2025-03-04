@@ -7,6 +7,7 @@ CREATE TABLE collections
     space_id   INTEGER NOT NULL,
     parent_id  INTEGER,
     name       TEXT    NOT NULL,
+    visibility TEXT NOT NULL DEFAULT 'PRIVATE',
     created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME,

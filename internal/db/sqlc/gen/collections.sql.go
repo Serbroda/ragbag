@@ -21,7 +21,7 @@ VALUES (?1,
         CURRENT_TIMESTAMP,
         ?2,
         ?3,
-        ?4) RETURNING id, sid, space_id, parent_id, name, created_at, updated_at, deleted_at
+        ?4) RETURNING id, sid, space_id, parent_id, name, visibility, created_at, updated_at, deleted_at
 `
 
 type InsertCollectionParams struct {
@@ -45,6 +45,7 @@ func (q *Queries) InsertCollection(ctx context.Context, arg InsertCollectionPara
 		&i.SpaceID,
 		&i.ParentID,
 		&i.Name,
+		&i.Visibility,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

@@ -13,12 +13,17 @@ VALUES (sqlc.arg('sid'),
 
 -- name: FindSpaceBySid :one
 SELECT *
-FROM spaces u
+FROM spaces s
 WHERE sid = ?
   AND deleted_at IS NULL LIMIT 1;
 
 -- name: FindSpacesByOwnerId :many
-SELECT *
-FROM spaces u
-WHERE owner_id = ?
-  AND deleted_at IS NULL;
+SELECT DISTINCT s.*
+FROM spaces s
+         LEFT JOIN spaces_users su on
+    su.space_id = s.id
+WHERE s.deleted_at IS NULL
+  AND (
+    s.owner_id = sqlc.arg('user_id')
+        OR su.user_id = sqlc.arg('user_id')
+    );

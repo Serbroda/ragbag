@@ -12,8 +12,8 @@ import (
 const findSpaceBySid = `-- name: FindSpaceBySid :one
 ;
 
-SELECT id, sid, owner_id, name, created_at, updated_at, deleted_at
-FROM spaces u
+SELECT id, sid, owner_id, name, visibility, created_at, updated_at, deleted_at
+FROM spaces s
 WHERE sid = ?
   AND deleted_at IS NULL LIMIT 1
 `
@@ -26,6 +26,7 @@ func (q *Queries) FindSpaceBySid(ctx context.Context, sid string) (Space, error)
 		&i.Sid,
 		&i.OwnerID,
 		&i.Name,
+		&i.Visibility,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -34,14 +35,19 @@ func (q *Queries) FindSpaceBySid(ctx context.Context, sid string) (Space, error)
 }
 
 const findSpacesByOwnerId = `-- name: FindSpacesByOwnerId :many
-SELECT id, sid, owner_id, name, created_at, updated_at, deleted_at
-FROM spaces u
-WHERE owner_id = ?
-  AND deleted_at IS NULL
+SELECT DISTINCT s.id, s.sid, s.owner_id, s.name, s.visibility, s.created_at, s.updated_at, s.deleted_at
+FROM spaces s
+         LEFT JOIN spaces_users su on
+    su.space_id = s.id
+WHERE s.deleted_at IS NULL
+  AND (
+    s.owner_id = ?1
+        OR su.user_id = ?1
+    )
 `
 
-func (q *Queries) FindSpacesByOwnerId(ctx context.Context, ownerID int64) ([]Space, error) {
-	rows, err := q.db.QueryContext(ctx, findSpacesByOwnerId, ownerID)
+func (q *Queries) FindSpacesByOwnerId(ctx context.Context, userID int64) ([]Space, error) {
+	rows, err := q.db.QueryContext(ctx, findSpacesByOwnerId, userID)
 	if err != nil {
 		return nil, err
 	}
@@ -54,6 +60,7 @@ func (q *Queries) FindSpacesByOwnerId(ctx context.Context, ownerID int64) ([]Spa
 			&i.Sid,
 			&i.OwnerID,
 			&i.Name,
+			&i.Visibility,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
@@ -81,7 +88,7 @@ VALUES (?1,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         ?2,
-        ?3) RETURNING id, sid, owner_id, name, created_at, updated_at, deleted_at
+        ?3) RETURNING id, sid, owner_id, name, visibility, created_at, updated_at, deleted_at
 `
 
 type InsertSpaceParams struct {
@@ -98,6 +105,7 @@ func (q *Queries) InsertSpace(ctx context.Context, arg InsertSpaceParams) (Space
 		&i.Sid,
 		&i.OwnerID,
 		&i.Name,
+		&i.Visibility,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
