@@ -6,11 +6,8 @@ info:
 paths:
   /spaces:
     get:
-      summary: Spaces
-      description: Get all spaces
+      summary: Get all spaces
       operationId: getSpaces
-      tags:
-        - spaces
       responses:
         '200':
           description: OK
@@ -18,14 +15,15 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpaceDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
 
   /spaces/{spaceId}:
     get:
-      summary: Space by id
-      description: Get space by id
+      summary: Get a space
       operationId: getSpace
-      tags:
-        - spaces
       parameters:
         - in: path
           name: spaceId
@@ -38,6 +36,139 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /spaces/{spaceId}/collections:
+    get:
+      summary: Get all collections of a space
+      operationId: getCollections
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Create a collection
+      operationId: createCollection
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCollectionDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /spaces/{spaceId}/collections/{collectionId}:
+    get:
+      summary: Get a collection
+      operationId: getCollection
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update a collection
+      operationId: updateCollection
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a collection
+      operationId: deleteCollection
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -62,12 +193,46 @@ components:
       required:
         - id
         - name
-        -
+
     SpaceDtoList:
       type: array
       items:
         $ref: '#/components/schemas/SpaceDto'
 
+    CollectionDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        name:
+          type: string
+        parentId:
+          $ref: '#/components/schemas/Id'
+      required:
+        - id
+        - name
+
+    CollectionDtoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/CollectionDto'
+
+    CreateCollectionDto:
+      properties:
+        name:
+          type: string
+        parentId:
+          $ref: '#/components/schemas/Id'
+      required:
+        - name
+
+    UpdateCollectionDto:
+      properties:
+        name:
+          type: string
+        parentId:
+          $ref: '#/components/schemas/Id'
+      required:
+        - name
 
   responses:
     BadRequest:
@@ -76,6 +241,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    NoContent:
+      description: No Content
     Unauthorized:
       description: Unauthorized
     Forbidden:

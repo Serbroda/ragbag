@@ -50,3 +50,28 @@ func (a apiServer) GetSpace(ctx echo.Context, spaceId Id) error {
 		Name: space.Name,
 	})
 }
+
+func (a apiServer) GetCollections(ctx echo.Context, spaceId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) CreateCollection(ctx echo.Context, spaceId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) DeleteCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) GetCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) UpdateCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
+	//TODO implement me
+	panic("implement me")
+}

@@ -15,6 +15,22 @@ const (
 	BearerAuthScopes = "bearerAuth.Scopes"
 )
 
+// CollectionDto defines model for CollectionDto.
+type CollectionDto struct {
+	Id       Id     `json:"id"`
+	Name     string `json:"name"`
+	ParentId *Id    `json:"parentId,omitempty"`
+}
+
+// CollectionDtoList defines model for CollectionDtoList.
+type CollectionDtoList = []CollectionDto
+
+// CreateCollectionDto defines model for CreateCollectionDto.
+type CreateCollectionDto struct {
+	Name     string `json:"name"`
+	ParentId *Id    `json:"parentId,omitempty"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Message *string `json:"message,omitempty"`
@@ -32,20 +48,44 @@ type SpaceDto struct {
 // SpaceDtoList defines model for SpaceDtoList.
 type SpaceDtoList = []SpaceDto
 
-// BadRequest defines model for BadRequest.
-type BadRequest = Error
+// UpdateCollectionDto defines model for UpdateCollectionDto.
+type UpdateCollectionDto struct {
+	Name     string `json:"name"`
+	ParentId *Id    `json:"parentId,omitempty"`
+}
 
 // NotFound defines model for NotFound.
 type NotFound = Error
 
+// CreateCollectionJSONRequestBody defines body for CreateCollection for application/json ContentType.
+type CreateCollectionJSONRequestBody = CreateCollectionDto
+
+// UpdateCollectionJSONRequestBody defines body for UpdateCollection for application/json ContentType.
+type UpdateCollectionJSONRequestBody = UpdateCollectionDto
+
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
-	// Spaces
+	// Get all spaces
 	// (GET /spaces)
 	GetSpaces(ctx echo.Context) error
-	// Space by id
+	// Get a space
 	// (GET /spaces/{spaceId})
 	GetSpace(ctx echo.Context, spaceId Id) error
+	// Get all collections of a space
+	// (GET /spaces/{spaceId}/collections)
+	GetCollections(ctx echo.Context, spaceId Id) error
+	// Create a collection
+	// (POST /spaces/{spaceId}/collections)
+	CreateCollection(ctx echo.Context, spaceId Id) error
+	// Delete a collection
+	// (DELETE /spaces/{spaceId}/collections/{collectionId})
+	DeleteCollection(ctx echo.Context, spaceId Id, collectionId Id) error
+	// Get a collection
+	// (GET /spaces/{spaceId}/collections/{collectionId})
+	GetCollection(ctx echo.Context, spaceId Id, collectionId Id) error
+	// Update a collection
+	// (PUT /spaces/{spaceId}/collections/{collectionId})
+	UpdateCollection(ctx echo.Context, spaceId Id, collectionId Id) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -56,6 +96,8 @@ type ServerInterfaceWrapper struct {
 // GetSpaces converts echo context to params.
 func (w *ServerInterfaceWrapper) GetSpaces(ctx echo.Context) error {
 	var err error
+
+	ctx.Set(BearerAuthScopes, []string{})
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetSpaces(ctx)
@@ -77,6 +119,120 @@ func (w *ServerInterfaceWrapper) GetSpace(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetSpace(ctx, spaceId)
+	return err
+}
+
+// GetCollections converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCollections(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCollections(ctx, spaceId)
+	return err
+}
+
+// CreateCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateCollection(ctx, spaceId)
+	return err
+}
+
+// DeleteCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCollection(ctx, spaceId, collectionId)
+	return err
+}
+
+// GetCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCollection(ctx, spaceId, collectionId)
+	return err
+}
+
+// UpdateCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId Id
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCollection(ctx, spaceId, collectionId)
 	return err
 }
 
@@ -110,5 +266,10 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 
 	router.GET(baseURL+"/spaces", wrapper.GetSpaces)
 	router.GET(baseURL+"/spaces/:spaceId", wrapper.GetSpace)
+	router.GET(baseURL+"/spaces/:spaceId/collections", wrapper.GetCollections)
+	router.POST(baseURL+"/spaces/:spaceId/collections", wrapper.CreateCollection)
+	router.DELETE(baseURL+"/spaces/:spaceId/collections/:collectionId", wrapper.DeleteCollection)
+	router.GET(baseURL+"/spaces/:spaceId/collections/:collectionId", wrapper.GetCollection)
+	router.PUT(baseURL+"/spaces/:spaceId/collections/:collectionId", wrapper.UpdateCollection)
 
 }
