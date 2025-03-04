@@ -172,6 +172,155 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+# Bookmarks
+  /spaces/{spaceId}/collections/{collectionId}/bookmarks:
+    get:
+      summary: Get all bookmarks of a collection
+      operationId: getBookmarks
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Create a bookmark
+      operationId: createBookmark
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookmarkDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /spaces/{spaceId}/collections/{collectionId}/bookmarks/{bookmarkId}:
+    get:
+      summary: Get a bookmark
+      operationId: getBookmark
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: bookmarkId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update a bookmark
+      operationId: updateBookmark
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: bookmarkId
+          schema:
+            $ref: '#/components/schemas/Id'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookmarkDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a bookmark
+      operationId: deleteBookmark
+      parameters:
+        - in: path
+          name: spaceId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: collectionId
+          schema:
+            $ref: '#/components/schemas/Id'
+        - in: path
+          name: bookmarkId
+          schema:
+            $ref: '#/components/schemas/Id'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 components:
   schemas:
 
@@ -233,6 +382,47 @@ components:
           $ref: '#/components/schemas/Id'
       required:
         - name
+
+    BookmarkDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/Id'
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+      required:
+        - id
+        - url
+
+    BookmarkDtoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/BookmarkDto'
+
+    CreateBookmarkDto:
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+      required:
+        - url
+
+    UpdateBookmarkDto:
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+      required:
+        - url
 
   responses:
     BadRequest:

@@ -51,6 +51,8 @@ func (a apiServer) GetSpace(ctx echo.Context, spaceId Id) error {
 	})
 }
 
+// Collections
+
 func (a apiServer) GetCollections(ctx echo.Context, spaceId Id) error {
 	//TODO implement me
 	panic("implement me")
@@ -72,6 +74,33 @@ func (a apiServer) GetCollection(ctx echo.Context, spaceId Id, collectionId Id) 
 }
 
 func (a apiServer) UpdateCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+// Bookmarks
+
+func (a apiServer) GetBookmarks(ctx echo.Context, spaceId Id, collectionId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) CreateBookmark(ctx echo.Context, spaceId Id, collectionId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) DeleteBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) GetBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error {
+	//TODO implement me
+	panic("implement me")
+}
+
+func (a apiServer) UpdateBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error {
 	//TODO implement me
 	panic("implement me")
 }
