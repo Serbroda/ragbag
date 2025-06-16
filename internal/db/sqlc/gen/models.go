@@ -32,6 +32,11 @@ type Collection struct {
 	DeletedAt  *time.Time `db:"deleted_at" json:"deleted_at"`
 }
 
+type CollectionsUser struct {
+	CollectionID int64 `db:"collection_id" json:"collection_id"`
+	UserID       int64 `db:"user_id" json:"user_id"`
+}
+
 type Space struct {
 	ID         int64      `db:"id" json:"id"`
 	Sid        string     `db:"sid" json:"sid"`

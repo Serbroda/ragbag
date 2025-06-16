@@ -12,14 +12,26 @@ import (
 const findSpaceBySid = `-- name: FindSpaceBySid :one
 ;
 
-SELECT id, sid, owner_id, name, visibility, created_at, updated_at, deleted_at
+SELECT DISTINCT s.id, s.sid, s.owner_id, s.name, s.visibility, s.created_at, s.updated_at, s.deleted_at
 FROM spaces s
-WHERE sid = ?
-  AND deleted_at IS NULL LIMIT 1
+         LEFT JOIN spaces_users su on
+    su.space_id = s.id
+WHERE deleted_at IS NULL
+  AND sid = ?1
+  AND (
+    s.owner_id = ?2
+        OR su.user_id = ?2
+    )
+    LIMIT 1
 `
 
-func (q *Queries) FindSpaceBySid(ctx context.Context, sid string) (Space, error) {
-	row := q.db.QueryRowContext(ctx, findSpaceBySid, sid)
+type FindSpaceBySidParams struct {
+	ID     string `db:"id" json:"id"`
+	UserID int64  `db:"user_id" json:"user_id"`
+}
+
+func (q *Queries) FindSpaceBySid(ctx context.Context, arg FindSpaceBySidParams) (Space, error) {
+	row := q.db.QueryRowContext(ctx, findSpaceBySid, arg.ID, arg.UserID)
 	var i Space
 	err := row.Scan(
 		&i.ID,

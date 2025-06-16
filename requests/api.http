@@ -1,4 +1,4 @@
-//@SPACE_ID = 6pGiu2irM
+@SPACE_ID = dOoDKkvrp
 
 ### GET Spaces
 GET {{baseUrl}}/v1/spaces

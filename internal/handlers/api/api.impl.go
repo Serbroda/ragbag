@@ -40,7 +40,12 @@ func (a apiServer) GetSpaces(ctx echo.Context) error {
 }
 
 func (a apiServer) GetSpace(ctx echo.Context, spaceId Id) error {
-	space, err := a.spaceService.GetSpace(ctx.Request().Context(), spaceId)
+	auth, err := security.GetAuthentication(ctx)
+	if err != nil {
+		return err
+	}
+
+	space, err := a.spaceService.GetSpace(ctx.Request().Context(), auth.UserId, spaceId)
 	if err != nil {
 		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
 	}
