@@ -31,10 +31,10 @@ func (a apiServer) GetSpaces(ctx echo.Context) error {
 	if err != nil {
 		return ctx.String(http.StatusInternalServerError, err.Error())
 	}
-	return ctx.JSON(http.StatusOK, utils.MapSlice(spaces, func(item sqlc.Space) SpaceDto {
+	return ctx.JSON(http.StatusOK, utils.MapSlice(spaces, func(item sqlc.FindSpacesByUserIdRow) SpaceDto {
 		return SpaceDto{
-			Id:   item.Sid,
-			Name: item.Name,
+			Id:   item.Space.Sid,
+			Name: item.Space.Name,
 		}
 	}))
 }

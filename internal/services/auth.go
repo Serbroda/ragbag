@@ -57,9 +57,8 @@ func (a authService) Register(ctx context.Context, params sqlc.InsertUserParams)
 		return sqlc.User{}, err
 	}
 
-	_, err = a.spaceService.Create(ctx, sqlc.InsertSpaceParams{
-		OwnerID: user.ID,
-		Name:    "Default",
+	_, err = a.spaceService.Create(ctx, user.ID, sqlc.InsertSpaceParams{
+		Name: "Default",
 	})
 	if err != nil {
 		return sqlc.User{}, err

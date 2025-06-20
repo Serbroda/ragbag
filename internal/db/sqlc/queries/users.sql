@@ -13,7 +13,7 @@ VALUES (sqlc.arg('sid'),
 
 -- name: FindUserBySid :one
 SELECT *
-FROM users u
+FROM users
 WHERE sid = ?
   AND deleted_at IS NULL LIMIT 1;
 
@@ -25,20 +25,13 @@ WHERE email = ?
 
 -- name: UpdateUser :exec
 UPDATE users
-SET password = COALESCE(sqlc.arg('name'), name)
+SET password = COALESCE(sqlc.arg('password'), password)
 WHERE sid = ?
   AND deleted_at IS NULL
 ;
 
 -- name: DeleteUserSoft :exec
 UPDATE users
-SET password = COALESCE(sqlc.arg('name'), name)
+SET deleted_at = CURRENT_TIMESTAMP
 WHERE sid = ?
-  AND deleted_at IS NULL
-;
-
--- name: DeleteUser :exec
-DELETE
-FROM users
-WHERE id = ?
 ;

@@ -4,13 +4,11 @@ CREATE TABLE spaces
 (
     id         INTEGER PRIMARY KEY AUTOINCREMENT,
     sid        TEXT    NOT NULL UNIQUE,
-    owner_id   INTEGER NOT NULL,
     name       TEXT    NOT NULL,
     visibility TEXT    NOT NULL DEFAULT 'PRIVATE',
     created_at DATETIME         DEFAULT CURRENT_TIMESTAMP,
     updated_at DATETIME         DEFAULT CURRENT_TIMESTAMP,
-    deleted_at DATETIME,
-    CONSTRAINT fk_users_owner_id FOREIGN KEY (owner_id) REFERENCES users (id)
+    deleted_at DATETIME
 );
 
 CREATE TABLE spaces_users

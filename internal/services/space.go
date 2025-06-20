@@ -7,8 +7,8 @@ import (
 )
 
 type SpaceService interface {
-	Create(ctx context.Context, params sqlc.InsertSpaceParams) (sqlc.Space, error)
-	GetSpaces(ctx context.Context, ownerId int64) ([]sqlc.Space, error)
+	Create(ctx context.Context, userId int64, params sqlc.InsertSpaceParams) (sqlc.Space, error)
+	GetSpaces(ctx context.Context, userId int64) ([]sqlc.FindSpacesByUserIdRow, error)
 	GetSpace(ctx context.Context, auth int64, id string) (sqlc.Space, error)
 }
 
@@ -20,18 +20,27 @@ func NewSpaceService(queries *sqlc.Queries) SpaceService {
 	return &spaceService{queries: queries}
 }
 
-func (s spaceService) Create(ctx context.Context, params sqlc.InsertSpaceParams) (sqlc.Space, error) {
+func (s spaceService) Create(ctx context.Context, userId int64, params sqlc.InsertSpaceParams) (sqlc.Space, error) {
 	params.Sid = shortid.MustGenerate()
-	return s.queries.InsertSpace(ctx, params)
+	space, err := s.queries.InsertSpace(ctx, params)
+	if err != nil {
+		return sqlc.Space{}, err
+	}
+	err = s.queries.InsertSpaceUser(ctx, sqlc.InsertSpaceUserParams{
+		SpaceID: space.ID,
+		UserID:  userId,
+		Role:    "OWNER",
+	})
+	if err != nil {
+		return sqlc.Space{}, err
+	}
+	return space, nil
 }
 
-func (s spaceService) GetSpaces(ctx context.Context, ownerId int64) ([]sqlc.Space, error) {
-	return s.queries.FindSpacesByOwnerId(ctx, ownerId)
+func (s spaceService) GetSpaces(ctx context.Context, userId int64) ([]sqlc.FindSpacesByUserIdRow, error) {
+	return s.queries.FindSpacesByUserId(ctx, userId)
 }
 
 func (s spaceService) GetSpace(ctx context.Context, auth int64, id string) (sqlc.Space, error) {
-	return s.queries.FindSpaceBySid(ctx, sqlc.FindSpaceBySidParams{
-		ID:     id,
-		UserID: auth,
-	})
+	return s.queries.FindSpaceBySid(ctx, id)
 }
