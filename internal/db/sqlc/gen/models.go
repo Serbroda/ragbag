@@ -33,8 +33,9 @@ type Collection struct {
 }
 
 type CollectionsUser struct {
-	CollectionID int64 `db:"collection_id" json:"collection_id"`
-	UserID       int64 `db:"user_id" json:"user_id"`
+	CollectionID int64  `db:"collection_id" json:"collection_id"`
+	UserID       int64  `db:"user_id" json:"user_id"`
+	Role         string `db:"role" json:"role"`
 }
 
 type Space struct {

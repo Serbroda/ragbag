@@ -356,6 +356,10 @@ components:
           type: string
         parentId:
           $ref: '#/components/schemas/Id'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollectionDto'
       required:
         - id
         - name

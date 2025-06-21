@@ -28,9 +28,10 @@ type BookmarkDtoList = []BookmarkDto
 
 // CollectionDto defines model for CollectionDto.
 type CollectionDto struct {
-	Id       Id     `json:"id"`
-	Name     string `json:"name"`
-	ParentId *Id    `json:"parentId,omitempty"`
+	Children *[]CollectionDto `json:"children,omitempty"`
+	Id       Id               `json:"id"`
+	Name     string           `json:"name"`
+	ParentId *Id              `json:"parentId,omitempty"`
 }
 
 // CollectionDtoList defines model for CollectionDtoList.

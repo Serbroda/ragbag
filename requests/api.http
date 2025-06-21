@@ -18,3 +18,7 @@ Authorization: Bearer {{accessToken}}
 ### GET Space by id
 GET {{baseUrl}}/v1/spaces/{{SPACE_ID}}
 Authorization: Bearer {{accessToken}}
+
+### GET Collections
+GET {{baseUrl}}/v1/spaces/{{SPACE_ID}}/collections
+Authorization: Bearer {{accessToken}}

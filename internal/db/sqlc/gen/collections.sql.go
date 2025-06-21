@@ -9,6 +9,109 @@ import (
 	"context"
 )
 
+const getAllCollections = `-- name: GetAllCollections :many
+;
+
+SELECT id, sid, space_id, parent_id, name, visibility, created_at, updated_at, deleted_at
+FROM collections
+WHERE collections.deleted_at IS NULL
+`
+
+func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
+	rows, err := q.db.QueryContext(ctx, getAllCollections)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []Collection
+	for rows.Next() {
+		var i Collection
+		if err := rows.Scan(
+			&i.ID,
+			&i.Sid,
+			&i.SpaceID,
+			&i.ParentID,
+			&i.Name,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
+const getCollectionsByUserAndSpace = `-- name: GetCollectionsByUserAndSpace :many
+;
+
+SELECT
+    collections.id, collections.sid, collections.space_id, collections.parent_id, collections.name, collections.visibility, collections.created_at, collections.updated_at, collections.deleted_at,
+    collections_users.role
+FROM collections
+         LEFT JOIN collections_users
+                   ON collections_users.collection_id = collections.id
+                       AND collections_users.user_id = ?1
+WHERE collections.deleted_at IS NULL
+  AND collections.space_id = ?2
+  AND (
+    collections.visibility = 'PUBLIC'
+        OR collections_users.role IS NOT NULL
+    )
+`
+
+type GetCollectionsByUserAndSpaceParams struct {
+	UserID  int64 `db:"user_id" json:"user_id"`
+	SpaceID int64 `db:"space_id" json:"space_id"`
+}
+
+type GetCollectionsByUserAndSpaceRow struct {
+	Collection Collection `db:"collection" json:"collection"`
+	Role       *string    `db:"role" json:"role"`
+}
+
+func (q *Queries) GetCollectionsByUserAndSpace(ctx context.Context, arg GetCollectionsByUserAndSpaceParams) ([]GetCollectionsByUserAndSpaceRow, error) {
+	rows, err := q.db.QueryContext(ctx, getCollectionsByUserAndSpace, arg.UserID, arg.SpaceID)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+	var items []GetCollectionsByUserAndSpaceRow
+	for rows.Next() {
+		var i GetCollectionsByUserAndSpaceRow
+		if err := rows.Scan(
+			&i.Collection.ID,
+			&i.Collection.Sid,
+			&i.Collection.SpaceID,
+			&i.Collection.ParentID,
+			&i.Collection.Name,
+			&i.Collection.Visibility,
+			&i.Collection.CreatedAt,
+			&i.Collection.UpdatedAt,
+			&i.Collection.DeletedAt,
+			&i.Role,
+		); err != nil {
+			return nil, err
+		}
+		items = append(items, i)
+	}
+	if err := rows.Close(); err != nil {
+		return nil, err
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	return items, nil
+}
+
 const insertCollection = `-- name: InsertCollection :one
 INSERT INTO collections (sid,
                          created_at,

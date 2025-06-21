@@ -22,7 +22,18 @@ VALUES (sqlc.arg('space_id'),
 SELECT *
 FROM spaces
 WHERE deleted_at IS NULL
-  AND sid = ? LIMIT 1;
+  AND sid = ? LIMIT 1
+;
+
+-- name: FindSpaceBySidAndUserId :one
+SELECT sqlc.embed(spaces), spaces_users.role
+FROM spaces
+         LEFT JOIN spaces_users ON
+    spaces_users.space_id = spaces.id
+WHERE deleted_at IS NULL
+  AND spaces.sid = sqlc.arg('space_id')
+  AND spaces_users.user_id = sqlc.arg('user_id') LIMIT 1
+;
 
 -- name: FindSpacesByUserId :many
 SELECT DISTINCT sqlc.embed(spaces), spaces_users.role

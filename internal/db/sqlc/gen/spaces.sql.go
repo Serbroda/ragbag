@@ -33,7 +33,47 @@ func (q *Queries) FindSpaceBySid(ctx context.Context, sid string) (Space, error)
 	return i, err
 }
 
+const findSpaceBySidAndUserId = `-- name: FindSpaceBySidAndUserId :one
+;
+
+SELECT spaces.id, spaces.sid, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces_users.role
+FROM spaces
+         LEFT JOIN spaces_users ON
+    spaces_users.space_id = spaces.id
+WHERE deleted_at IS NULL
+  AND spaces.sid = ?1
+  AND spaces_users.user_id = ?2 LIMIT 1
+`
+
+type FindSpaceBySidAndUserIdParams struct {
+	SpaceID string `db:"space_id" json:"space_id"`
+	UserID  int64  `db:"user_id" json:"user_id"`
+}
+
+type FindSpaceBySidAndUserIdRow struct {
+	Space Space   `db:"space" json:"space"`
+	Role  *string `db:"role" json:"role"`
+}
+
+func (q *Queries) FindSpaceBySidAndUserId(ctx context.Context, arg FindSpaceBySidAndUserIdParams) (FindSpaceBySidAndUserIdRow, error) {
+	row := q.db.QueryRowContext(ctx, findSpaceBySidAndUserId, arg.SpaceID, arg.UserID)
+	var i FindSpaceBySidAndUserIdRow
+	err := row.Scan(
+		&i.Space.ID,
+		&i.Space.Sid,
+		&i.Space.Name,
+		&i.Space.Visibility,
+		&i.Space.CreatedAt,
+		&i.Space.UpdatedAt,
+		&i.Space.DeletedAt,
+		&i.Role,
+	)
+	return i, err
+}
+
 const findSpacesByUserId = `-- name: FindSpacesByUserId :many
+;
+
 SELECT DISTINCT spaces.id, spaces.sid, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces_users.role
 FROM spaces
          INNER JOIN spaces_users on

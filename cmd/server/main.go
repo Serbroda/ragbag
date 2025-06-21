@@ -56,12 +56,14 @@ func main() {
 	queries := sqlc.New(con)
 
 	spaceService := services.NewSpaceService(queries)
+	collectionService := services.NewCollectionService(queries)
 	authService := services.NewAuthService(queries, spaceService)
 
 	// Setup and configure the HTTP server
 	e := server.NewServer(server.Config{
-		AuthService:  authService,
-		SpaceService: spaceService,
+		AuthService:       authService,
+		SpaceService:      spaceService,
+		CollectionService: collectionService,
 	})
 
 	// Determine the server port (use default if not set)

@@ -13,8 +13,9 @@ import (
 )
 
 type Config struct {
-	AuthService  services.AuthService
-	SpaceService services.SpaceService
+	AuthService       services.AuthService
+	SpaceService      services.SpaceService
+	CollectionService services.CollectionService
 }
 
 func NewServer(conf Config) *echo.Echo {
@@ -33,7 +34,7 @@ func NewServer(conf Config) *echo.Echo {
 	// register v1 server
 	v1Group := apiGroup.Group("/v1")
 	v1Group.Use(echojwt.WithConfig(security.CreateJwtConfig()))
-	apiServer := api.NewApiServer(conf.AuthService, conf.SpaceService)
+	apiServer := api.NewApiServer(conf.AuthService, conf.SpaceService, conf.CollectionService)
 	api.RegisterHandlers(v1Group, apiServer)
 
 	printRoutes(e)

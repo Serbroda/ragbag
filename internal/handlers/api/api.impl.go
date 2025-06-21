@@ -10,14 +10,20 @@ import (
 )
 
 type apiServer struct {
-	authService  services.AuthService
-	spaceService services.SpaceService
+	authService       services.AuthService
+	spaceService      services.SpaceService
+	collectionService services.CollectionService
 }
 
-func NewApiServer(authService services.AuthService, spaceService services.SpaceService) ServerInterface {
+func NewApiServer(
+	authService services.AuthService,
+	spaceService services.SpaceService,
+	collectionService services.CollectionService,
+) ServerInterface {
 	return apiServer{
-		authService:  authService,
-		spaceService: spaceService,
+		authService:       authService,
+		spaceService:      spaceService,
+		collectionService: collectionService,
 	}
 }
 
@@ -59,8 +65,22 @@ func (a apiServer) GetSpace(ctx echo.Context, spaceId Id) error {
 // Collections
 
 func (a apiServer) GetCollections(ctx echo.Context, spaceId Id) error {
-	//TODO implement me
-	panic("implement me")
+	auth, err := security.GetAuthentication(ctx)
+	if err != nil {
+		return err
+	}
+
+	space, err := a.spaceService.GetSpace(ctx.Request().Context(), auth.ID, spaceId)
+	if err != nil {
+		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
+	}
+
+	tree, err := a.collectionService.GetVisibleCollectionsTree(ctx.Request().Context(), auth.ID, space.ID)
+	if err != nil {
+		return ctx.String(http.StatusNotFound, err.Error())
+	}
+
+	return ctx.JSON(http.StatusOK, tree)
 }
 
 func (a apiServer) CreateCollection(ctx echo.Context, spaceId Id) error {
