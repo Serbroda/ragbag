@@ -9,7 +9,6 @@ import (
 	"github.com/Serbroda/ragbag/internal/server"
 	"github.com/Serbroda/ragbag/internal/services"
 	"github.com/Serbroda/ragbag/internal/utils"
-	"github.com/joho/godotenv"
 	"github.com/teris-io/shortid"
 	"os"
 )
@@ -22,18 +21,6 @@ func init() {
 		panic(err)
 	}
 	shortid.SetDefault(sid)
-
-	environment := os.Getenv("ENV")
-	if environment == "" {
-		environment = "development"
-	}
-
-	_ = godotenv.Load(".env." + environment + ".local")
-	if environment != "test" {
-		_ = godotenv.Load(".env.local")
-	}
-	_ = godotenv.Load(".env." + environment)
-	_ = godotenv.Load()
 }
 
 var Version = "dev" // Default-Wert

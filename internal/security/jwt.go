@@ -3,6 +3,7 @@ package security
 import (
 	"fmt"
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
+	"github.com/Serbroda/ragbag/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
 	"time"
 )
@@ -10,7 +11,7 @@ import (
 type Jwt = string
 
 var (
-	JwtSecretKey       = "JWT_SECRET_KEY"
+	JwtSecretKey       = utils.MustGetEnv("JWT_SECRET_KEY")
 	jwtAccessTokenExp  = 15
 	jwtRefreshTokenExp = 10080
 )
@@ -33,11 +34,11 @@ type JwtCustomClaims struct {
 func GenerateJwtPair(user sqlc.User) (TokenPair, error) {
 	accessTokenExp := time.Now().Add(time.Minute * time.Duration(jwtAccessTokenExp))
 	accessToken, err := GenerateJwt(jwt.MapClaims{
-		"sub": user.Sid,
-		"uid": user.ID,
-		"exp": accessTokenExp.Unix(),
-		"iat": time.Now().Unix(),
-		//"roles": user.RolesAsStrings(),
+		"sub":   user.Sid,
+		"uid":   user.ID,
+		"exp":   accessTokenExp.Unix(),
+		"iat":   time.Now().Unix(),
+		"roles": user.Role,
 	})
 	if err != nil {
 		return TokenPair{}, err

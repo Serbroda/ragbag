@@ -13,8 +13,9 @@ var (
 )
 
 type Authentication struct {
-	Subject string
-	UserId  int64
+	ID   int64
+	SID  string
+	Role string
 }
 
 func CreateJwtConfig() echojwt.Config {
@@ -51,9 +52,15 @@ func ParseToken(token *jwt.Token) (Authentication, error) {
 		return Authentication{}, errors.New("failed to get uid from claims")
 	}
 
+	role, ok := claims["roles"].(string)
+	if !ok {
+		return Authentication{}, errors.New("failed to get role from claims")
+	}
+
 	return Authentication{
-		Subject: sub,
-		UserId:  int64(uid),
+		ID:   int64(uid),
+		SID:  sub,
+		Role: role,
 	}, nil
 }
 

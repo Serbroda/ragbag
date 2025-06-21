@@ -1,4 +1,4 @@
-@SPACE_ID =
+#@SPACE_ID =
 
 ### GET Spaces
 GET {{baseUrl}}/v1/spaces
@@ -10,7 +10,8 @@ Authorization: Bearer {{accessToken}}
         response.body &&
         response.body.length > 0
     ) {
-        client.global.set("SPACE_ID", response.body[0].id);
+        const id = response.body[0].id
+        client.global.set("SPACE_ID", id);
     }
 %}
 
