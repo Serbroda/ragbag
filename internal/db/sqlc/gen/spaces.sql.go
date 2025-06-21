@@ -36,15 +36,15 @@ func (q *Queries) FindSpaceBySid(ctx context.Context, sid string) (Space, error)
 const findSpacesByUserId = `-- name: FindSpacesByUserId :many
 SELECT DISTINCT spaces.id, spaces.sid, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces_users.role
 FROM spaces
-         LEFT JOIN spaces_users on
+         INNER JOIN spaces_users on
     spaces_users.space_id = spaces.id
 WHERE spaces.deleted_at IS NULL
   AND spaces_users.user_id = ?1
 `
 
 type FindSpacesByUserIdRow struct {
-	Space Space   `db:"space" json:"space"`
-	Role  *string `db:"role" json:"role"`
+	Space Space  `db:"space" json:"space"`
+	Role  string `db:"role" json:"role"`
 }
 
 func (q *Queries) FindSpacesByUserId(ctx context.Context, userID int64) ([]FindSpacesByUserIdRow, error) {

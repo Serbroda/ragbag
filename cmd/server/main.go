@@ -35,7 +35,7 @@ func init() {
 }
 
 func main() {
-	dialect := utils.GetEnvFallback("DB_DIALECT", "sqlite3")
+	dialect := utils.GetEnvFallback("DB_DIALECT", "sqlite")
 
 	// Datenbankverbindung öffnen
 	con := db.OpenConnection(

@@ -23,7 +23,7 @@ func (q *Queries) DeleteUserSoft(ctx context.Context, sid string) error {
 }
 
 const findUserByEmail = `-- name: FindUserByEmail :one
-SELECT id, sid, email, password, created_at, updated_at, deleted_at
+SELECT id, sid, email, password, role, created_at, updated_at, deleted_at
 FROM users u
 WHERE email = ?
   AND deleted_at IS NULL LIMIT 1
@@ -37,6 +37,7 @@ func (q *Queries) FindUserByEmail(ctx context.Context, email string) (User, erro
 		&i.Sid,
 		&i.Email,
 		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -47,7 +48,7 @@ func (q *Queries) FindUserByEmail(ctx context.Context, email string) (User, erro
 const findUserBySid = `-- name: FindUserBySid :one
 ;
 
-SELECT id, sid, email, password, created_at, updated_at, deleted_at
+SELECT id, sid, email, password, role, created_at, updated_at, deleted_at
 FROM users
 WHERE sid = ?
   AND deleted_at IS NULL LIMIT 1
@@ -61,6 +62,7 @@ func (q *Queries) FindUserBySid(ctx context.Context, sid string) (User, error) {
 		&i.Sid,
 		&i.Email,
 		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
@@ -78,7 +80,7 @@ VALUES (?1,
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         ?2,
-        ?3) RETURNING id, sid, email, password, created_at, updated_at, deleted_at
+        ?3) RETURNING id, sid, email, password, role, created_at, updated_at, deleted_at
 `
 
 type InsertUserParams struct {
@@ -95,6 +97,7 @@ func (q *Queries) InsertUser(ctx context.Context, arg InsertUserParams) (User, e
 		&i.Sid,
 		&i.Email,
 		&i.Password,
+		&i.Role,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,

@@ -149,3 +149,4 @@ fabric.properties
 # End of https://www.toptal.com/developers/gitignore/api/git,goland+all,go,visualstudiocode
 
 *.db
+bin/
