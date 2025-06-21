@@ -12,7 +12,7 @@ env:
   GO_VERSION: "1.24.x"
 
 jobs:
-  test:
+  build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
@@ -27,9 +27,7 @@ jobs:
             ~/.cache/go-build
             ~/go/pkg/mod
           key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
-
       - name: Run tests
         run: make test
-
-      - name: Run tests
+      - name: Build platforms
         run: make build
