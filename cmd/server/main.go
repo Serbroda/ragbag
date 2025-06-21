@@ -1,6 +1,8 @@
 package main
 
 import (
+	"flag"
+	"fmt"
 	"github.com/Serbroda/ragbag/internal/db"
 	"github.com/Serbroda/ragbag/internal/db/migrations"
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
@@ -34,7 +36,18 @@ func init() {
 	_ = godotenv.Load()
 }
 
+var Version = "dev" // Default-Wert
+
 func main() {
+	versionFlag := flag.Bool("version", false, "show program version")
+	flag.BoolVar(versionFlag, "v", false, "shorthand for --version")
+	flag.Parse()
+
+	if *versionFlag {
+		fmt.Println(Version)
+		os.Exit(0)
+	}
+
 	dialect := utils.GetEnvFallback("DB_DIALECT", "sqlite")
 
 	// Datenbankverbindung öffnen

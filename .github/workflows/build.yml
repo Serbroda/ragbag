@@ -36,3 +36,7 @@ jobs:
 
       - name: Build platforms
         run: make build
+
+      - name: Run binary to check start
+        run: |
+          ./bin/ragbag-v${{ env.BINARY_VERSION }}-linux-amd64 --version
