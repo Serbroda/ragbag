@@ -4,7 +4,7 @@ SHELL := /bin/bash
 # Project informations
 # ------------------------------------------------------------
 BINARY_NAME := ragbag
-BINARY_VERSION := 0.1.0
+VERSION := $(shell cat VERSION)
 
 # Paths
 OUT_DIR := bin
@@ -29,7 +29,7 @@ build: clean generate-go
 define build_bin
 	@echo "==> Building Go binary for $(1)/$(2)..."
 	GOOS=$(1) GOARCH=$(2) CGO_ENABLED=0 \
-		go build -ldflags "-X main.Version=$(BINARY_VERSION)" -o ${OUT_DIR}/${BINARY_NAME}-v${BINARY_VERSION}-$(3) ${SERVER_MAIN_DIR}
+		go build -ldflags "-X main.Version=$(VERSION)" -o ${OUT_DIR}/${BINARY_NAME}-v${VERSION}-$(3) ${SERVER_MAIN_DIR}
 endef
 
 generate-go:
