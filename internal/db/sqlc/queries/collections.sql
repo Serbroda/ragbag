@@ -1,15 +1,13 @@
 -- name: InsertCollection :one
-INSERT INTO collections (sid,
+INSERT INTO collections (id,
                          created_at,
                          updated_at,
                          space_id,
-                         parent_id,
                          name)
-VALUES (sqlc.arg('sid'),
+VALUES (sqlc.arg('id'),
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         sqlc.arg('space_id'),
-        sqlc.arg('parent_id'),
         sqlc.arg('name')) RETURNING *
 ;
 

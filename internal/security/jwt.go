@@ -2,10 +2,11 @@ package security
 
 import (
 	"fmt"
+	"time"
+
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
 	"github.com/Serbroda/ragbag/internal/utils"
 	"github.com/golang-jwt/jwt/v5"
-	"time"
 )
 
 type Jwt = string
@@ -34,7 +35,7 @@ type JwtCustomClaims struct {
 func GenerateJwtPair(user sqlc.User) (TokenPair, error) {
 	accessTokenExp := time.Now().Add(time.Minute * time.Duration(jwtAccessTokenExp))
 	accessToken, err := GenerateJwt(jwt.MapClaims{
-		"sub":   user.Sid,
+		"sub":   user.ID,
 		"uid":   user.ID,
 		"exp":   accessTokenExp.Unix(),
 		"iat":   time.Now().Unix(),
@@ -46,7 +47,7 @@ func GenerateJwtPair(user sqlc.User) (TokenPair, error) {
 
 	refreshTokenExp := time.Now().Add(time.Minute * time.Duration(jwtRefreshTokenExp))
 	refreshToken, err := GenerateJwt(jwt.MapClaims{
-		"sub": user.Sid,
+		"sub": user.ID,
 		"uid": user.ID,
 		"exp": refreshTokenExp.Unix(),
 		"iat": time.Now().Unix(),

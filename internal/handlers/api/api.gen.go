@@ -17,10 +17,14 @@ const (
 
 // BookmarkDto defines model for BookmarkDto.
 type BookmarkDto struct {
-	Description *string `json:"description,omitempty"`
-	Id          Id      `json:"id"`
-	Title       *string `json:"title,omitempty"`
-	Url         string  `json:"url"`
+	// CollectionId ULID (Crockford Base32, 26 chars)
+	CollectionId *ID     `json:"collectionId,omitempty"`
+	Description  *string `json:"description,omitempty"`
+
+	// Id ULID (Crockford Base32, 26 chars)
+	Id    ID      `json:"id"`
+	Title *string `json:"title,omitempty"`
+	Url   string  `json:"url"`
 }
 
 // BookmarkDtoList defines model for BookmarkDtoList.
@@ -29,9 +33,10 @@ type BookmarkDtoList = []BookmarkDto
 // CollectionDto defines model for CollectionDto.
 type CollectionDto struct {
 	Children *[]CollectionDto `json:"children,omitempty"`
-	Id       Id               `json:"id"`
-	Name     string           `json:"name"`
-	ParentId *Id              `json:"parentId,omitempty"`
+
+	// Id ULID (Crockford Base32, 26 chars)
+	Id   ID     `json:"id"`
+	Name string `json:"name"`
 }
 
 // CollectionDtoList defines model for CollectionDtoList.
@@ -46,8 +51,7 @@ type CreateBookmarkDto struct {
 
 // CreateCollectionDto defines model for CreateCollectionDto.
 type CreateCollectionDto struct {
-	Name     string `json:"name"`
-	ParentId *Id    `json:"parentId,omitempty"`
+	Name string `json:"name"`
 }
 
 // Error defines model for Error.
@@ -55,12 +59,13 @@ type Error struct {
 	Message *string `json:"message,omitempty"`
 }
 
-// Id defines model for Id.
-type Id = string
+// ID ULID (Crockford Base32, 26 chars)
+type ID = string
 
 // SpaceDto defines model for SpaceDto.
 type SpaceDto struct {
-	Id   Id     `json:"id"`
+	// Id ULID (Crockford Base32, 26 chars)
+	Id   ID     `json:"id"`
 	Name string `json:"name"`
 }
 
@@ -76,15 +81,14 @@ type UpdateBookmarkDto struct {
 
 // UpdateCollectionDto defines model for UpdateCollectionDto.
 type UpdateCollectionDto struct {
-	Name     string `json:"name"`
-	ParentId *Id    `json:"parentId,omitempty"`
+	Name string `json:"name"`
 }
 
 // NotFound defines model for NotFound.
 type NotFound = Error
 
-// CreateCollectionJSONRequestBody defines body for CreateCollection for application/json ContentType.
-type CreateCollectionJSONRequestBody = CreateCollectionDto
+// UpdateBookmarkJSONRequestBody defines body for UpdateBookmark for application/json ContentType.
+type UpdateBookmarkJSONRequestBody = UpdateBookmarkDto
 
 // UpdateCollectionJSONRequestBody defines body for UpdateCollection for application/json ContentType.
 type UpdateCollectionJSONRequestBody = UpdateCollectionDto
@@ -92,52 +96,196 @@ type UpdateCollectionJSONRequestBody = UpdateCollectionDto
 // CreateBookmarkJSONRequestBody defines body for CreateBookmark for application/json ContentType.
 type CreateBookmarkJSONRequestBody = CreateBookmarkDto
 
-// UpdateBookmarkJSONRequestBody defines body for UpdateBookmark for application/json ContentType.
-type UpdateBookmarkJSONRequestBody = UpdateBookmarkDto
+// CreateCollectionJSONRequestBody defines body for CreateCollection for application/json ContentType.
+type CreateCollectionJSONRequestBody = CreateCollectionDto
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
+	// Delete a bookmark
+	// (DELETE /bookmarks/{bookmarkId})
+	DeleteBookmark(ctx echo.Context, bookmarkId ID) error
+	// Get a bookmark
+	// (GET /bookmarks/{bookmarkId})
+	GetBookmark(ctx echo.Context, bookmarkId ID) error
+	// Update a bookmark
+	// (PUT /bookmarks/{bookmarkId})
+	UpdateBookmark(ctx echo.Context, bookmarkId ID) error
+	// Delete a collection
+	// (DELETE /collections/{collectionId})
+	DeleteCollection(ctx echo.Context, collectionId ID) error
+	// Get a collection
+	// (GET /collections/{collectionId})
+	GetCollection(ctx echo.Context, collectionId ID) error
+	// Update a collection
+	// (PUT /collections/{collectionId})
+	UpdateCollection(ctx echo.Context, collectionId ID) error
+	// Get all bookmarks of a collection
+	// (GET /collections/{collectionId}/bookmarks)
+	GetBookmarks(ctx echo.Context, collectionId ID) error
+	// Create a bookmark
+	// (POST /collections/{collectionId}/bookmarks)
+	CreateBookmark(ctx echo.Context, collectionId ID) error
 	// Get all spaces
 	// (GET /spaces)
 	GetSpaces(ctx echo.Context) error
 	// Get a space
 	// (GET /spaces/{spaceId})
-	GetSpace(ctx echo.Context, spaceId Id) error
+	GetSpace(ctx echo.Context, spaceId ID) error
 	// Get all collections of a space
 	// (GET /spaces/{spaceId}/collections)
-	GetCollections(ctx echo.Context, spaceId Id) error
+	GetCollections(ctx echo.Context, spaceId ID) error
 	// Create a collection
 	// (POST /spaces/{spaceId}/collections)
-	CreateCollection(ctx echo.Context, spaceId Id) error
-	// Delete a collection
-	// (DELETE /spaces/{spaceId}/collections/{collectionId})
-	DeleteCollection(ctx echo.Context, spaceId Id, collectionId Id) error
-	// Get a collection
-	// (GET /spaces/{spaceId}/collections/{collectionId})
-	GetCollection(ctx echo.Context, spaceId Id, collectionId Id) error
-	// Update a collection
-	// (PUT /spaces/{spaceId}/collections/{collectionId})
-	UpdateCollection(ctx echo.Context, spaceId Id, collectionId Id) error
-	// Get all bookmarks of a collection
-	// (GET /spaces/{spaceId}/collections/{collectionId}/bookmarks)
-	GetBookmarks(ctx echo.Context, spaceId Id, collectionId Id) error
-	// Create a bookmark
-	// (POST /spaces/{spaceId}/collections/{collectionId}/bookmarks)
-	CreateBookmark(ctx echo.Context, spaceId Id, collectionId Id) error
-	// Delete a bookmark
-	// (DELETE /spaces/{spaceId}/collections/{collectionId}/bookmarks/{bookmarkId})
-	DeleteBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error
-	// Get a bookmark
-	// (GET /spaces/{spaceId}/collections/{collectionId}/bookmarks/{bookmarkId})
-	GetBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error
-	// Update a bookmark
-	// (PUT /spaces/{spaceId}/collections/{collectionId}/bookmarks/{bookmarkId})
-	UpdateBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error
+	CreateCollection(ctx echo.Context, spaceId ID) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
 type ServerInterfaceWrapper struct {
 	Handler ServerInterface
+}
+
+// DeleteBookmark converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteBookmark(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteBookmark(ctx, bookmarkId)
+	return err
+}
+
+// GetBookmark converts echo context to params.
+func (w *ServerInterfaceWrapper) GetBookmark(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetBookmark(ctx, bookmarkId)
+	return err
+}
+
+// UpdateBookmark converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateBookmark(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateBookmark(ctx, bookmarkId)
+	return err
+}
+
+// DeleteCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteCollection(ctx, collectionId)
+	return err
+}
+
+// GetCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCollection(ctx, collectionId)
+	return err
+}
+
+// UpdateCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateCollection(ctx, collectionId)
+	return err
+}
+
+// GetBookmarks converts echo context to params.
+func (w *ServerInterfaceWrapper) GetBookmarks(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetBookmarks(ctx, collectionId)
+	return err
+}
+
+// CreateBookmark converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateBookmark(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	ctx.Set(BearerAuthScopes, []string{})
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateBookmark(ctx, collectionId)
+	return err
 }
 
 // GetSpaces converts echo context to params.
@@ -155,7 +303,7 @@ func (w *ServerInterfaceWrapper) GetSpaces(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetSpace(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
+	var spaceId ID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
 	if err != nil {
@@ -173,7 +321,7 @@ func (w *ServerInterfaceWrapper) GetSpace(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) GetCollections(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
+	var spaceId ID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
 	if err != nil {
@@ -191,7 +339,7 @@ func (w *ServerInterfaceWrapper) GetCollections(ctx echo.Context) error {
 func (w *ServerInterfaceWrapper) CreateCollection(ctx echo.Context) error {
 	var err error
 	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
+	var spaceId ID
 
 	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
 	if err != nil {
@@ -202,238 +350,6 @@ func (w *ServerInterfaceWrapper) CreateCollection(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreateCollection(ctx, spaceId)
-	return err
-}
-
-// DeleteCollection converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteCollection(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteCollection(ctx, spaceId, collectionId)
-	return err
-}
-
-// GetCollection converts echo context to params.
-func (w *ServerInterfaceWrapper) GetCollection(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetCollection(ctx, spaceId, collectionId)
-	return err
-}
-
-// UpdateCollection converts echo context to params.
-func (w *ServerInterfaceWrapper) UpdateCollection(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateCollection(ctx, spaceId, collectionId)
-	return err
-}
-
-// GetBookmarks converts echo context to params.
-func (w *ServerInterfaceWrapper) GetBookmarks(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetBookmarks(ctx, spaceId, collectionId)
-	return err
-}
-
-// CreateBookmark converts echo context to params.
-func (w *ServerInterfaceWrapper) CreateBookmark(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.CreateBookmark(ctx, spaceId, collectionId)
-	return err
-}
-
-// DeleteBookmark converts echo context to params.
-func (w *ServerInterfaceWrapper) DeleteBookmark(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	// ------------- Path parameter "bookmarkId" -------------
-	var bookmarkId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.DeleteBookmark(ctx, spaceId, collectionId, bookmarkId)
-	return err
-}
-
-// GetBookmark converts echo context to params.
-func (w *ServerInterfaceWrapper) GetBookmark(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	// ------------- Path parameter "bookmarkId" -------------
-	var bookmarkId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.GetBookmark(ctx, spaceId, collectionId, bookmarkId)
-	return err
-}
-
-// UpdateBookmark converts echo context to params.
-func (w *ServerInterfaceWrapper) UpdateBookmark(ctx echo.Context) error {
-	var err error
-	// ------------- Path parameter "spaceId" -------------
-	var spaceId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
-	}
-
-	// ------------- Path parameter "collectionId" -------------
-	var collectionId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
-	}
-
-	// ------------- Path parameter "bookmarkId" -------------
-	var bookmarkId Id
-
-	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: false})
-	if err != nil {
-		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
-	}
-
-	ctx.Set(BearerAuthScopes, []string{})
-
-	// Invoke the callback with all the unmarshaled arguments
-	err = w.Handler.UpdateBookmark(ctx, spaceId, collectionId, bookmarkId)
 	return err
 }
 
@@ -465,17 +381,17 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 		Handler: si,
 	}
 
+	router.DELETE(baseURL+"/bookmarks/:bookmarkId", wrapper.DeleteBookmark)
+	router.GET(baseURL+"/bookmarks/:bookmarkId", wrapper.GetBookmark)
+	router.PUT(baseURL+"/bookmarks/:bookmarkId", wrapper.UpdateBookmark)
+	router.DELETE(baseURL+"/collections/:collectionId", wrapper.DeleteCollection)
+	router.GET(baseURL+"/collections/:collectionId", wrapper.GetCollection)
+	router.PUT(baseURL+"/collections/:collectionId", wrapper.UpdateCollection)
+	router.GET(baseURL+"/collections/:collectionId/bookmarks", wrapper.GetBookmarks)
+	router.POST(baseURL+"/collections/:collectionId/bookmarks", wrapper.CreateBookmark)
 	router.GET(baseURL+"/spaces", wrapper.GetSpaces)
 	router.GET(baseURL+"/spaces/:spaceId", wrapper.GetSpace)
 	router.GET(baseURL+"/spaces/:spaceId/collections", wrapper.GetCollections)
 	router.POST(baseURL+"/spaces/:spaceId/collections", wrapper.CreateCollection)
-	router.DELETE(baseURL+"/spaces/:spaceId/collections/:collectionId", wrapper.DeleteCollection)
-	router.GET(baseURL+"/spaces/:spaceId/collections/:collectionId", wrapper.GetCollection)
-	router.PUT(baseURL+"/spaces/:spaceId/collections/:collectionId", wrapper.UpdateCollection)
-	router.GET(baseURL+"/spaces/:spaceId/collections/:collectionId/bookmarks", wrapper.GetBookmarks)
-	router.POST(baseURL+"/spaces/:spaceId/collections/:collectionId/bookmarks", wrapper.CreateBookmark)
-	router.DELETE(baseURL+"/spaces/:spaceId/collections/:collectionId/bookmarks/:bookmarkId", wrapper.DeleteBookmark)
-	router.GET(baseURL+"/spaces/:spaceId/collections/:collectionId/bookmarks/:bookmarkId", wrapper.GetBookmark)
-	router.PUT(baseURL+"/spaces/:spaceId/collections/:collectionId/bookmarks/:bookmarkId", wrapper.UpdateBookmark)
 
 }

@@ -2,12 +2,13 @@ package auth
 
 import (
 	"errors"
+	"net/http"
+
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
 	"github.com/Serbroda/ragbag/internal/handlers"
 	"github.com/Serbroda/ragbag/internal/security"
 	"github.com/Serbroda/ragbag/internal/services"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type authServer struct {
@@ -40,7 +41,7 @@ func (a authServer) SignUp(ctx echo.Context) error {
 
 	return ctx.JSON(http.StatusOK, UserDto{
 		Email: entity.Email,
-		Id:    entity.Sid,
+		Id:    entity.ID,
 	})
 }
 

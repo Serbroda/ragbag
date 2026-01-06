@@ -1,9 +1,9 @@
 -- name: InsertSpace :one
-INSERT INTO spaces (sid,
+INSERT INTO spaces (id,
                     created_at,
                     updated_at,
                     name)
-VALUES (sqlc.arg('sid'),
+VALUES (sqlc.arg('id'),
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         sqlc.arg('name')) RETURNING *
@@ -18,20 +18,20 @@ VALUES (sqlc.arg('space_id'),
         sqlc.arg('role'))
 ;
 
--- name: FindSpaceBySid :one
+-- name: FindSpaceById :one
 SELECT *
 FROM spaces
 WHERE deleted_at IS NULL
-  AND sid = ? LIMIT 1
+  AND id = ? LIMIT 1
 ;
 
--- name: FindSpaceBySidAndUserId :one
+-- name: FindSpaceByIdAndUserId :one
 SELECT sqlc.embed(spaces), spaces_users.role
 FROM spaces
          LEFT JOIN spaces_users ON
     spaces_users.space_id = spaces.id
 WHERE deleted_at IS NULL
-  AND spaces.sid = sqlc.arg('space_id')
+  AND spaces.id = sqlc.arg('space_id')
   AND spaces_users.user_id = sqlc.arg('user_id') LIMIT 1
 ;
 

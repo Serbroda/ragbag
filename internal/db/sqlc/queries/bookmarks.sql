@@ -1,12 +1,12 @@
 -- name: InsertBookmark :one
-INSERT INTO bookmarks (sid,
+INSERT INTO bookmarks (id,
                        created_at,
                        updated_at,
                        collection_id,
                        url,
                        title,
                        description)
-VALUES (sqlc.arg('sid'),
+VALUES (sqlc.arg('id'),
         CURRENT_TIMESTAMP,
         CURRENT_TIMESTAMP,
         sqlc.arg('collection_id'),

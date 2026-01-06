@@ -2,8 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE users
 (
-    id         INTEGER PRIMARY KEY AUTOINCREMENT,
-    sid        TEXT NOT NULL UNIQUE,
+    id         TEXT PRIMARY KEY,
     email      TEXT NOT NULL UNIQUE,
     password   TEXT NOT NULL,
     role       TEXT NOT NULL DEFAULT 'USER',

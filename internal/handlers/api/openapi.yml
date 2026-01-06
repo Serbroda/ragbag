@@ -28,7 +28,7 @@ paths:
         - in: path
           name: spaceId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '200':
           description: OK
@@ -43,6 +43,7 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  # Collections
   /spaces/{spaceId}/collections:
     get:
       summary: Get all collections of a space
@@ -51,7 +52,7 @@ paths:
         - in: path
           name: spaceId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '200':
           description: OK
@@ -72,7 +73,7 @@ paths:
         - in: path
           name: spaceId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       requestBody:
         required: true
         content:
@@ -93,19 +94,15 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /spaces/{spaceId}/collections/{collectionId}:
+  /collections/{collectionId}:
     get:
       summary: Get a collection
       operationId: getCollection
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: collectionId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '200':
           description: OK
@@ -124,13 +121,9 @@ paths:
       operationId: updateCollection
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: collectionId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       requestBody:
         required: true
         content:
@@ -155,13 +148,9 @@ paths:
       operationId: deleteCollection
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: collectionId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '204':
           $ref: '#/components/responses/NoContent'
@@ -172,20 +161,16 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-# Bookmarks
-  /spaces/{spaceId}/collections/{collectionId}/bookmarks:
+  # Bookmarks
+  /collections/{collectionId}/bookmarks:
     get:
       summary: Get all bookmarks of a collection
       operationId: getBookmarks
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: collectionId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '200':
           description: OK
@@ -204,13 +189,9 @@ paths:
       operationId: createBookmark
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: collectionId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       requestBody:
         required: true
         content:
@@ -231,23 +212,15 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /spaces/{spaceId}/collections/{collectionId}/bookmarks/{bookmarkId}:
+  /bookmarks/{bookmarkId}:
     get:
       summary: Get a bookmark
       operationId: getBookmark
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
-          name: collectionId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: bookmarkId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '200':
           description: OK
@@ -266,17 +239,9 @@ paths:
       operationId: updateBookmark
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
-          name: collectionId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: bookmarkId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       requestBody:
         required: true
         content:
@@ -301,17 +266,9 @@ paths:
       operationId: deleteBookmark
       parameters:
         - in: path
-          name: spaceId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
-          name: collectionId
-          schema:
-            $ref: '#/components/schemas/Id'
-        - in: path
           name: bookmarkId
           schema:
-            $ref: '#/components/schemas/Id'
+            $ref: '#/components/schemas/ID'
       responses:
         '204':
           $ref: '#/components/responses/NoContent'
@@ -324,9 +281,14 @@ paths:
 components:
   schemas:
 
-    Id:
+    ID:
       type: string
-      example: "-NDveu-9Q"
+      description: ULID (Crockford Base32, 26 chars)
+      example: "01KEABJ4NDG67TV6AYDYV4RN1E"
+      minLength: 26
+      maxLength: 26
+      pattern: "^[0-9A-HJKMNP-TV-Z]{26}$"
+
     Error:
       type: object
       properties:
@@ -336,7 +298,7 @@ components:
     SpaceDto:
       properties:
         id:
-          $ref: '#/components/schemas/Id'
+          $ref: '#/components/schemas/ID'
         name:
           type: string
       required:
@@ -351,11 +313,9 @@ components:
     CollectionDto:
       properties:
         id:
-          $ref: '#/components/schemas/Id'
+          $ref: '#/components/schemas/ID'
         name:
           type: string
-        parentId:
-          $ref: '#/components/schemas/Id'
         children:
           type: array
           items:
@@ -373,8 +333,6 @@ components:
       properties:
         name:
           type: string
-        parentId:
-          $ref: '#/components/schemas/Id'
       required:
         - name
 
@@ -382,15 +340,15 @@ components:
       properties:
         name:
           type: string
-        parentId:
-          $ref: '#/components/schemas/Id'
       required:
         - name
 
     BookmarkDto:
       properties:
         id:
-          $ref: '#/components/schemas/Id'
+          $ref: '#/components/schemas/ID'
+        collectionId:
+          $ref: '#/components/schemas/ID'
         url:
           type: string
         title:

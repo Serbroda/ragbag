@@ -1,12 +1,14 @@
 package api
 
 import (
+	"net/http"
+
+	"github.com/Serbroda/ragbag/internal/db"
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
 	"github.com/Serbroda/ragbag/internal/security"
 	"github.com/Serbroda/ragbag/internal/services"
 	"github.com/Serbroda/ragbag/internal/utils"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type apiServer struct {
@@ -39,38 +41,48 @@ func (a apiServer) GetSpaces(ctx echo.Context) error {
 	}
 	return ctx.JSON(http.StatusOK, utils.MapSlice(spaces, func(item sqlc.FindSpacesByUserIdRow) SpaceDto {
 		return SpaceDto{
-			Id:   item.Space.Sid,
+			Id:   item.Space.ID,
 			Name: item.Space.Name,
 		}
 	}))
 }
 
-func (a apiServer) GetSpace(ctx echo.Context, spaceId Id) error {
+func (a apiServer) GetSpace(ctx echo.Context, spaceId ID) error {
 	auth, err := security.GetAuthentication(ctx)
 	if err != nil {
 		return err
 	}
 
-	space, err := a.spaceService.GetSpace(ctx.Request().Context(), auth.ID, spaceId)
+	id, err := db.ParseDBID(spaceId)
+	if err != nil {
+		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
+	}
+
+	space, err := a.spaceService.GetSpace(ctx.Request().Context(), auth.ID, id.String())
 	if err != nil {
 		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
 	}
 
 	return ctx.JSON(http.StatusOK, SpaceDto{
-		Id:   space.Sid,
+		Id:   space.ID,
 		Name: space.Name,
 	})
 }
 
 // Collections
 
-func (a apiServer) GetCollections(ctx echo.Context, spaceId Id) error {
+func (a apiServer) GetCollections(ctx echo.Context, spaceId ID) error {
 	auth, err := security.GetAuthentication(ctx)
 	if err != nil {
 		return err
 	}
 
-	space, err := a.spaceService.GetSpace(ctx.Request().Context(), auth.ID, spaceId)
+	id, err := db.ParseDBID(spaceId)
+	if err != nil {
+		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
+	}
+
+	space, err := a.spaceService.GetSpace(ctx.Request().Context(), auth.ID, id.String())
 	if err != nil {
 		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
 	}
@@ -83,49 +95,63 @@ func (a apiServer) GetCollections(ctx echo.Context, spaceId Id) error {
 	return ctx.JSON(http.StatusOK, tree)
 }
 
-func (a apiServer) CreateCollection(ctx echo.Context, spaceId Id) error {
+func (a apiServer) CreateCollection(ctx echo.Context, spaceId ID) error {
+	auth, err := security.GetAuthentication(ctx)
+	if err != nil {
+		return err
+	}
+
+	id, err := db.ParseDBID(spaceId)
+	if err != nil {
+		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
+	}
+
+	_, err = a.spaceService.GetSpace(ctx.Request().Context(), auth.ID, id.String())
+	if err != nil {
+		return ctx.String(http.StatusNotFound, "Space with id "+spaceId+" not found")
+	}
+
+	return ctx.NoContent(http.StatusNotImplemented)
+}
+
+func (a apiServer) DeleteCollection(ctx echo.Context, collectionId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (a apiServer) DeleteCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
+func (a apiServer) GetCollection(ctx echo.Context, collectionId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (a apiServer) GetCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
-	//TODO implement me
-	panic("implement me")
-}
-
-func (a apiServer) UpdateCollection(ctx echo.Context, spaceId Id, collectionId Id) error {
+func (a apiServer) UpdateCollection(ctx echo.Context, collectionId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
 // Bookmarks
 
-func (a apiServer) GetBookmarks(ctx echo.Context, spaceId Id, collectionId Id) error {
+func (a apiServer) GetBookmarks(ctx echo.Context, collectionId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (a apiServer) CreateBookmark(ctx echo.Context, spaceId Id, collectionId Id) error {
+func (a apiServer) CreateBookmark(ctx echo.Context, collectionId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (a apiServer) DeleteBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error {
+func (a apiServer) DeleteBookmark(ctx echo.Context, bookmarkId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (a apiServer) GetBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error {
+func (a apiServer) GetBookmark(ctx echo.Context, bookmarkId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
 
-func (a apiServer) UpdateBookmark(ctx echo.Context, spaceId Id, collectionId Id, bookmarkId Id) error {
+func (a apiServer) UpdateBookmark(ctx echo.Context, bookmarkId ID) error {
 	//TODO implement me
 	panic("implement me")
 }
