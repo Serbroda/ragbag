@@ -1,12 +1,13 @@
 package api
 
 import (
+	"net/http"
+
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
 	"github.com/Serbroda/ragbag/internal/security"
 	"github.com/Serbroda/ragbag/internal/services"
 	"github.com/Serbroda/ragbag/internal/utils"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 type apiServer struct {
@@ -39,7 +40,7 @@ func (a apiServer) GetSpaces(ctx echo.Context) error {
 	}
 	return ctx.JSON(http.StatusOK, utils.MapSlice(spaces, func(item sqlc.FindSpacesByUserIdRow) SpaceDto {
 		return SpaceDto{
-			Id:   item.Space.Sid,
+			Id:   item.Space.ID,
 			Name: item.Space.Name,
 		}
 	}))
@@ -57,7 +58,7 @@ func (a apiServer) GetSpace(ctx echo.Context, spaceId Id) error {
 	}
 
 	return ctx.JSON(http.StatusOK, SpaceDto{
-		Id:   space.Sid,
+		Id:   space.ID,
 		Name: space.Name,
 	})
 }

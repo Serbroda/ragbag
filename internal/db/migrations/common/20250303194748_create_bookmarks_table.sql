@@ -2,8 +2,7 @@
 -- +goose StatementBegin
 CREATE TABLE bookmarks
 (
-    id            INTEGER PRIMARY KEY AUTOINCREMENT,
-    sid           TEXT    NOT NULL UNIQUE,
+    id            TEXT PRIMARY KEY,
     collection_id INTEGER NOT NULL,
     url           TEXT    NOT NULL,
     title         TEXT,

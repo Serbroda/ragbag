@@ -2,10 +2,11 @@ package security
 
 import (
 	"errors"
+	"net/http"
+
 	"github.com/golang-jwt/jwt/v5"
 	echojwt "github.com/labstack/echo-jwt/v4"
 	"github.com/labstack/echo/v4"
-	"net/http"
 )
 
 var (
@@ -13,8 +14,7 @@ var (
 )
 
 type Authentication struct {
-	ID   int64
-	SID  string
+	ID   string
 	Role string
 }
 
@@ -47,19 +47,13 @@ func ParseToken(token *jwt.Token) (Authentication, error) {
 		return Authentication{}, errors.New("failed to get sub from claims")
 	}
 
-	uid, ok := claims["uid"].(float64)
-	if !ok {
-		return Authentication{}, errors.New("failed to get uid from claims")
-	}
-
 	role, ok := claims["roles"].(string)
 	if !ok {
 		return Authentication{}, errors.New("failed to get role from claims")
 	}
 
 	return Authentication{
-		ID:   int64(uid),
-		SID:  sub,
+		ID:   sub,
 		Role: role,
 	}, nil
 }

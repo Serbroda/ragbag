@@ -2,15 +2,16 @@ package services
 
 import (
 	"context"
+
+	"github.com/Serbroda/ragbag/internal/db"
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
-	"github.com/teris-io/shortid"
 )
 
 type SpaceService interface {
-	Create(ctx context.Context, userId int64, params sqlc.InsertSpaceParams) (sqlc.Space, error)
-	GetSpaces(ctx context.Context, userId int64) ([]sqlc.FindSpacesByUserIdRow, error)
-	GetSpace(ctx context.Context, auth int64, id string) (sqlc.Space, error)
-	GetSpaceByUser(ctx context.Context, auth int64, id string) (sqlc.FindSpaceBySidAndUserIdRow, error)
+	Create(ctx context.Context, userId string, params sqlc.InsertSpaceParams) (sqlc.Space, error)
+	GetSpaces(ctx context.Context, userId string) ([]sqlc.FindSpacesByUserIdRow, error)
+	GetSpace(ctx context.Context, auth string, id string) (sqlc.Space, error)
+	GetSpaceByUser(ctx context.Context, auth string, id string) (sqlc.FindSpaceByIdAndUserIdRow, error)
 }
 
 type spaceService struct {
@@ -21,8 +22,8 @@ func NewSpaceService(queries *sqlc.Queries) SpaceService {
 	return &spaceService{queries: queries}
 }
 
-func (s spaceService) Create(ctx context.Context, userId int64, params sqlc.InsertSpaceParams) (sqlc.Space, error) {
-	params.Sid = shortid.MustGenerate()
+func (s spaceService) Create(ctx context.Context, userId string, params sqlc.InsertSpaceParams) (sqlc.Space, error) {
+	params.ID = db.NewDBID().String()
 	space, err := s.queries.InsertSpace(ctx, params)
 	if err != nil {
 		return sqlc.Space{}, err
@@ -38,16 +39,16 @@ func (s spaceService) Create(ctx context.Context, userId int64, params sqlc.Inse
 	return space, nil
 }
 
-func (s spaceService) GetSpaces(ctx context.Context, userId int64) ([]sqlc.FindSpacesByUserIdRow, error) {
+func (s spaceService) GetSpaces(ctx context.Context, userId string) ([]sqlc.FindSpacesByUserIdRow, error) {
 	return s.queries.FindSpacesByUserId(ctx, userId)
 }
 
-func (s spaceService) GetSpace(ctx context.Context, auth int64, id string) (sqlc.Space, error) {
-	return s.queries.FindSpaceBySid(ctx, id)
+func (s spaceService) GetSpace(ctx context.Context, auth string, id string) (sqlc.Space, error) {
+	return s.queries.FindSpaceById(ctx, id)
 }
 
-func (s spaceService) GetSpaceByUser(ctx context.Context, auth int64, id string) (sqlc.FindSpaceBySidAndUserIdRow, error) {
-	return s.queries.FindSpaceBySidAndUserId(ctx, sqlc.FindSpaceBySidAndUserIdParams{
+func (s spaceService) GetSpaceByUser(ctx context.Context, auth string, id string) (sqlc.FindSpaceByIdAndUserIdRow, error) {
+	return s.queries.FindSpaceByIdAndUserId(ctx, sqlc.FindSpaceByIdAndUserIdParams{
 		SpaceID: id,
 		UserID:  auth,
 	})
