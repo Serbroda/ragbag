@@ -22,5 +22,5 @@ func ParseDBID(s string) (DBID, error) {
 }
 
 func (id DBID) String() string {
-	return id.String()
+	return ulid.ULID(id).String()
 }

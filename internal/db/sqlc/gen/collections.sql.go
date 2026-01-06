@@ -9,6 +9,44 @@ import (
 	"context"
 )
 
+const findCollectionByIdAndUserId = `-- name: FindCollectionByIdAndUserId :one
+;
+
+SELECT collections.id, collections.space_id, collections.name, collections.visibility, collections.created_at, collections.updated_at, collections.deleted_at, collections_users.role
+FROM collections
+         LEFT JOIN collections_users ON
+    collections_users.collection_id = collections.id
+WHERE deleted_at IS NULL
+  AND collections.id = ?1
+  AND collections_users.user_id = ?2 LIMIT 1
+`
+
+type FindCollectionByIdAndUserIdParams struct {
+	CollectionID string `db:"collection_id" json:"collection_id"`
+	UserID       string `db:"user_id" json:"user_id"`
+}
+
+type FindCollectionByIdAndUserIdRow struct {
+	Collection Collection `db:"collection" json:"collection"`
+	Role       *string    `db:"role" json:"role"`
+}
+
+func (q *Queries) FindCollectionByIdAndUserId(ctx context.Context, arg FindCollectionByIdAndUserIdParams) (FindCollectionByIdAndUserIdRow, error) {
+	row := q.db.QueryRowContext(ctx, findCollectionByIdAndUserId, arg.CollectionID, arg.UserID)
+	var i FindCollectionByIdAndUserIdRow
+	err := row.Scan(
+		&i.Collection.ID,
+		&i.Collection.SpaceID,
+		&i.Collection.Name,
+		&i.Collection.Visibility,
+		&i.Collection.CreatedAt,
+		&i.Collection.UpdatedAt,
+		&i.Collection.DeletedAt,
+		&i.Role,
+	)
+	return i, err
+}
+
 const getAllCollections = `-- name: GetAllCollections :many
 ;
 
@@ -140,4 +178,26 @@ func (q *Queries) InsertCollection(ctx context.Context, arg InsertCollectionPara
 		&i.DeletedAt,
 	)
 	return i, err
+}
+
+const insertCollectionAndUser = `-- name: InsertCollectionAndUser :exec
+;
+
+INSERT INTO collections_users (collection_id,
+                          user_id,
+                          role)
+VALUES (?1,
+        ?2,
+        ?3)
+`
+
+type InsertCollectionAndUserParams struct {
+	CollectionID string `db:"collection_id" json:"collection_id"`
+	UserID       string `db:"user_id" json:"user_id"`
+	Role         string `db:"role" json:"role"`
+}
+
+func (q *Queries) InsertCollectionAndUser(ctx context.Context, arg InsertCollectionAndUserParams) error {
+	_, err := q.db.ExecContext(ctx, insertCollectionAndUser, arg.CollectionID, arg.UserID, arg.Role)
+	return err
 }

@@ -34,16 +34,24 @@ func NewServer(conf Config) *echo.Echo {
 	// register v1 server
 	v1Group := apiGroup.Group("/v1")
 	v1Group.Use(echojwt.WithConfig(security.CreateJwtConfig()))
-	apiServer := api.NewApiServer(conf.AuthService, conf.SpaceService, conf.CollectionService)
-	api.RegisterHandlers(v1Group, apiServer)
+
+	ssi := api.NewApiServer(conf.AuthService, conf.SpaceService, conf.CollectionService)
+
+	// optional: middlewares für strict handler (logging, authz mapping, etc.)
+	var strictMW []api.StrictMiddlewareFunc
+
+	handler := api.NewStrictHandler(ssi, strictMW)
+
+	// Wichtig: beim v1Group registrieren, damit die Routes unter /api/v1 liegen
+	api.RegisterHandlers(v1Group, handler)
 
 	printRoutes(e)
 	return e
 }
 
 func printRoutes(e *echo.Echo) {
-	log.Debug("Registered following routes\n\n")
+	log.Info("Registered following routes\n\n")
 	for _, r := range e.Routes() {
-		log.Debugf(" - %v %v\n", r.Method, r.Path)
+		log.Infof(" - %v %v\n", r.Method, r.Path)
 	}
 }

@@ -11,8 +11,8 @@ require (
 	github.com/labstack/echo/v4 v4.13.3
 	github.com/labstack/gommon v0.4.2
 	github.com/oapi-codegen/runtime v1.1.1
+	github.com/oklog/ulid/v2 v2.1.1
 	github.com/pressly/goose/v3 v3.24.1
-	github.com/teris-io/shortid v0.0.0-20220617161101-71ec9f2aa569
 	golang.org/x/crypto v0.32.0
 )
 
@@ -31,7 +31,6 @@ require (
 	github.com/mattn/go-isatty v0.0.20 // indirect
 	github.com/mfridman/interpolate v0.0.2 // indirect
 	github.com/ncruces/go-strftime v0.1.9 // indirect
-	github.com/oklog/ulid/v2 v2.1.1 // indirect
 	github.com/remyoudompheng/bigfft v0.0.0-20230129092748-24d4a6f8daec // indirect
 	github.com/sethvargo/go-retry v0.3.0 // indirect
 	github.com/valyala/bytebufferpool v1.0.0 // indirect

@@ -316,10 +316,6 @@ components:
           $ref: '#/components/schemas/ID'
         name:
           type: string
-        children:
-          type: array
-          items:
-            $ref: '#/components/schemas/CollectionDto'
       required:
         - id
         - name

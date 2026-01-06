@@ -1,6 +1,7 @@
 package security
 
 import (
+	"context"
 	"errors"
 	"net/http"
 
@@ -32,6 +33,11 @@ func CreateJwtConfig() echojwt.Config {
 				return
 			}
 			c.Set(ContextKeyAuthentication, auth)
+
+			req := c.Request()
+			ctx := req.Context()
+			ctx = context.WithValue(ctx, ContextKeyAuthentication, auth)
+			c.SetRequest(req.WithContext(ctx))
 		},
 	}
 }
@@ -62,6 +68,16 @@ func GetAuthentication(ctx echo.Context) (Authentication, error) {
 	auth, ok := ctx.Get(ContextKeyAuthentication).(Authentication)
 	if !ok {
 		return auth, echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
+	}
+	return auth, nil
+}
+
+// neue Funktion für context.Context (Strict handlers)
+func GetAuthenticationFromContext(ctx context.Context) (Authentication, error) {
+	auth, ok := ctx.Value(ContextKeyAuthentication).(Authentication)
+	if !ok {
+		// echo.NewHTTPError ist weiterhin ein geeigneter Fehler für HTTP-Antworten
+		return Authentication{}, echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 	return auth, nil
 }

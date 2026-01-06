@@ -11,6 +11,15 @@ VALUES (sqlc.arg('id'),
         sqlc.arg('name')) RETURNING *
 ;
 
+-- name: InsertCollectionAndUser :exec
+INSERT INTO collections_users (collection_id,
+                          user_id,
+                          role)
+VALUES (sqlc.arg('collection_id'),
+        sqlc.arg('user_id'),
+        sqlc.arg('role'))
+;
+
 -- name: GetAllCollections :many
 SELECT *
 FROM collections
@@ -33,3 +42,12 @@ WHERE collections.deleted_at IS NULL
     )
 ;
 
+-- name: FindCollectionByIdAndUserId :one
+SELECT sqlc.embed(collections), collections_users.role
+FROM collections
+         LEFT JOIN collections_users ON
+    collections_users.collection_id = collections.id
+WHERE deleted_at IS NULL
+  AND collections.id = sqlc.arg('collection_id')
+  AND collections_users.user_id = sqlc.arg('user_id') LIMIT 1
+;

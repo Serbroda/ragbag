@@ -4,11 +4,14 @@
 package api
 
 import (
+	"context"
+	"encoding/json"
 	"fmt"
 	"net/http"
 
 	"github.com/labstack/echo/v4"
 	"github.com/oapi-codegen/runtime"
+	strictecho "github.com/oapi-codegen/runtime/strictmiddleware/echo"
 )
 
 const (
@@ -32,8 +35,6 @@ type BookmarkDtoList = []BookmarkDto
 
 // CollectionDto defines model for CollectionDto.
 type CollectionDto struct {
-	Children *[]CollectionDto `json:"children,omitempty"`
-
 	// Id ULID (Crockford Base32, 26 chars)
 	Id   ID     `json:"id"`
 	Name string `json:"name"`
@@ -394,4 +395,859 @@ func RegisterHandlersWithBaseURL(router EchoRouter, si ServerInterface, baseURL 
 	router.GET(baseURL+"/spaces/:spaceId/collections", wrapper.GetCollections)
 	router.POST(baseURL+"/spaces/:spaceId/collections", wrapper.CreateCollection)
 
+}
+
+type ForbiddenResponse struct {
+}
+
+type NoContentResponse struct {
+}
+
+type NotFoundJSONResponse Error
+
+type UnauthorizedResponse struct {
+}
+
+type DeleteBookmarkRequestObject struct {
+	BookmarkId ID `json:"bookmarkId,omitempty"`
+}
+
+type DeleteBookmarkResponseObject interface {
+	VisitDeleteBookmarkResponse(w http.ResponseWriter) error
+}
+
+type DeleteBookmark204Response = NoContentResponse
+
+func (response DeleteBookmark204Response) VisitDeleteBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteBookmark401Response = UnauthorizedResponse
+
+func (response DeleteBookmark401Response) VisitDeleteBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type DeleteBookmark403Response = ForbiddenResponse
+
+func (response DeleteBookmark403Response) VisitDeleteBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type DeleteBookmark404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteBookmark404JSONResponse) VisitDeleteBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBookmarkRequestObject struct {
+	BookmarkId ID `json:"bookmarkId,omitempty"`
+}
+
+type GetBookmarkResponseObject interface {
+	VisitGetBookmarkResponse(w http.ResponseWriter) error
+}
+
+type GetBookmark200JSONResponse BookmarkDto
+
+func (response GetBookmark200JSONResponse) VisitGetBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBookmark401Response = UnauthorizedResponse
+
+func (response GetBookmark401Response) VisitGetBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetBookmark403Response = ForbiddenResponse
+
+func (response GetBookmark403Response) VisitGetBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type GetBookmark404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetBookmark404JSONResponse) VisitGetBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateBookmarkRequestObject struct {
+	BookmarkId ID `json:"bookmarkId,omitempty"`
+	Body       *UpdateBookmarkJSONRequestBody
+}
+
+type UpdateBookmarkResponseObject interface {
+	VisitUpdateBookmarkResponse(w http.ResponseWriter) error
+}
+
+type UpdateBookmark200JSONResponse BookmarkDto
+
+func (response UpdateBookmark200JSONResponse) VisitUpdateBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateBookmark401Response = UnauthorizedResponse
+
+func (response UpdateBookmark401Response) VisitUpdateBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type UpdateBookmark403Response = ForbiddenResponse
+
+func (response UpdateBookmark403Response) VisitUpdateBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type UpdateBookmark404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateBookmark404JSONResponse) VisitUpdateBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type DeleteCollectionRequestObject struct {
+	CollectionId ID `json:"collectionId,omitempty"`
+}
+
+type DeleteCollectionResponseObject interface {
+	VisitDeleteCollectionResponse(w http.ResponseWriter) error
+}
+
+type DeleteCollection204Response = NoContentResponse
+
+func (response DeleteCollection204Response) VisitDeleteCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(204)
+	return nil
+}
+
+type DeleteCollection401Response = UnauthorizedResponse
+
+func (response DeleteCollection401Response) VisitDeleteCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type DeleteCollection403Response = ForbiddenResponse
+
+func (response DeleteCollection403Response) VisitDeleteCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type DeleteCollection404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response DeleteCollection404JSONResponse) VisitDeleteCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCollectionRequestObject struct {
+	CollectionId ID `json:"collectionId,omitempty"`
+}
+
+type GetCollectionResponseObject interface {
+	VisitGetCollectionResponse(w http.ResponseWriter) error
+}
+
+type GetCollection200JSONResponse CollectionDto
+
+func (response GetCollection200JSONResponse) VisitGetCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCollection401Response = UnauthorizedResponse
+
+func (response GetCollection401Response) VisitGetCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetCollection403Response = ForbiddenResponse
+
+func (response GetCollection403Response) VisitGetCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type GetCollection404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCollection404JSONResponse) VisitGetCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateCollectionRequestObject struct {
+	CollectionId ID `json:"collectionId,omitempty"`
+	Body         *UpdateCollectionJSONRequestBody
+}
+
+type UpdateCollectionResponseObject interface {
+	VisitUpdateCollectionResponse(w http.ResponseWriter) error
+}
+
+type UpdateCollection200JSONResponse CollectionDto
+
+func (response UpdateCollection200JSONResponse) VisitUpdateCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type UpdateCollection401Response = UnauthorizedResponse
+
+func (response UpdateCollection401Response) VisitUpdateCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type UpdateCollection403Response = ForbiddenResponse
+
+func (response UpdateCollection403Response) VisitUpdateCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type UpdateCollection404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response UpdateCollection404JSONResponse) VisitUpdateCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBookmarksRequestObject struct {
+	CollectionId ID `json:"collectionId,omitempty"`
+}
+
+type GetBookmarksResponseObject interface {
+	VisitGetBookmarksResponse(w http.ResponseWriter) error
+}
+
+type GetBookmarks200JSONResponse BookmarkDtoList
+
+func (response GetBookmarks200JSONResponse) VisitGetBookmarksResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetBookmarks401Response = UnauthorizedResponse
+
+func (response GetBookmarks401Response) VisitGetBookmarksResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetBookmarks403Response = ForbiddenResponse
+
+func (response GetBookmarks403Response) VisitGetBookmarksResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type GetBookmarks404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetBookmarks404JSONResponse) VisitGetBookmarksResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateBookmarkRequestObject struct {
+	CollectionId ID `json:"collectionId,omitempty"`
+	Body         *CreateBookmarkJSONRequestBody
+}
+
+type CreateBookmarkResponseObject interface {
+	VisitCreateBookmarkResponse(w http.ResponseWriter) error
+}
+
+type CreateBookmark200JSONResponse BookmarkDto
+
+func (response CreateBookmark200JSONResponse) VisitCreateBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateBookmark401Response = UnauthorizedResponse
+
+func (response CreateBookmark401Response) VisitCreateBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type CreateBookmark403Response = ForbiddenResponse
+
+func (response CreateBookmark403Response) VisitCreateBookmarkResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type CreateBookmark404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateBookmark404JSONResponse) VisitCreateBookmarkResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSpacesRequestObject struct {
+}
+
+type GetSpacesResponseObject interface {
+	VisitGetSpacesResponse(w http.ResponseWriter) error
+}
+
+type GetSpaces200JSONResponse SpaceDtoList
+
+func (response GetSpaces200JSONResponse) VisitGetSpacesResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSpaces401Response = UnauthorizedResponse
+
+func (response GetSpaces401Response) VisitGetSpacesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetSpaces403Response = ForbiddenResponse
+
+func (response GetSpaces403Response) VisitGetSpacesResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type GetSpaceRequestObject struct {
+	SpaceId ID `json:"spaceId,omitempty"`
+}
+
+type GetSpaceResponseObject interface {
+	VisitGetSpaceResponse(w http.ResponseWriter) error
+}
+
+type GetSpace200JSONResponse SpaceDto
+
+func (response GetSpace200JSONResponse) VisitGetSpaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetSpace401Response = UnauthorizedResponse
+
+func (response GetSpace401Response) VisitGetSpaceResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetSpace403Response = ForbiddenResponse
+
+func (response GetSpace403Response) VisitGetSpaceResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type GetSpace404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetSpace404JSONResponse) VisitGetSpaceResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCollectionsRequestObject struct {
+	SpaceId ID `json:"spaceId,omitempty"`
+}
+
+type GetCollectionsResponseObject interface {
+	VisitGetCollectionsResponse(w http.ResponseWriter) error
+}
+
+type GetCollections200JSONResponse CollectionDtoList
+
+func (response GetCollections200JSONResponse) VisitGetCollectionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type GetCollections401Response = UnauthorizedResponse
+
+func (response GetCollections401Response) VisitGetCollectionsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type GetCollections403Response = ForbiddenResponse
+
+func (response GetCollections403Response) VisitGetCollectionsResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type GetCollections404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response GetCollections404JSONResponse) VisitGetCollectionsResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCollectionRequestObject struct {
+	SpaceId ID `json:"spaceId,omitempty"`
+	Body    *CreateCollectionJSONRequestBody
+}
+
+type CreateCollectionResponseObject interface {
+	VisitCreateCollectionResponse(w http.ResponseWriter) error
+}
+
+type CreateCollection200JSONResponse CollectionDto
+
+func (response CreateCollection200JSONResponse) VisitCreateCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(200)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+type CreateCollection401Response = UnauthorizedResponse
+
+func (response CreateCollection401Response) VisitCreateCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(401)
+	return nil
+}
+
+type CreateCollection403Response = ForbiddenResponse
+
+func (response CreateCollection403Response) VisitCreateCollectionResponse(w http.ResponseWriter) error {
+	w.WriteHeader(403)
+	return nil
+}
+
+type CreateCollection404JSONResponse struct{ NotFoundJSONResponse }
+
+func (response CreateCollection404JSONResponse) VisitCreateCollectionResponse(w http.ResponseWriter) error {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(404)
+
+	return json.NewEncoder(w).Encode(response)
+}
+
+// StrictServerInterface represents all server handlers.
+type StrictServerInterface interface {
+	// Delete a bookmark
+	// (DELETE /bookmarks/{bookmarkId})
+	DeleteBookmark(ctx context.Context, request DeleteBookmarkRequestObject) (DeleteBookmarkResponseObject, error)
+	// Get a bookmark
+	// (GET /bookmarks/{bookmarkId})
+	GetBookmark(ctx context.Context, request GetBookmarkRequestObject) (GetBookmarkResponseObject, error)
+	// Update a bookmark
+	// (PUT /bookmarks/{bookmarkId})
+	UpdateBookmark(ctx context.Context, request UpdateBookmarkRequestObject) (UpdateBookmarkResponseObject, error)
+	// Delete a collection
+	// (DELETE /collections/{collectionId})
+	DeleteCollection(ctx context.Context, request DeleteCollectionRequestObject) (DeleteCollectionResponseObject, error)
+	// Get a collection
+	// (GET /collections/{collectionId})
+	GetCollection(ctx context.Context, request GetCollectionRequestObject) (GetCollectionResponseObject, error)
+	// Update a collection
+	// (PUT /collections/{collectionId})
+	UpdateCollection(ctx context.Context, request UpdateCollectionRequestObject) (UpdateCollectionResponseObject, error)
+	// Get all bookmarks of a collection
+	// (GET /collections/{collectionId}/bookmarks)
+	GetBookmarks(ctx context.Context, request GetBookmarksRequestObject) (GetBookmarksResponseObject, error)
+	// Create a bookmark
+	// (POST /collections/{collectionId}/bookmarks)
+	CreateBookmark(ctx context.Context, request CreateBookmarkRequestObject) (CreateBookmarkResponseObject, error)
+	// Get all spaces
+	// (GET /spaces)
+	GetSpaces(ctx context.Context, request GetSpacesRequestObject) (GetSpacesResponseObject, error)
+	// Get a space
+	// (GET /spaces/{spaceId})
+	GetSpace(ctx context.Context, request GetSpaceRequestObject) (GetSpaceResponseObject, error)
+	// Get all collections of a space
+	// (GET /spaces/{spaceId}/collections)
+	GetCollections(ctx context.Context, request GetCollectionsRequestObject) (GetCollectionsResponseObject, error)
+	// Create a collection
+	// (POST /spaces/{spaceId}/collections)
+	CreateCollection(ctx context.Context, request CreateCollectionRequestObject) (CreateCollectionResponseObject, error)
+}
+
+type StrictHandlerFunc = strictecho.StrictEchoHandlerFunc
+type StrictMiddlewareFunc = strictecho.StrictEchoMiddlewareFunc
+
+func NewStrictHandler(ssi StrictServerInterface, middlewares []StrictMiddlewareFunc) ServerInterface {
+	return &strictHandler{ssi: ssi, middlewares: middlewares}
+}
+
+type strictHandler struct {
+	ssi         StrictServerInterface
+	middlewares []StrictMiddlewareFunc
+}
+
+// DeleteBookmark operation middleware
+func (sh *strictHandler) DeleteBookmark(ctx echo.Context, bookmarkId ID) error {
+	var request DeleteBookmarkRequestObject
+
+	request.BookmarkId = bookmarkId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteBookmark(ctx.Request().Context(), request.(DeleteBookmarkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteBookmark")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(DeleteBookmarkResponseObject); ok {
+		return validResponse.VisitDeleteBookmarkResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetBookmark operation middleware
+func (sh *strictHandler) GetBookmark(ctx echo.Context, bookmarkId ID) error {
+	var request GetBookmarkRequestObject
+
+	request.BookmarkId = bookmarkId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetBookmark(ctx.Request().Context(), request.(GetBookmarkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetBookmark")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetBookmarkResponseObject); ok {
+		return validResponse.VisitGetBookmarkResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateBookmark operation middleware
+func (sh *strictHandler) UpdateBookmark(ctx echo.Context, bookmarkId ID) error {
+	var request UpdateBookmarkRequestObject
+
+	request.BookmarkId = bookmarkId
+
+	var body UpdateBookmarkJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateBookmark(ctx.Request().Context(), request.(UpdateBookmarkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateBookmark")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateBookmarkResponseObject); ok {
+		return validResponse.VisitUpdateBookmarkResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// DeleteCollection operation middleware
+func (sh *strictHandler) DeleteCollection(ctx echo.Context, collectionId ID) error {
+	var request DeleteCollectionRequestObject
+
+	request.CollectionId = collectionId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.DeleteCollection(ctx.Request().Context(), request.(DeleteCollectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "DeleteCollection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(DeleteCollectionResponseObject); ok {
+		return validResponse.VisitDeleteCollectionResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetCollection operation middleware
+func (sh *strictHandler) GetCollection(ctx echo.Context, collectionId ID) error {
+	var request GetCollectionRequestObject
+
+	request.CollectionId = collectionId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCollection(ctx.Request().Context(), request.(GetCollectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCollection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetCollectionResponseObject); ok {
+		return validResponse.VisitGetCollectionResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// UpdateCollection operation middleware
+func (sh *strictHandler) UpdateCollection(ctx echo.Context, collectionId ID) error {
+	var request UpdateCollectionRequestObject
+
+	request.CollectionId = collectionId
+
+	var body UpdateCollectionJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.UpdateCollection(ctx.Request().Context(), request.(UpdateCollectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "UpdateCollection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(UpdateCollectionResponseObject); ok {
+		return validResponse.VisitUpdateCollectionResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetBookmarks operation middleware
+func (sh *strictHandler) GetBookmarks(ctx echo.Context, collectionId ID) error {
+	var request GetBookmarksRequestObject
+
+	request.CollectionId = collectionId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetBookmarks(ctx.Request().Context(), request.(GetBookmarksRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetBookmarks")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetBookmarksResponseObject); ok {
+		return validResponse.VisitGetBookmarksResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CreateBookmark operation middleware
+func (sh *strictHandler) CreateBookmark(ctx echo.Context, collectionId ID) error {
+	var request CreateBookmarkRequestObject
+
+	request.CollectionId = collectionId
+
+	var body CreateBookmarkJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateBookmark(ctx.Request().Context(), request.(CreateBookmarkRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateBookmark")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateBookmarkResponseObject); ok {
+		return validResponse.VisitCreateBookmarkResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetSpaces operation middleware
+func (sh *strictHandler) GetSpaces(ctx echo.Context) error {
+	var request GetSpacesRequestObject
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSpaces(ctx.Request().Context(), request.(GetSpacesRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSpaces")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetSpacesResponseObject); ok {
+		return validResponse.VisitGetSpacesResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetSpace operation middleware
+func (sh *strictHandler) GetSpace(ctx echo.Context, spaceId ID) error {
+	var request GetSpaceRequestObject
+
+	request.SpaceId = spaceId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetSpace(ctx.Request().Context(), request.(GetSpaceRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetSpace")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetSpaceResponseObject); ok {
+		return validResponse.VisitGetSpaceResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// GetCollections operation middleware
+func (sh *strictHandler) GetCollections(ctx echo.Context, spaceId ID) error {
+	var request GetCollectionsRequestObject
+
+	request.SpaceId = spaceId
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.GetCollections(ctx.Request().Context(), request.(GetCollectionsRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "GetCollections")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(GetCollectionsResponseObject); ok {
+		return validResponse.VisitGetCollectionsResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
+}
+
+// CreateCollection operation middleware
+func (sh *strictHandler) CreateCollection(ctx echo.Context, spaceId ID) error {
+	var request CreateCollectionRequestObject
+
+	request.SpaceId = spaceId
+
+	var body CreateCollectionJSONRequestBody
+	if err := ctx.Bind(&body); err != nil {
+		return err
+	}
+	request.Body = &body
+
+	handler := func(ctx echo.Context, request interface{}) (interface{}, error) {
+		return sh.ssi.CreateCollection(ctx.Request().Context(), request.(CreateCollectionRequestObject))
+	}
+	for _, middleware := range sh.middlewares {
+		handler = middleware(handler, "CreateCollection")
+	}
+
+	response, err := handler(ctx, request)
+
+	if err != nil {
+		return err
+	} else if validResponse, ok := response.(CreateCollectionResponseObject); ok {
+		return validResponse.VisitCreateCollectionResponse(ctx.Response())
+	} else if response != nil {
+		return fmt.Errorf("unexpected response type: %T", response)
+	}
+	return nil
 }
