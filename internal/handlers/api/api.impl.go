@@ -53,21 +53,7 @@ func (a apiServer) GetSpaces(ctx context.Context, request GetSpacesRequestObject
 
 // GetSpace implements StrictServerInterface
 func (a apiServer) GetSpace(ctx context.Context, request GetSpaceRequestObject) (GetSpaceResponseObject, error) {
-	auth, err := security.GetAuthenticationFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	space, err := a.getSpaceById(ctx, auth.ID, request.SpaceId)
-	if err != nil {
-		msg := "Space with id " + request.SpaceId + " not found"
-		return GetSpace404JSONResponse{NotFoundJSONResponse{Message: &msg}}, nil
-	}
-
-	return GetSpace200JSONResponse(SpaceDto{
-		Id:   space.ID,
-		Name: space.Name,
-	}), nil
+	return nil, fmt.Errorf("GetBookmarks not implemented")
 }
 
 // GetCollections implements StrictServerInterface
@@ -77,21 +63,15 @@ func (a apiServer) GetCollections(ctx context.Context, request GetCollectionsReq
 		return nil, err
 	}
 
-	space, err := a.getSpaceById(ctx, auth.ID, request.SpaceId)
-	if err != nil {
-		msg := "Space with id " + request.SpaceId + " not found"
-		return GetCollections404JSONResponse{NotFoundJSONResponse{Message: &msg}}, nil
-	}
-
-	tree, err := a.collectionService.GetVisibleCollectionsTree(ctx, auth.ID, space.ID)
+	tree, err := a.collectionService.GetCollections(ctx, auth.ID, request.SpaceId)
 	if err != nil {
 		return nil, err
 	}
 
-	dtos := utils.MapSlice(tree, func(item sqlc.GetCollectionsByUserAndSpaceRow) CollectionDto {
+	dtos := utils.MapSlice(tree, func(item sqlc.Collection) CollectionDto {
 		return CollectionDto{
-			Id:   item.Collection.ID,
-			Name: item.Collection.Name,
+			Id:   item.ID,
+			Name: item.Name,
 		}
 	})
 	return GetCollections200JSONResponse(dtos), nil
@@ -104,10 +84,13 @@ func (a apiServer) CreateCollection(ctx context.Context, request CreateCollectio
 		return nil, err
 	}
 
-	space, err := a.getSpaceById(ctx, auth.ID, request.SpaceId)
+	space, role, err := a.getSpaceById(ctx, auth.ID, request.SpaceId)
 	if err != nil {
 		msg := "Space with id " + request.SpaceId + " not found"
 		return CreateCollection404JSONResponse{NotFoundJSONResponse{Message: &msg}}, nil
+	}
+	if role != "OWNER" && role != "CONTRIBUTOR" {
+		return CreateCollection403Response{}, nil
 	}
 
 	collection, err := a.collectionService.CreateCollection(ctx, auth.ID, space.ID, request.Body.Name)
@@ -123,30 +106,12 @@ func (a apiServer) CreateCollection(ctx context.Context, request CreateCollectio
 	}), nil
 }
 
-// The remaining operations are left unimplemented for now and return an error.
-// Implement them analogously using the request objects and returning the proper response objects.
-
 func (a apiServer) DeleteCollection(ctx context.Context, request DeleteCollectionRequestObject) (DeleteCollectionResponseObject, error) {
-
 	return nil, fmt.Errorf("DeleteCollection not implemented")
 }
 
 func (a apiServer) GetCollection(ctx context.Context, request GetCollectionRequestObject) (GetCollectionResponseObject, error) {
-	auth, err := security.GetAuthenticationFromContext(ctx)
-	if err != nil {
-		return nil, err
-	}
-
-	collection, err := a.getCollectionById(ctx, auth.ID, request.CollectionId)
-	if err != nil {
-		msg := "Collection with id " + request.CollectionId + " not found"
-		return GetCollection404JSONResponse{NotFoundJSONResponse{Message: &msg}}, nil
-	}
-
-	return GetCollection200JSONResponse(CollectionDto{
-		Id:   collection.ID,
-		Name: collection.Name,
-	}), nil
+	return nil, fmt.Errorf("DeleteCollection not implemented")
 }
 
 func (a apiServer) UpdateCollection(ctx context.Context, request UpdateCollectionRequestObject) (UpdateCollectionResponseObject, error) {
@@ -173,30 +138,16 @@ func (a apiServer) UpdateBookmark(ctx context.Context, request UpdateBookmarkReq
 	return nil, fmt.Errorf("UpdateBookmark not implemented")
 }
 
-func (a apiServer) getSpaceById(ctx context.Context, authId string, spaceId string) (sqlc.Space, error) {
+func (a apiServer) getSpaceById(ctx context.Context, authId string, spaceId string) (sqlc.Space, string, error) {
 	id, err := db.ParseDBID(spaceId)
 	if err != nil {
-		return sqlc.Space{}, fmt.Errorf("Space with id " + spaceId + " not found")
+		return sqlc.Space{}, "", fmt.Errorf("Space with id " + spaceId + " not found")
 	}
 
 	space, err := a.spaceService.GetSpace(ctx, authId, id.String())
 	if err != nil {
-		return sqlc.Space{}, fmt.Errorf("Space with id " + spaceId + " not found")
+		return sqlc.Space{}, "", fmt.Errorf("Space with id " + spaceId + " not found")
 	}
 
-	return space, nil
-}
-
-func (a apiServer) getCollectionById(ctx context.Context, authId string, collectionId string) (sqlc.Collection, error) {
-	id, err := db.ParseDBID(collectionId)
-	if err != nil {
-		return sqlc.Collection{}, fmt.Errorf("Collection with id " + collectionId + " not found")
-	}
-
-	collection, err := a.collectionService.GetCollection(ctx, authId, id.String())
-	if err != nil {
-		return sqlc.Collection{}, fmt.Errorf("Collection with id " + collectionId + " not found")
-	}
-
-	return collection.Collection, nil
+	return space.Space, space.UserRole, nil
 }

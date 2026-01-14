@@ -10,7 +10,7 @@ import (
 
 type Bookmark struct {
 	ID           string     `db:"id" json:"id"`
-	CollectionID int64      `db:"collection_id" json:"collection_id"`
+	CollectionID string     `db:"collection_id" json:"collection_id"`
 	Url          string     `db:"url" json:"url"`
 	Title        *string    `db:"title" json:"title"`
 	Description  *string    `db:"description" json:"description"`
@@ -22,17 +22,19 @@ type Bookmark struct {
 type Collection struct {
 	ID         string     `db:"id" json:"id"`
 	SpaceID    string     `db:"space_id" json:"space_id"`
+	ParentID   *string    `db:"parent_id" json:"parent_id"`
 	Name       string     `db:"name" json:"name"`
 	Visibility string     `db:"visibility" json:"visibility"`
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt  *time.Time `db:"updated_at" json:"updated_at"`
 	DeletedAt  *time.Time `db:"deleted_at" json:"deleted_at"`
+	CreatedBy  string     `db:"created_by" json:"created_by"`
 }
 
-type CollectionsUser struct {
-	CollectionID string `db:"collection_id" json:"collection_id"`
-	UserID       string `db:"user_id" json:"user_id"`
-	Role         string `db:"role" json:"role"`
+type CollectionsFollower struct {
+	CollectionID string     `db:"collection_id" json:"collection_id"`
+	UserID       string     `db:"user_id" json:"user_id"`
+	CreatedAt    *time.Time `db:"created_at" json:"created_at"`
 }
 
 type Space struct {
@@ -42,9 +44,10 @@ type Space struct {
 	CreatedAt  *time.Time `db:"created_at" json:"created_at"`
 	UpdatedAt  *time.Time `db:"updated_at" json:"updated_at"`
 	DeletedAt  *time.Time `db:"deleted_at" json:"deleted_at"`
+	CreatedBy  string     `db:"created_by" json:"created_by"`
 }
 
-type SpacesUser struct {
+type SpacesMember struct {
 	SpaceID string `db:"space_id" json:"space_id"`
 	UserID  string `db:"user_id" json:"user_id"`
 	Role    string `db:"role" json:"role"`

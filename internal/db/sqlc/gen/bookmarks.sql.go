@@ -11,15 +11,11 @@ import (
 
 const insertBookmark = `-- name: InsertBookmark :one
 INSERT INTO bookmarks (id,
-                       created_at,
-                       updated_at,
                        collection_id,
                        url,
                        title,
                        description)
 VALUES (?1,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
         ?2,
         ?3,
         ?4,
@@ -28,7 +24,7 @@ VALUES (?1,
 
 type InsertBookmarkParams struct {
 	ID           string  `db:"id" json:"id"`
-	CollectionID int64   `db:"collection_id" json:"collection_id"`
+	CollectionID string  `db:"collection_id" json:"collection_id"`
 	Url          string  `db:"url" json:"url"`
 	Title        *string `db:"title" json:"title"`
 	Description  *string `db:"description" json:"description"`

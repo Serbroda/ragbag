@@ -5,9 +5,9 @@ CREATE TABLE users
     id         TEXT PRIMARY KEY,
     email      TEXT NOT NULL UNIQUE,
     password   TEXT NOT NULL,
-    role       TEXT NOT NULL DEFAULT 'USER',
-    created_at DATETIME DEFAULT CURRENT_TIMESTAMP,
-    updated_at DATETIME DEFAULT CURRENT_TIMESTAMP,
+    role       TEXT NOT NULL DEFAULT 'USER' CHECK (role IN ('USER', 'ADMIN')),
+    created_at DATETIME      DEFAULT CURRENT_TIMESTAMP,
+    updated_at DATETIME      DEFAULT CURRENT_TIMESTAMP,
     deleted_at DATETIME
 );
 -- +goose StatementEnd

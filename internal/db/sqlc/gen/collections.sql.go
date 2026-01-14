@@ -9,54 +9,26 @@ import (
 	"context"
 )
 
-const findCollectionByIdAndUserId = `-- name: FindCollectionByIdAndUserId :one
+const findCollectionsBySpaceIdAndUserId = `-- name: FindCollectionsBySpaceIdAndUserId :many
 ;
 
-SELECT collections.id, collections.space_id, collections.name, collections.visibility, collections.created_at, collections.updated_at, collections.deleted_at, collections_users.role
+SELECT DISTINCT collections.id, collections.space_id, collections.parent_id, collections.name, collections.visibility, collections.created_at, collections.updated_at, collections.deleted_at, collections.created_by
 FROM collections
-         LEFT JOIN collections_users ON
-    collections_users.collection_id = collections.id
-WHERE deleted_at IS NULL
-  AND collections.id = ?1
-  AND collections_users.user_id = ?2 LIMIT 1
-`
-
-type FindCollectionByIdAndUserIdParams struct {
-	CollectionID string `db:"collection_id" json:"collection_id"`
-	UserID       string `db:"user_id" json:"user_id"`
-}
-
-type FindCollectionByIdAndUserIdRow struct {
-	Collection Collection `db:"collection" json:"collection"`
-	Role       *string    `db:"role" json:"role"`
-}
-
-func (q *Queries) FindCollectionByIdAndUserId(ctx context.Context, arg FindCollectionByIdAndUserIdParams) (FindCollectionByIdAndUserIdRow, error) {
-	row := q.db.QueryRowContext(ctx, findCollectionByIdAndUserId, arg.CollectionID, arg.UserID)
-	var i FindCollectionByIdAndUserIdRow
-	err := row.Scan(
-		&i.Collection.ID,
-		&i.Collection.SpaceID,
-		&i.Collection.Name,
-		&i.Collection.Visibility,
-		&i.Collection.CreatedAt,
-		&i.Collection.UpdatedAt,
-		&i.Collection.DeletedAt,
-		&i.Role,
-	)
-	return i, err
-}
-
-const getAllCollections = `-- name: GetAllCollections :many
-;
-
-SELECT id, space_id, name, visibility, created_at, updated_at, deleted_at
-FROM collections
+         INNER JOIN spaces_members
+                    ON collections.space_id = spaces_members.space_id
+                        AND spaces_members.user_id = ?1
 WHERE collections.deleted_at IS NULL
+  AND collections.space_id = ?2
+  AND collections.visibility IN ('INTERNAL', 'PUBLIC')
 `
 
-func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
-	rows, err := q.db.QueryContext(ctx, getAllCollections)
+type FindCollectionsBySpaceIdAndUserIdParams struct {
+	UserID  string `db:"user_id" json:"user_id"`
+	SpaceID string `db:"space_id" json:"space_id"`
+}
+
+func (q *Queries) FindCollectionsBySpaceIdAndUserId(ctx context.Context, arg FindCollectionsBySpaceIdAndUserIdParams) ([]Collection, error) {
+	rows, err := q.db.QueryContext(ctx, findCollectionsBySpaceIdAndUserId, arg.UserID, arg.SpaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -67,11 +39,13 @@ func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
 		if err := rows.Scan(
 			&i.ID,
 			&i.SpaceID,
+			&i.ParentID,
 			&i.Name,
 			&i.Visibility,
 			&i.CreatedAt,
 			&i.UpdatedAt,
 			&i.DeletedAt,
+			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -86,52 +60,35 @@ func (q *Queries) GetAllCollections(ctx context.Context) ([]Collection, error) {
 	return items, nil
 }
 
-const getCollectionsByUserAndSpace = `-- name: GetCollectionsByUserAndSpace :many
-;
-
-SELECT
-    collections.id, collections.space_id, collections.name, collections.visibility, collections.created_at, collections.updated_at, collections.deleted_at,
-    collections_users.role
+const findFollowingCollectionsByUserId = `-- name: FindFollowingCollectionsByUserId :many
+SELECT DISTINCT collections.id, collections.space_id, collections.parent_id, collections.name, collections.visibility, collections.created_at, collections.updated_at, collections.deleted_at, collections.created_by
 FROM collections
-         LEFT JOIN collections_users
-                   ON collections_users.collection_id = collections.id
-                       AND collections_users.user_id = ?1
+         INNER JOIN collections_followers ON
+    collections_followers.collection_id = collections.id AND
+    collections_followers.user_id = ?1
 WHERE collections.deleted_at IS NULL
-  AND collections.space_id = ?2
-  AND (
-    collections.visibility = 'PUBLIC'
-        OR collections_users.role IS NOT NULL
-    )
+  AND collections.visibility = 'PUBLIC'
 `
 
-type GetCollectionsByUserAndSpaceParams struct {
-	UserID  string `db:"user_id" json:"user_id"`
-	SpaceID string `db:"space_id" json:"space_id"`
-}
-
-type GetCollectionsByUserAndSpaceRow struct {
-	Collection Collection `db:"collection" json:"collection"`
-	Role       *string    `db:"role" json:"role"`
-}
-
-func (q *Queries) GetCollectionsByUserAndSpace(ctx context.Context, arg GetCollectionsByUserAndSpaceParams) ([]GetCollectionsByUserAndSpaceRow, error) {
-	rows, err := q.db.QueryContext(ctx, getCollectionsByUserAndSpace, arg.UserID, arg.SpaceID)
+func (q *Queries) FindFollowingCollectionsByUserId(ctx context.Context, userID string) ([]Collection, error) {
+	rows, err := q.db.QueryContext(ctx, findFollowingCollectionsByUserId, userID)
 	if err != nil {
 		return nil, err
 	}
 	defer rows.Close()
-	var items []GetCollectionsByUserAndSpaceRow
+	var items []Collection
 	for rows.Next() {
-		var i GetCollectionsByUserAndSpaceRow
+		var i Collection
 		if err := rows.Scan(
-			&i.Collection.ID,
-			&i.Collection.SpaceID,
-			&i.Collection.Name,
-			&i.Collection.Visibility,
-			&i.Collection.CreatedAt,
-			&i.Collection.UpdatedAt,
-			&i.Collection.DeletedAt,
-			&i.Role,
+			&i.ID,
+			&i.SpaceID,
+			&i.ParentID,
+			&i.Name,
+			&i.Visibility,
+			&i.CreatedAt,
+			&i.UpdatedAt,
+			&i.DeletedAt,
+			&i.CreatedBy,
 		); err != nil {
 			return nil, err
 		}
@@ -148,56 +105,59 @@ func (q *Queries) GetCollectionsByUserAndSpace(ctx context.Context, arg GetColle
 
 const insertCollection = `-- name: InsertCollection :one
 INSERT INTO collections (id,
-                         created_at,
-                         updated_at,
                          space_id,
-                         name)
+                         name,
+                         created_by)
 VALUES (?1,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
         ?2,
-        ?3) RETURNING id, space_id, name, visibility, created_at, updated_at, deleted_at
+        ?3,
+        ?4) RETURNING id, space_id, parent_id, name, visibility, created_at, updated_at, deleted_at, created_by
 `
 
 type InsertCollectionParams struct {
-	ID      string `db:"id" json:"id"`
-	SpaceID string `db:"space_id" json:"space_id"`
-	Name    string `db:"name" json:"name"`
+	ID        string `db:"id" json:"id"`
+	SpaceID   string `db:"space_id" json:"space_id"`
+	Name      string `db:"name" json:"name"`
+	CreatedBy string `db:"created_by" json:"created_by"`
 }
 
 func (q *Queries) InsertCollection(ctx context.Context, arg InsertCollectionParams) (Collection, error) {
-	row := q.db.QueryRowContext(ctx, insertCollection, arg.ID, arg.SpaceID, arg.Name)
+	row := q.db.QueryRowContext(ctx, insertCollection,
+		arg.ID,
+		arg.SpaceID,
+		arg.Name,
+		arg.CreatedBy,
+	)
 	var i Collection
 	err := row.Scan(
 		&i.ID,
 		&i.SpaceID,
+		&i.ParentID,
 		&i.Name,
 		&i.Visibility,
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.CreatedBy,
 	)
 	return i, err
 }
 
-const insertCollectionAndUser = `-- name: InsertCollectionAndUser :exec
+const insertCollectionFollower = `-- name: InsertCollectionFollower :exec
 ;
 
-INSERT INTO collections_users (collection_id,
-                          user_id,
-                          role)
+INSERT INTO collections_followers (collection_id,
+                                   user_id)
 VALUES (?1,
-        ?2,
-        ?3)
+        ?2)
 `
 
-type InsertCollectionAndUserParams struct {
+type InsertCollectionFollowerParams struct {
 	CollectionID string `db:"collection_id" json:"collection_id"`
 	UserID       string `db:"user_id" json:"user_id"`
-	Role         string `db:"role" json:"role"`
 }
 
-func (q *Queries) InsertCollectionAndUser(ctx context.Context, arg InsertCollectionAndUserParams) error {
-	_, err := q.db.ExecContext(ctx, insertCollectionAndUser, arg.CollectionID, arg.UserID, arg.Role)
+func (q *Queries) InsertCollectionFollower(ctx context.Context, arg InsertCollectionFollowerParams) error {
+	_, err := q.db.ExecContext(ctx, insertCollectionFollower, arg.CollectionID, arg.UserID)
 	return err
 }

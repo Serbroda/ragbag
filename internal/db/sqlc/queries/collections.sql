@@ -1,53 +1,37 @@
 -- name: InsertCollection :one
 INSERT INTO collections (id,
-                         created_at,
-                         updated_at,
                          space_id,
-                         name)
+                         name,
+                         created_by)
 VALUES (sqlc.arg('id'),
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
         sqlc.arg('space_id'),
-        sqlc.arg('name')) RETURNING *
+        sqlc.arg('name'),
+        sqlc.arg('created_by')) RETURNING *
 ;
 
--- name: InsertCollectionAndUser :exec
-INSERT INTO collections_users (collection_id,
-                          user_id,
-                          role)
+-- name: InsertCollectionFollower :exec
+INSERT INTO collections_followers (collection_id,
+                                   user_id)
 VALUES (sqlc.arg('collection_id'),
-        sqlc.arg('user_id'),
-        sqlc.arg('role'))
+        sqlc.arg('user_id'))
 ;
 
--- name: GetAllCollections :many
-SELECT *
+-- name: FindCollectionsBySpaceIdAndUserId :many
+SELECT DISTINCT collections.*
 FROM collections
-WHERE collections.deleted_at IS NULL
-;
-
--- name: GetCollectionsByUserAndSpace :many
-SELECT
-    sqlc.embed(collections),
-    collections_users.role
-FROM collections
-         LEFT JOIN collections_users
-                   ON collections_users.collection_id = collections.id
-                       AND collections_users.user_id = sqlc.arg('user_id')
+         INNER JOIN spaces_members
+                    ON collections.space_id = spaces_members.space_id
+                        AND spaces_members.user_id = sqlc.arg('user_id')
 WHERE collections.deleted_at IS NULL
   AND collections.space_id = sqlc.arg('space_id')
-  AND (
-    collections.visibility = 'PUBLIC'
-        OR collections_users.role IS NOT NULL
-    )
-;
+  AND collections.visibility IN ('INTERNAL', 'PUBLIC');
 
--- name: FindCollectionByIdAndUserId :one
-SELECT sqlc.embed(collections), collections_users.role
+-- name: FindFollowingCollectionsByUserId :many
+SELECT DISTINCT collections.*
 FROM collections
-         LEFT JOIN collections_users ON
-    collections_users.collection_id = collections.id
-WHERE deleted_at IS NULL
-  AND collections.id = sqlc.arg('collection_id')
-  AND collections_users.user_id = sqlc.arg('user_id') LIMIT 1
+         INNER JOIN collections_followers ON
+    collections_followers.collection_id = collections.id AND
+    collections_followers.user_id = sqlc.arg('user_id')
+WHERE collections.deleted_at IS NULL
+  AND collections.visibility = 'PUBLIC'
 ;

@@ -3,8 +3,8 @@
 CREATE TABLE bookmarks
 (
     id            TEXT PRIMARY KEY,
-    collection_id INTEGER NOT NULL,
-    url           TEXT    NOT NULL,
+    collection_id TEXT NOT NULL,
+    url           TEXT NOT NULL,
     title         TEXT,
     description   TEXT,
     created_at    DATETIME DEFAULT CURRENT_TIMESTAMP,

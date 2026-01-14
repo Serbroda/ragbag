@@ -9,53 +9,39 @@ import (
 	"context"
 )
 
-const findSpaceById = `-- name: FindSpaceById :one
-;
-
-SELECT id, name, visibility, created_at, updated_at, deleted_at
-FROM spaces
-WHERE deleted_at IS NULL
-  AND id = ? LIMIT 1
-`
-
-func (q *Queries) FindSpaceById(ctx context.Context, id string) (Space, error) {
-	row := q.db.QueryRowContext(ctx, findSpaceById, id)
-	var i Space
-	err := row.Scan(
-		&i.ID,
-		&i.Name,
-		&i.Visibility,
-		&i.CreatedAt,
-		&i.UpdatedAt,
-		&i.DeletedAt,
-	)
-	return i, err
-}
-
 const findSpaceByIdAndUserId = `-- name: FindSpaceByIdAndUserId :one
 ;
 
-SELECT spaces.id, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces_users.role
+SELECT DISTINCT spaces.id, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces.created_by,
+                CASE
+                    WHEN spaces_members.user_id IS NOT NULL THEN spaces_members.role
+                    ELSE 'VIEWER'
+                END AS user_role
 FROM spaces
-         LEFT JOIN spaces_users ON
-    spaces_users.space_id = spaces.id
-WHERE deleted_at IS NULL
-  AND spaces.id = ?1
-  AND spaces_users.user_id = ?2 LIMIT 1
+         LEFT JOIN spaces_members
+                   ON spaces_members.space_id = spaces.id
+                       AND spaces_members.user_id = ?1
+WHERE spaces.id = ?2
+  AND spaces.deleted_at IS NULL
+  AND (
+    spaces.visibility = 'PUBLIC'
+        OR spaces_members.user_id IS NOT NULL
+    )
+    LIMIT 1
 `
 
 type FindSpaceByIdAndUserIdParams struct {
-	SpaceID string `db:"space_id" json:"space_id"`
 	UserID  string `db:"user_id" json:"user_id"`
+	SpaceID string `db:"space_id" json:"space_id"`
 }
 
 type FindSpaceByIdAndUserIdRow struct {
-	Space Space   `db:"space" json:"space"`
-	Role  *string `db:"role" json:"role"`
+	Space    Space  `db:"space" json:"space"`
+	UserRole string `db:"user_role" json:"user_role"`
 }
 
 func (q *Queries) FindSpaceByIdAndUserId(ctx context.Context, arg FindSpaceByIdAndUserIdParams) (FindSpaceByIdAndUserIdRow, error) {
-	row := q.db.QueryRowContext(ctx, findSpaceByIdAndUserId, arg.SpaceID, arg.UserID)
+	row := q.db.QueryRowContext(ctx, findSpaceByIdAndUserId, arg.UserID, arg.SpaceID)
 	var i FindSpaceByIdAndUserIdRow
 	err := row.Scan(
 		&i.Space.ID,
@@ -64,7 +50,8 @@ func (q *Queries) FindSpaceByIdAndUserId(ctx context.Context, arg FindSpaceByIdA
 		&i.Space.CreatedAt,
 		&i.Space.UpdatedAt,
 		&i.Space.DeletedAt,
-		&i.Role,
+		&i.Space.CreatedBy,
+		&i.UserRole,
 	)
 	return i, err
 }
@@ -72,12 +59,13 @@ func (q *Queries) FindSpaceByIdAndUserId(ctx context.Context, arg FindSpaceByIdA
 const findSpacesByUserId = `-- name: FindSpacesByUserId :many
 ;
 
-SELECT DISTINCT spaces.id, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces_users.role
+SELECT DISTINCT spaces.id, spaces.name, spaces.visibility, spaces.created_at, spaces.updated_at, spaces.deleted_at, spaces.created_by,
+                spaces_members.role
 FROM spaces
-         INNER JOIN spaces_users on
-    spaces_users.space_id = spaces.id
+         INNER JOIN spaces_members ON
+    spaces_members.space_id = spaces.id
 WHERE spaces.deleted_at IS NULL
-  AND spaces_users.user_id = ?1
+  AND spaces_members.user_id = ?1
 `
 
 type FindSpacesByUserIdRow struct {
@@ -101,6 +89,7 @@ func (q *Queries) FindSpacesByUserId(ctx context.Context, userID string) ([]Find
 			&i.Space.CreatedAt,
 			&i.Space.UpdatedAt,
 			&i.Space.DeletedAt,
+			&i.Space.CreatedBy,
 			&i.Role,
 		); err != nil {
 			return nil, err
@@ -117,23 +106,26 @@ func (q *Queries) FindSpacesByUserId(ctx context.Context, userID string) ([]Find
 }
 
 const insertSpace = `-- name: InsertSpace :one
-INSERT INTO spaces (id,
-                    created_at,
-                    updated_at,
-                    name)
-VALUES (?1,
-        CURRENT_TIMESTAMP,
-        CURRENT_TIMESTAMP,
-        ?2) RETURNING id, name, visibility, created_at, updated_at, deleted_at
+INSERT INTO spaces (
+                    id,
+                    name,
+                    created_by
+)
+VALUES (
+        ?1,
+        ?2,
+        ?3
+       ) RETURNING id, name, visibility, created_at, updated_at, deleted_at, created_by
 `
 
 type InsertSpaceParams struct {
-	ID   string `db:"id" json:"id"`
-	Name string `db:"name" json:"name"`
+	ID        string `db:"id" json:"id"`
+	Name      string `db:"name" json:"name"`
+	CreatedBy string `db:"created_by" json:"created_by"`
 }
 
 func (q *Queries) InsertSpace(ctx context.Context, arg InsertSpaceParams) (Space, error) {
-	row := q.db.QueryRowContext(ctx, insertSpace, arg.ID, arg.Name)
+	row := q.db.QueryRowContext(ctx, insertSpace, arg.ID, arg.Name, arg.CreatedBy)
 	var i Space
 	err := row.Scan(
 		&i.ID,
@@ -142,28 +134,29 @@ func (q *Queries) InsertSpace(ctx context.Context, arg InsertSpaceParams) (Space
 		&i.CreatedAt,
 		&i.UpdatedAt,
 		&i.DeletedAt,
+		&i.CreatedBy,
 	)
 	return i, err
 }
 
-const insertSpaceUser = `-- name: InsertSpaceUser :exec
+const insertSpaceMember = `-- name: InsertSpaceMember :exec
 ;
 
-INSERT INTO spaces_users (space_id,
-                          user_id,
-                          role)
+INSERT INTO spaces_members (space_id,
+                            user_id,
+                            role)
 VALUES (?1,
         ?2,
         ?3)
 `
 
-type InsertSpaceUserParams struct {
+type InsertSpaceMemberParams struct {
 	SpaceID string `db:"space_id" json:"space_id"`
 	UserID  string `db:"user_id" json:"user_id"`
 	Role    string `db:"role" json:"role"`
 }
 
-func (q *Queries) InsertSpaceUser(ctx context.Context, arg InsertSpaceUserParams) error {
-	_, err := q.db.ExecContext(ctx, insertSpaceUser, arg.SpaceID, arg.UserID, arg.Role)
+func (q *Queries) InsertSpaceMember(ctx context.Context, arg InsertSpaceMemberParams) error {
+	_, err := q.db.ExecContext(ctx, insertSpaceMember, arg.SpaceID, arg.UserID, arg.Role)
 	return err
 }
