@@ -5,11 +5,12 @@ import (
 
 	"github.com/Serbroda/ragbag/internal/db"
 	sqlc "github.com/Serbroda/ragbag/internal/db/sqlc/gen"
+	"github.com/Serbroda/ragbag/internal/security"
 )
 
 type CollectionService interface {
-	CreateCollection(ctx context.Context, userId string, spaceId string, name string) (sqlc.Collection, error)
-	GetCollections(ctx context.Context, userId string, spaceId string) ([]sqlc.Collection, error)
+	CreateCollection(ctx context.Context, userId security.AuthenticationId, spaceId string, name string) (sqlc.Collection, error)
+	GetAllCollectionsBySpaceId(ctx context.Context, userId security.AuthenticationId, spaceId string) ([]sqlc.Collection, error)
 }
 
 type collectionService struct {
@@ -20,10 +21,10 @@ func NewCollectionService(queries *sqlc.Queries) CollectionService {
 	return &collectionService{queries: queries}
 }
 
-func (s *collectionService) GetCollections(ctx context.Context, userId string, spaceId string) ([]sqlc.Collection, error) {
+func (s *collectionService) GetAllCollectionsBySpaceId(ctx context.Context, userId security.AuthenticationId, spaceId string) ([]sqlc.Collection, error) {
 	// Lade sichtbare Collections für den Benutzer
 	visibleRows, err := s.queries.FindCollectionsBySpaceIdAndUserId(ctx, sqlc.FindCollectionsBySpaceIdAndUserIdParams{
-		UserID:  userId,
+		UserID:  userId.String(),
 		SpaceID: spaceId,
 	})
 	if err != nil {
@@ -33,12 +34,12 @@ func (s *collectionService) GetCollections(ctx context.Context, userId string, s
 	return visibleRows, nil
 }
 
-func (s *collectionService) CreateCollection(ctx context.Context, userId string, spaceId string, name string) (sqlc.Collection, error) {
+func (s *collectionService) CreateCollection(ctx context.Context, userId security.AuthenticationId, spaceId string, name string) (sqlc.Collection, error) {
 	collection, err := s.queries.InsertCollection(ctx, sqlc.InsertCollectionParams{
 		ID:        db.NewDBID().String(),
 		SpaceID:   spaceId,
 		Name:      name,
-		CreatedBy: userId,
+		CreatedBy: userId.String(),
 	})
 	if err != nil {
 		return sqlc.Collection{}, err

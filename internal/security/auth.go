@@ -14,8 +14,14 @@ var (
 	ContextKeyAuthentication = "authentication"
 )
 
+type AuthenticationId string
+
+func (id AuthenticationId) String() string {
+	return string(id)
+}
+
 type Authentication struct {
-	ID   string
+	ID   AuthenticationId
 	Role string
 }
 
@@ -59,24 +65,14 @@ func ParseToken(token *jwt.Token) (Authentication, error) {
 	}
 
 	return Authentication{
-		ID:   sub,
+		ID:   AuthenticationId(sub),
 		Role: role,
 	}, nil
 }
 
-func GetAuthentication(ctx echo.Context) (Authentication, error) {
-	auth, ok := ctx.Get(ContextKeyAuthentication).(Authentication)
-	if !ok {
-		return auth, echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
-	}
-	return auth, nil
-}
-
-// neue Funktion für context.Context (Strict handlers)
 func GetAuthenticationFromContext(ctx context.Context) (Authentication, error) {
 	auth, ok := ctx.Value(ContextKeyAuthentication).(Authentication)
 	if !ok {
-		// echo.NewHTTPError ist weiterhin ein geeigneter Fehler für HTTP-Antworten
 		return Authentication{}, echo.NewHTTPError(http.StatusUnauthorized, "Unauthorized")
 	}
 	return auth, nil

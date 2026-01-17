@@ -123,7 +123,7 @@ type ServerInterface interface {
 	// Get all bookmarks of a collection
 	// (GET /collections/{collectionId}/bookmarks)
 	GetBookmarks(ctx echo.Context, collectionId ID) error
-	// Create a bookmark
+	// CreateSpace a bookmark
 	// (POST /collections/{collectionId}/bookmarks)
 	CreateBookmark(ctx echo.Context, collectionId ID) error
 	// Get all spaces
@@ -135,7 +135,7 @@ type ServerInterface interface {
 	// Get all collections of a space
 	// (GET /spaces/{spaceId}/collections)
 	GetCollections(ctx echo.Context, spaceId ID) error
-	// Create a collection
+	// CreateSpace a collection
 	// (POST /spaces/{spaceId}/collections)
 	CreateCollection(ctx echo.Context, spaceId ID) error
 }
@@ -901,7 +901,7 @@ type StrictServerInterface interface {
 	// Get all bookmarks of a collection
 	// (GET /collections/{collectionId}/bookmarks)
 	GetBookmarks(ctx context.Context, request GetBookmarksRequestObject) (GetBookmarksResponseObject, error)
-	// Create a bookmark
+	// CreateSpace a bookmark
 	// (POST /collections/{collectionId}/bookmarks)
 	CreateBookmark(ctx context.Context, request CreateBookmarkRequestObject) (CreateBookmarkResponseObject, error)
 	// Get all spaces
@@ -913,7 +913,7 @@ type StrictServerInterface interface {
 	// Get all collections of a space
 	// (GET /spaces/{spaceId}/collections)
 	GetCollections(ctx context.Context, request GetCollectionsRequestObject) (GetCollectionsResponseObject, error)
-	// Create a collection
+	// CreateSpace a collection
 	// (POST /spaces/{spaceId}/collections)
 	CreateCollection(ctx context.Context, request CreateCollectionRequestObject) (CreateCollectionResponseObject, error)
 }
@@ -1156,7 +1156,7 @@ func (sh *strictHandler) GetSpaces(ctx echo.Context) error {
 		return sh.ssi.GetSpaces(ctx.Request().Context(), request.(GetSpacesRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetSpaces")
+		handler = middleware(handler, "GetAllSpaces")
 	}
 
 	response, err := handler(ctx, request)
@@ -1181,7 +1181,7 @@ func (sh *strictHandler) GetSpace(ctx echo.Context, spaceId ID) error {
 		return sh.ssi.GetSpace(ctx.Request().Context(), request.(GetSpaceRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetSpace")
+		handler = middleware(handler, "GetSpaceById")
 	}
 
 	response, err := handler(ctx, request)
@@ -1206,7 +1206,7 @@ func (sh *strictHandler) GetCollections(ctx echo.Context, spaceId ID) error {
 		return sh.ssi.GetCollections(ctx.Request().Context(), request.(GetCollectionsRequestObject))
 	}
 	for _, middleware := range sh.middlewares {
-		handler = middleware(handler, "GetCollections")
+		handler = middleware(handler, "GetAllCollectionsBySpaceId")
 	}
 
 	response, err := handler(ctx, request)

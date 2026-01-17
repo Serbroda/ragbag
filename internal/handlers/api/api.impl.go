@@ -36,7 +36,7 @@ func (a apiServer) GetSpaces(ctx context.Context, request GetSpacesRequestObject
 		return nil, err
 	}
 
-	spaces, err := a.spaceService.GetSpaces(ctx, auth.ID)
+	spaces, err := a.spaceService.GetAllSpaces(ctx, auth.ID)
 	if err != nil {
 		return nil, err
 	}
@@ -63,7 +63,7 @@ func (a apiServer) GetCollections(ctx context.Context, request GetCollectionsReq
 		return nil, err
 	}
 
-	tree, err := a.collectionService.GetCollections(ctx, auth.ID, request.SpaceId)
+	tree, err := a.collectionService.GetAllCollectionsBySpaceId(ctx, auth.ID, request.SpaceId)
 	if err != nil {
 		return nil, err
 	}
@@ -138,13 +138,13 @@ func (a apiServer) UpdateBookmark(ctx context.Context, request UpdateBookmarkReq
 	return nil, fmt.Errorf("UpdateBookmark not implemented")
 }
 
-func (a apiServer) getSpaceById(ctx context.Context, authId string, spaceId string) (sqlc.Space, string, error) {
+func (a apiServer) getSpaceById(ctx context.Context, authId security.AuthenticationId, spaceId string) (sqlc.Space, string, error) {
 	id, err := db.ParseDBID(spaceId)
 	if err != nil {
 		return sqlc.Space{}, "", fmt.Errorf("Space with id " + spaceId + " not found")
 	}
 
-	space, err := a.spaceService.GetSpace(ctx, authId, id.String())
+	space, err := a.spaceService.GetSpaceById(ctx, authId, id.String())
 	if err != nil {
 		return sqlc.Space{}, "", fmt.Errorf("Space with id " + spaceId + " not found")
 	}
