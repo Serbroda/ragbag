@@ -8,6 +8,8 @@ paths:
     get:
       summary: Get all spaces
       operationId: getSpaces
+      tags:
+        - spaces
       responses:
         '200':
           description: OK
@@ -24,6 +26,8 @@ paths:
     get:
       summary: Get a space
       operationId: getSpace
+      tags:
+        - spaces
       parameters:
         - in: path
           name: spaceId
@@ -48,6 +52,8 @@ paths:
     get:
       summary: Get all collections of a space
       operationId: getCollections
+      tags:
+        - collections
       parameters:
         - in: path
           name: spaceId
@@ -69,6 +75,8 @@ paths:
     post:
       summary: Create a collection
       operationId: createCollection
+      tags:
+        - collections
       parameters:
         - in: path
           name: spaceId
@@ -98,6 +106,8 @@ paths:
     get:
       summary: Get a collection
       operationId: getCollection
+      tags:
+        - collections
       parameters:
         - in: path
           name: collectionId
@@ -119,6 +129,8 @@ paths:
     put:
       summary: Update a collection
       operationId: updateCollection
+      tags:
+        - collections
       parameters:
         - in: path
           name: collectionId
@@ -146,6 +158,8 @@ paths:
     delete:
       summary: Delete a collection
       operationId: deleteCollection
+      tags:
+        - collections
       parameters:
         - in: path
           name: collectionId
@@ -166,6 +180,8 @@ paths:
     get:
       summary: Get all bookmarks of a collection
       operationId: getBookmarks
+      tags:
+        - bookmarks
       parameters:
         - in: path
           name: collectionId
@@ -187,6 +203,8 @@ paths:
     post:
       summary: Create a bookmark
       operationId: createBookmark
+      tags:
+        - bookmarks
       parameters:
         - in: path
           name: collectionId
@@ -216,6 +234,8 @@ paths:
     get:
       summary: Get a bookmark
       operationId: getBookmark
+      tags:
+        - bookmarks
       parameters:
         - in: path
           name: bookmarkId
@@ -237,6 +257,8 @@ paths:
     put:
       summary: Update a bookmark
       operationId: updateBookmark
+      tags:
+        - bookmarks
       parameters:
         - in: path
           name: bookmarkId
@@ -264,6 +286,8 @@ paths:
     delete:
       summary: Delete a bookmark
       operationId: deleteBookmark
+      tags:
+        - bookmarks
       parameters:
         - in: path
           name: bookmarkId

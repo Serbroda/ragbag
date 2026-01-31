@@ -11,6 +11,7 @@ import (
 type CollectionService interface {
 	CreateCollection(ctx context.Context, userId security.AuthenticationId, spaceId string, name string) (sqlc.Collection, error)
 	GetAllCollectionsBySpaceId(ctx context.Context, userId security.AuthenticationId, spaceId string) ([]sqlc.Collection, error)
+	GetCollectionById(ctx context.Context, userId security.AuthenticationId, collectionId string) (sqlc.FindCollectionByIdAndUserIdRow, error)
 }
 
 type collectionService struct {
@@ -43,6 +44,17 @@ func (s *collectionService) CreateCollection(ctx context.Context, userId securit
 	})
 	if err != nil {
 		return sqlc.Collection{}, err
+	}
+	return collection, nil
+}
+
+func (s *collectionService) GetCollectionById(ctx context.Context, userId security.AuthenticationId, collectionId string) (sqlc.FindCollectionByIdAndUserIdRow, error) {
+	collection, err := s.queries.FindCollectionByIdAndUserId(ctx, sqlc.FindCollectionByIdAndUserIdParams{
+		ID:     db.NewDBID().String(),
+		UserID: userId.String(),
+	})
+	if err != nil {
+		return sqlc.FindCollectionByIdAndUserIdRow{}, err
 	}
 	return collection, nil
 }
