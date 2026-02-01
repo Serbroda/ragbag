@@ -18,10 +18,4 @@ public class Collection extends AbstractBaseEntity {
     @ManyToOne
     private Space space;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Override
-    public String getId() {
-        return doGetId();
-    }
 }

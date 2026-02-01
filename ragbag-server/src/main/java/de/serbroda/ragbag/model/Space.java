@@ -22,10 +22,4 @@ public class Space extends AbstractBaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Override
-    public String getId() {
-        return doGetId();
-    }
 }

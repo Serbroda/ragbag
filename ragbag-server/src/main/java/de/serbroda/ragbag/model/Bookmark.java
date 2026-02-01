@@ -18,10 +18,4 @@ public class Bookmark extends AbstractBaseEntity {
     @ManyToOne
     private Collection collection;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Override
-    public String getId() {
-        return doGetId();
-    }
 }

@@ -11,14 +11,12 @@ import lombok.Setter;
 @Table(name = "users")
 public class User extends AbstractBaseEntity {
 
+    @Column(nullable = false, unique = true, length = 80)
     private String username;
-    private String email;
-    private String password;
 
-    @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    @Override
-    public String getId() {
-        return doGetId();
-    }
+    @Column(nullable = false, unique = true, length = 250)
+    private String email;
+
+    @Column(nullable = false, length = 60)
+    private String password;
 }

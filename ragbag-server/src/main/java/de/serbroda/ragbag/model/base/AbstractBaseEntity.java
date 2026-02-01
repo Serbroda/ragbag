@@ -1,57 +1,30 @@
 package de.serbroda.ragbag.model.base;
 
 import jakarta.persistence.*;
+import lombok.Getter;
 
 import java.util.Date;
 import java.util.Objects;
 
 @MappedSuperclass
-public abstract class AbstractBaseEntity implements BaseEntity<String> {
+public abstract class AbstractBaseEntity {
 
-    private String id;
-    private int version;
-    private Date createdAt;
-    private Date updatedAt;
-
-    protected String doGetId() {
-        return id;
-    }
-
-    @Override
-    public void setId(String id) {
-        this.id = id;
-    }
+    @Getter
+    @Id
+    @GeneratedValue(strategy = GenerationType.UUID)
+    @Column(length = 36, nullable = false, updatable = false)
+    protected String id;
 
     @Version
-    @Override
-    public int getVersion() {
-        return version;
-    }
-
-    @Override
-    public void setVersion(int version) {
-        this.version = version;
-    }
+    protected int version;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "created_at", updatable = false)
-    public Date getCreatedAt() {
-        return createdAt != null ? new Date(createdAt.getTime()) : null;
-    }
-
-    public void setCreatedAt(Date createdAt) {
-        this.createdAt = createdAt != null ? new Date(createdAt.getTime()) : null;
-    }
+    protected Date createdAt;
 
     @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "updated_at")
-    public Date getUpdatedAt() {
-        return updatedAt != null ? new Date(updatedAt.getTime()) : null;
-    }
-
-    public void setUpdatedAt(Date updatedAt) {
-        this.updatedAt = updatedAt != null ? new Date(updatedAt.getTime()) : null;
-    }
+    protected Date updatedAt;
 
     @PrePersist
     protected void setCreatedAndLastModifiedOnCreate() {
