@@ -5,6 +5,9 @@ import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
+import java.util.HashSet;
+import java.util.Set;
+
 @Getter
 @Setter
 @Entity
@@ -19,4 +22,7 @@ public class User extends AbstractBaseEntity {
 
     @Column(nullable = false, length = 60)
     private String password;
+
+    @OneToMany(mappedBy = "user")
+    private Set<SpaceMember> spaces = new HashSet<>();
 }

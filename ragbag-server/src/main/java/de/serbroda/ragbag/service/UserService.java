@@ -1,7 +1,9 @@
 package de.serbroda.ragbag.service;
 
 import de.serbroda.ragbag.model.Space;
+import de.serbroda.ragbag.model.SpaceMember;
 import de.serbroda.ragbag.model.User;
+import de.serbroda.ragbag.model.keys.SpaceMemberId;
 import de.serbroda.ragbag.repository.SpaceRepository;
 import de.serbroda.ragbag.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -36,6 +38,19 @@ public class UserService {
         Space space = new Space();
         space.setName(StringUtils.capitalize(user.getUsername()) + "'s Space");
         space.setCreatedBy(user);
+
+        SpaceMember member = new SpaceMember();
+        member.setSpace(space);
+        member.setUser(user);
+        member.setRole("ADMIN");
+
+        SpaceMemberId id = new SpaceMemberId();
+        id.setSpaceId(space.getId());
+        id.setUserId(user.getId());
+        member.setId(id);
+
+        space.getMembers().add(member);
+
         spaceRepository.save(space);
 
         return user;
