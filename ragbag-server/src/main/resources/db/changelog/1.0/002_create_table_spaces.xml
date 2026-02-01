@@ -1,0 +1,62 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="2026-02-01: create table spaces" author="serbroda">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="spaces"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="spaces">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" primaryKeyName="pk_spaces_id"/>
+            </column>
+            <column name="version" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+
+            <column name="name" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="visibility" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(max)"/>
+            <column name="created_by" type="varchar(36)">
+                <constraints nullable="false" referencedTableName="users" referencedColumnNames="id"
+                             foreignKeyName="fk_spaces_created_by_users_id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+    <changeSet id="2026-02-01: create table spaces_members" author="serbroda">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="spaces_members"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="spaces_members">
+            <column name="space_id" type="varchar(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="role" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
+
+        <addUniqueConstraint tableName="spaces_members" columnNames="space_id,user_id,role"
+                             constraintName="uc_spaces_members"/>
+    </changeSet>
+
+</databaseChangeLog>

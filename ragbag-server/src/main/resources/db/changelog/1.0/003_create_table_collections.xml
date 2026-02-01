@@ -1,0 +1,48 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+        xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+        xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+        xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+         http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+    <changeSet id="2026-02-01: create table collections" author="serbroda">
+        <preConditions onFail="MARK_RAN">
+            <not>
+                <tableExists tableName="collections"/>
+            </not>
+        </preConditions>
+
+        <createTable tableName="collections">
+            <column name="id" type="varchar(36)">
+                <constraints primaryKey="true" primaryKeyName="pk_collections_id"/>
+            </column>
+            <column name="version" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
+            <column name="created_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="updated_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+
+            <column name="space_id" type="varchar(36)">
+                <constraints nullable="false" referencedTableName="spaces" referencedColumnNames="id"
+                             foreignKeyName="fk_collections_spaces_id"/>
+            </column>
+            <column name="parent_id" type="varchar(36)">
+                <constraints nullable="true" referencedTableName="collections" referencedColumnNames="id"
+                             foreignKeyName="fk_collections_parent_id"/>
+            </column>
+
+            <column name="name" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="visibility" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+            <column name="description" type="varchar(max)"/>
+            <column name="created_by" type="varchar(36)">
+                <constraints nullable="false" referencedTableName="users" referencedColumnNames="id"
+                             foreignKeyName="fk_collections_created_by_users_id"/>
+            </column>
+        </createTable>
+    </changeSet>
+
+</databaseChangeLog>
