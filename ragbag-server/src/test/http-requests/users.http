@@ -2,8 +2,6 @@
 
 < _js/auth.js
 
-GET http://localhost:8080/api/v1/users/me
-Authorization: {{AUTH_HEADER}}  # Beispiel: "username:password" base64-codiert
+GET {{host}}/api/v1/users/me
+Authorization: {{AUTH_HEADER}}
 Accept: application/json
-
-###

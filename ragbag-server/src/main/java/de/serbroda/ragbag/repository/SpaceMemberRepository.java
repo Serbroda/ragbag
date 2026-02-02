@@ -14,4 +14,7 @@ public interface SpaceMemberRepository extends JpaRepository<SpaceMember, SpaceM
     List<SpaceMember> findByUser_Id(String userId);
 
     Optional<SpaceMember> findBySpaceAndUser_Id(Space space, String user);
+
+    Optional<SpaceMember> findBySpace_IdAndUser_Id(String spaceId, String user);
+
 }

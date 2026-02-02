@@ -40,15 +40,28 @@ public class UserService {
 
         Space space = spaceService.createSpace(user, StringUtils.capitalize(user.getUsername()) + "'s Space");
 
-        Collection collection = new Collection();
-        collection.setSpace(space);
-        collection.setName("Default Collection");
-        collection.setDescription("This is your default collection.");
-        collection.setCreatedBy(user);
+        Collection food = createCollection(user, space, "Food", null);
+        createCollection(user, space, "Fruits", food);
+        createCollection(user, space, "Vegetables", food);
+        Collection meat = createCollection(user, space, "Meat", food);
+        createCollection(user, space, "Beef", meat);
+        createCollection(user, space, "Pork", meat);
 
-        collectionService.createCollection(collection);
+        createCollection(user, space, "Books", null);
 
         return user;
+    }
+
+    private Collection createCollection(User user, Space space, String name, Collection parent) {
+        Collection collection = new Collection();
+        collection.setSpace(space);
+        collection.setName(name);
+        collection.setCreatedBy(user);
+
+        if (parent != null) {
+            collection.setParent(parent);
+        }
+        return collectionService.createCollection(collection);
     }
 
 }

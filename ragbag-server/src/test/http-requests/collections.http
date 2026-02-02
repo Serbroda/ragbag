@@ -2,8 +2,6 @@
 
 < _js/auth.js
 
-GET http://localhost:8080/api/v1/collections/6da0f6ed-6143-44d7-826c-6b62868ebce6
-Authorization: {{AUTH_HEADER}}  # Beispiel: "username:password" base64-codiert
+GET {{host}}/api/v1/collections/6da0f6ed-6143-44d7-826c-6b62868ebce6
+Authorization: {{AUTH_HEADER}}
 Accept: application/json
-
-###

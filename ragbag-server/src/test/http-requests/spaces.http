@@ -2,8 +2,19 @@
 
 < _js/auth.js
 
-GET http://localhost:8080/api/v1/spaces
-Authorization: {{AUTH_HEADER}}  # Beispiel: "username:password" base64-codiert
+GET {{host}}/api/v1/spaces
+Authorization: {{AUTH_HEADER}}
 Accept: application/json
 
-###
+> {%
+    client.global.set("SPACE_ID", response.body[0].id);
+%}
+
+
+### GET request to example server
+
+< _js/auth.js
+
+GET {{host}}/api/v1/spaces/{{SPACE_ID}}/collections
+Authorization: {{AUTH_HEADER}}
+Accept: application/json
