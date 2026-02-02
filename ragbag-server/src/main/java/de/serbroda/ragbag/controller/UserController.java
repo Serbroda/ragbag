@@ -1,6 +1,8 @@
 package de.serbroda.ragbag.controller;
 
 import de.serbroda.ragbag.security.UserPrincipal;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -11,11 +13,13 @@ import java.util.Map;
 
 import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 
+@Tag(name = "Users", description = "Manage users")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX + "/v1/users")
 public class UserController {
 
+    @Operation(summary = "Get current user info")
     @GetMapping("/me")
     public Map<String, String> me(Authentication auth) {
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
