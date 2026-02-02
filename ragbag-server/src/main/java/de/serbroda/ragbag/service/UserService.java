@@ -1,5 +1,7 @@
 package de.serbroda.ragbag.service;
 
+import de.serbroda.ragbag.model.Collection;
+import de.serbroda.ragbag.model.Space;
 import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.repository.UserRepository;
 import jakarta.transaction.Transactional;
@@ -18,6 +20,7 @@ public class UserService {
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
     private final SpaceService spaceService;
+    private final CollectionService collectionService;
 
     public Optional<User> findUserByUsernameOrEmail(String usernameOrEmail) {
         return userRepository.findUserByUsernameOrEmail(usernameOrEmail);
@@ -35,7 +38,15 @@ public class UserService {
 
         user = userRepository.save(user);
 
-        spaceService.createSpace(user, StringUtils.capitalize(user.getUsername()) + "'s Space");
+        Space space = spaceService.createSpace(user, StringUtils.capitalize(user.getUsername()) + "'s Space");
+
+        Collection collection = new Collection();
+        collection.setSpace(space);
+        collection.setName("Default Collection");
+        collection.setDescription("This is your default collection.");
+        collection.setCreatedBy(user);
+
+        collectionService.createCollection(collection);
 
         return user;
     }

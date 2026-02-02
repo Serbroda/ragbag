@@ -18,7 +18,8 @@ public class DataInitializerImpl implements DataInitializer {
     @Override
     public void initializeData() {
         if (userService.findUserByUsernameOrEmail("admin").isEmpty()) {
-            final String password = UUID.randomUUID().toString();
+            //final String password = UUID.randomUUID().toString();
+            final String password = "test123";
             userService.createUser("admin", "admin@example.com", password);
 
             System.out.println("===================================================");

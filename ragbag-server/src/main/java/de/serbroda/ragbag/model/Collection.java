@@ -23,4 +23,8 @@ public class Collection extends AbstractBaseEntity {
     @ManyToOne
     private Space space;
 
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
+
 }

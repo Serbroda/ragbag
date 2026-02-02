@@ -35,7 +35,7 @@ public class SpaceService {
     }
 
     public void joinSpace(User user, Space space, SpaceMemberRole role) {
-        SpaceMember member = spaceMemberRepository.findBySpaceAndUser(space, user)
+        SpaceMember member = spaceMemberRepository.findBySpaceAndUser_Id(space, user.getId())
                 .orElseGet(() -> {
                     SpaceMember sm = new SpaceMember();
                     sm.setId(new SpaceMemberId(space.getId(), user.getId()));
@@ -60,7 +60,7 @@ public class SpaceService {
 
     public Set<Space> getSpacesForUser(User user) {
         Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy(user));
-        spaceMemberRepository.findByUser(user).forEach(sm -> spaces.add(sm.getSpace()));
+        spaceMemberRepository.findByUser_Id(user.getId()).forEach(sm -> spaces.add(sm.getSpace()));
         return spaces;
     }
 

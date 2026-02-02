@@ -11,7 +11,7 @@ import java.util.Optional;
 
 public interface SpaceMemberRepository extends JpaRepository<SpaceMember, SpaceMemberId> {
 
-    List<SpaceMember> findByUser(User user);
+    List<SpaceMember> findByUser_Id(String userId);
 
-    Optional<SpaceMember> findBySpaceAndUser(Space space, User user);
+    Optional<SpaceMember> findBySpaceAndUser_Id(Space space, String user);
 }
