@@ -1,6 +1,7 @@
 package de.serbroda.ragbag.model;
 
 import de.serbroda.ragbag.model.keys.SpaceMemberId;
+import de.serbroda.ragbag.model.shared.SpaceMemberRole;
 import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
@@ -12,7 +13,7 @@ import lombok.Setter;
         name = "spaces_members",
         uniqueConstraints = @UniqueConstraint(
                 name = "uc_spaces_members",
-                columnNames = {"space_id", "user_id", "role"}
+                columnNames = {"space_id", "user_id"}
         )
 )
 public class SpaceMember {
@@ -30,6 +31,7 @@ public class SpaceMember {
     @JoinColumn(name = "user_id", nullable = false)
     private User user;
 
+    @Enumerated(EnumType.STRING)
     @Column(nullable = false, length = 80)
-    private String role;
+    private SpaceMemberRole role = SpaceMemberRole.VIEWER;
 }

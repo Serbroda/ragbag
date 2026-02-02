@@ -55,7 +55,7 @@
             </column>
         </createTable>
 
-        <addUniqueConstraint tableName="spaces_members" columnNames="space_id,user_id,role"
+        <addUniqueConstraint tableName="spaces_members" columnNames="space_id,user_id"
                              constraintName="uc_spaces_members"/>
     </changeSet>
 

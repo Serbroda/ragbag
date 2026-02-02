@@ -30,7 +30,8 @@ public class SecurityConfig {
                 // Authorisierung
                 .authorizeHttpRequests(auth -> auth
                         .requestMatchers("/h2-console/**").permitAll()
-                        .anyRequest().authenticated()
+                        //.anyRequest().authenticated()
+                        .anyRequest().permitAll()
                 )
 
                 // H2 Console braucht Frames
