@@ -3,7 +3,12 @@ package de.serbroda.ragbag.controller;
 import de.serbroda.ragbag.model.Collection;
 import de.serbroda.ragbag.model.dto.CollectionDto;
 import de.serbroda.ragbag.service.CollectionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.media.Content;
+import io.swagger.v3.oas.annotations.media.Schema;
+import io.swagger.v3.oas.annotations.responses.ApiResponse;
 import lombok.RequiredArgsConstructor;
+import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -20,6 +25,13 @@ public class CollectionController {
 
     private final CollectionService collectionService;
 
+    @Operation(
+            responses = {
+                    @ApiResponse(responseCode = "404", description = "Not found",
+                            content = @Content(schema = @Schema(implementation = ProblemDetail.class))
+                    )
+            }
+    )
     @PreAuthorize("hasPermission(#collectionId, 'COLLECTION', 'READ')")
     @GetMapping("/{collectionId}")
     public ResponseEntity<CollectionDto> getCollection(@PathVariable String collectionId) {

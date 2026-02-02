@@ -1,5 +1,6 @@
 package de.serbroda.ragbag.security;
 
+import de.serbroda.ragbag.exception.CollectionNotFoundException;
 import de.serbroda.ragbag.model.Collection;
 import de.serbroda.ragbag.model.Space;
 import de.serbroda.ragbag.model.SpaceMember;
@@ -25,7 +26,7 @@ public class PermissionService {
     ) {
         Collection collection = collectionRepository
                 .findById(collectionId)
-                .orElseThrow();
+                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
 
         Space space = collection.getSpace();
 
