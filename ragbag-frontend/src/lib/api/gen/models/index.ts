@@ -1,4 +1,11 @@
 /* tslint:disable */
 /* eslint-disable */
-export * from './ProblemDetail';
+export * from './BookmarkDto';
+export * from './CollectionDto';
+export * from './CollectionVisibilityDto';
+export * from './CreateBookmarkDto';
+export * from './CreateCollectionDto';
+export * from './ModelError';
 export * from './SpaceDto';
+export * from './UpdateBookmarkDto';
+export * from './UpdateCollectionDto';

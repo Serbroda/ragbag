@@ -9,7 +9,7 @@ export function setBasicAuth(username: string, password: string) {
 export function apiConfig() {
     return new Configuration({
         //basePath: import.meta.env.VITE_API_URL,
-        basePath: "http://localhost:8080",
+        basePath: "http://localhost:8080/api",
         headers: authHeader
             ? { Authorization: authHeader }
             : {}

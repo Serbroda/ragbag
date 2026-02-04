@@ -1,5 +1,5 @@
 /* tslint:disable */
 /* eslint-disable */
-export * from './CollectionControllerApi';
-export * from './SpaceControllerApi';
-export * from './UsersApi';
+export * from './BookmarksApi';
+export * from './CollectionsApi';
+export * from './SpacesApi';

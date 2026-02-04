@@ -5,3 +5,11 @@
 GET {{host}}/api/v1/collections/6da0f6ed-6143-44d7-826c-6b62868ebce6
 Authorization: {{AUTH_HEADER}}
 Accept: application/json
+
+### GET request to example server
+
+< _js/auth.js
+
+GET {{host}}/api/v1/spaces/{{SPACE_ID}}/collections
+Authorization: {{AUTH_HEADER}}
+Accept: application/json

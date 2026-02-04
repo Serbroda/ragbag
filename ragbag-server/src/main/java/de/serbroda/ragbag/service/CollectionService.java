@@ -1,7 +1,7 @@
 package de.serbroda.ragbag.service;
 
+import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.model.Collection;
-import de.serbroda.ragbag.model.dto.CollectionTreeDto;
 import de.serbroda.ragbag.model.shared.CollectionVisibility;
 import de.serbroda.ragbag.model.shared.SpaceMemberRole;
 import de.serbroda.ragbag.repository.CollectionRepository;
@@ -35,7 +35,7 @@ public class CollectionService {
         return collectionRepository.save(collection);
     }
 
-    public List<CollectionTreeDto> getAllowedCollectionTree(
+    public List<CollectionDto> getAllowedCollectionTree(
             String spaceId,
             String userId
     ) {
@@ -76,7 +76,7 @@ public class CollectionService {
        Interne Helfer
        ========================================================= */
 
-    private List<CollectionTreeDto> buildTree(
+    private List<CollectionDto> buildTree(
             String parentId,
             CollectionVisibility parentVisibility,
             Map<String, List<Collection>> byParent,
@@ -93,18 +93,18 @@ public class CollectionService {
                         return null; // Subtree abschneiden
                     }
 
-                    return new CollectionTreeDto(
-                            collection.getId(),
-                            collection.getName(),
-                            effectiveVisibility,
-                            ROOT.equals(parentId) ? null : parentId,
-                            buildTree(
+                    return new CollectionDto.Builder()
+                            .id(collection.getId())
+                            .name(collection.getName())
+                            .parentId(ROOT.equals(parentId) ? null : parentId)
+                            .children(buildTree(
                                     collection.getId(),
                                     effectiveVisibility,
                                     byParent,
                                     role
-                            )
-                    );
+                            ))
+                            .build();
+
                 })
                 .filter(Objects::nonNull)
                 .toList();
