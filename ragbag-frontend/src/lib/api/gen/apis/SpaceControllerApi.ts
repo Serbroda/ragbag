@@ -15,12 +15,12 @@
 
 import * as runtime from '../runtime';
 import type {
-  CollectionTreeDto,
+  ProblemDetail,
   SpaceDto,
 } from '../models/index';
 import {
-    CollectionTreeDtoFromJSON,
-    CollectionTreeDtoToJSON,
+    ProblemDetailFromJSON,
+    ProblemDetailToJSON,
     SpaceDtoFromJSON,
     SpaceDtoToJSON,
 } from '../models/index';
@@ -36,7 +36,7 @@ export class SpaceControllerApi extends runtime.BaseAPI {
 
     /**
      */
-    async getCollectionsRaw(requestParameters: GetCollectionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CollectionTreeDto>>> {
+    async getCollectionsRaw(requestParameters: GetCollectionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         if (requestParameters['spaceId'] == null) {
             throw new runtime.RequiredError(
                 'spaceId',
@@ -48,6 +48,9 @@ export class SpaceControllerApi extends runtime.BaseAPI {
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        if (this.configuration && (this.configuration.username !== undefined || this.configuration.password !== undefined)) {
+            headerParameters["Authorization"] = "Basic " + btoa(this.configuration.username + ":" + this.configuration.password);
+        }
         const response = await this.request({
             path: `/api/v1/spaces/{spaceId}/collections`.replace(`{${"spaceId"}}`, encodeURIComponent(String(requestParameters['spaceId']))),
             method: 'GET',
@@ -55,23 +58,26 @@ export class SpaceControllerApi extends runtime.BaseAPI {
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CollectionTreeDtoFromJSON));
+        return new runtime.VoidApiResponse(response);
     }
 
     /**
      */
-    async getCollections(requestParameters: GetCollectionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionTreeDto>> {
-        const response = await this.getCollectionsRaw(requestParameters, initOverrides);
-        return await response.value();
+    async getCollections(requestParameters: GetCollectionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.getCollectionsRaw(requestParameters, initOverrides);
     }
 
     /**
+     * Get all spaces
      */
     async getSpacesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<SpaceDto>>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
 
+        if (this.configuration && (this.configuration.username !== undefined || this.configuration.password !== undefined)) {
+            headerParameters["Authorization"] = "Basic " + btoa(this.configuration.username + ":" + this.configuration.password);
+        }
         const response = await this.request({
             path: `/api/v1/spaces`,
             method: 'GET',
@@ -83,6 +89,7 @@ export class SpaceControllerApi extends runtime.BaseAPI {
     }
 
     /**
+     * Get all spaces
      */
     async getSpaces(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SpaceDto>> {
         const response = await this.getSpacesRaw(initOverrides);

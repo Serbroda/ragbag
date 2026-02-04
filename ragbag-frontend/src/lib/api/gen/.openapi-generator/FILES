@@ -3,7 +3,6 @@ apis/SpaceControllerApi.ts
 apis/UsersApi.ts
 apis/index.ts
 index.ts
-models/CollectionTreeDto.ts
 models/ProblemDetail.ts
 models/SpaceDto.ts
 models/index.ts

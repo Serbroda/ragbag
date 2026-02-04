@@ -14,7 +14,7 @@
 
 import { mapValues } from '../runtime';
 /**
- * 
+ * A space
  * @export
  * @interface SpaceDto
  */

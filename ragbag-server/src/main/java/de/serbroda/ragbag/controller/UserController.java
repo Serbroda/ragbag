@@ -2,6 +2,7 @@ package de.serbroda.ragbag.controller;
 
 import de.serbroda.ragbag.security.UserPrincipal;
 import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.Authentication;
@@ -13,6 +14,7 @@ import java.util.Map;
 
 import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 
+@SecurityRequirement(name = "basicAuth")
 @Tag(name = "Users", description = "Manage users")
 @RequiredArgsConstructor
 @RestController

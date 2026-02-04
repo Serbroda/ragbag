@@ -7,6 +7,7 @@ import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.media.Content;
 import io.swagger.v3.oas.annotations.media.Schema;
 import io.swagger.v3.oas.annotations.responses.ApiResponse;
+import io.swagger.v3.oas.annotations.security.SecurityRequirement;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ProblemDetail;
 import org.springframework.http.ResponseEntity;
@@ -18,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 
 import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 
+@SecurityRequirement(name = "basicAuth")
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX + "/v1/collections")
