@@ -9,5 +9,4 @@ public class RagbagServerApplication {
     public static void main(String[] args) {
         SpringApplication.run(RagbagServerApplication.class, args);
     }
-
 }

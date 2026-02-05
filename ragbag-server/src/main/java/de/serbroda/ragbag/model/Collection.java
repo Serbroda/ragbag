@@ -3,11 +3,10 @@ package de.serbroda.ragbag.model;
 import de.serbroda.ragbag.model.base.AbstractBaseEntity;
 import de.serbroda.ragbag.model.shared.CollectionVisibility;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.HashSet;
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -17,6 +16,7 @@ public class Collection extends AbstractBaseEntity {
 
     @Column(nullable = false, length = 80)
     private String name;
+
     private String description;
 
     @Enumerated(EnumType.STRING)
@@ -36,5 +36,4 @@ public class Collection extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
-
 }

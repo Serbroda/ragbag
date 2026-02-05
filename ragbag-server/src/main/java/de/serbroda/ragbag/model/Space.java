@@ -3,11 +3,10 @@ package de.serbroda.ragbag.model;
 import de.serbroda.ragbag.model.base.AbstractBaseEntity;
 import de.serbroda.ragbag.model.shared.SpaceVisibility;
 import jakarta.persistence.*;
-import lombok.Getter;
-import lombok.Setter;
-
 import java.util.HashSet;
 import java.util.Set;
+import lombok.Getter;
+import lombok.Setter;
 
 @Getter
 @Setter
@@ -28,11 +27,6 @@ public class Space extends AbstractBaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    @OneToMany(
-            mappedBy = "space",
-            cascade = CascadeType.ALL,
-            orphanRemoval = true
-    )
+    @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<SpaceMember> members = new HashSet<>();
-
 }

@@ -1,10 +1,9 @@
 package de.serbroda.ragbag.model.base;
 
 import jakarta.persistence.*;
-import lombok.Getter;
-
 import java.util.Date;
 import java.util.Objects;
+import lombok.Getter;
 
 @MappedSuperclass
 public abstract class AbstractBaseEntity {

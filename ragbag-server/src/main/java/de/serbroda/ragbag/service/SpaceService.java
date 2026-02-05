@@ -8,11 +8,10 @@ import de.serbroda.ragbag.model.shared.SpaceMemberRole;
 import de.serbroda.ragbag.repository.SpaceMemberRepository;
 import de.serbroda.ragbag.repository.SpaceRepository;
 import jakarta.transaction.Transactional;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.HashSet;
 import java.util.Set;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @Transactional
 @RequiredArgsConstructor
@@ -35,7 +34,8 @@ public class SpaceService {
     }
 
     public void joinSpace(User user, Space space, SpaceMemberRole role) {
-        SpaceMember member = spaceMemberRepository.findBySpaceAndUser_Id(space, user.getId())
+        SpaceMember member = spaceMemberRepository
+                .findBySpaceAndUser_Id(space, user.getId())
                 .orElseGet(() -> {
                     SpaceMember sm = new SpaceMember();
                     sm.setId(new SpaceMemberId(space.getId(), user.getId()));
@@ -58,10 +58,9 @@ public class SpaceService {
         spaceRepository.save(space);
     }
 
-    public Set<Space> getSpacesForUser(User user) {
-        Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy(user));
-        spaceMemberRepository.findByUser_Id(user.getId()).forEach(sm -> spaces.add(sm.getSpace()));
+    public Set<Space> getSpacesForUser(String userId) {
+        Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy_id(userId));
+        spaceMemberRepository.findByUser_Id(userId).forEach(sm -> spaces.add(sm.getSpace()));
         return spaces;
     }
-
 }

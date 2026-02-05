@@ -1,9 +1,8 @@
 package de.serbroda.ragbag.model.keys;
 
 import jakarta.persistence.Embeddable;
-import lombok.*;
-
 import java.io.Serializable;
+import lombok.*;
 
 @Getter
 @Setter

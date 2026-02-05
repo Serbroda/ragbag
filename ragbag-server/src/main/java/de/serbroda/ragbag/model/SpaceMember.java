@@ -11,11 +11,10 @@ import lombok.Setter;
 @Entity
 @Table(
         name = "spaces_members",
-        uniqueConstraints = @UniqueConstraint(
-                name = "uc_spaces_members",
-                columnNames = {"space_id", "user_id"}
-        )
-)
+        uniqueConstraints =
+                @UniqueConstraint(
+                        name = "uc_spaces_members",
+                        columnNames = {"space_id", "user_id"}))
 public class SpaceMember {
 
     @EmbeddedId

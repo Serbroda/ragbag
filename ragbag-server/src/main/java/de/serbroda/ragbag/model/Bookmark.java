@@ -19,5 +19,4 @@ public class Bookmark extends AbstractBaseEntity {
 
     @ManyToOne
     private Collection collection;
-
 }

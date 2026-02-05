@@ -19,11 +19,7 @@ public class PermissionService {
     private final CollectionRepository collectionRepository;
     private final SpaceMemberRepository spaceMemberRepository;
 
-    public boolean hasPermission(
-            String userId,
-            String collectionId,
-            Permission permission
-    ) {
+    public boolean hasPermission(String userId, String collectionId, Permission permission) {
         Collection collection = collectionRepository
                 .findById(collectionId)
                 .orElseThrow(() -> new CollectionNotFoundException(collectionId));
@@ -42,8 +38,8 @@ public class PermissionService {
         return switch (permission) {
             case READ -> canRead(role, collection);
             case WRITE -> canWrite(role, collection);
-            case DELETE -> role == SpaceMemberRole.ADMIN;// || role == SpaceMemberRole.OWNER;
-            //case CREATE_BOOKMARK -> role != SpaceMemberRole.VIEWER;
+            case DELETE -> role == SpaceMemberRole.ADMIN; // || role == SpaceMemberRole.OWNER;
+            // case CREATE_BOOKMARK -> role != SpaceMemberRole.VIEWER;
         };
     }
 
@@ -51,14 +47,13 @@ public class PermissionService {
         return switch (c.getVisibility()) {
             case PUBLIC -> true;
             case INTERNAL -> role != SpaceMemberRole.VIEWER;
-            case PRIVATE -> role == SpaceMemberRole.ADMIN;// || role == SpaceMemberRole.OWNER;
+            case PRIVATE -> role == SpaceMemberRole.ADMIN; // || role == SpaceMemberRole.OWNER;
         };
     }
 
     private boolean canWrite(SpaceMemberRole role, Collection c) {
-        return role == SpaceMemberRole.ADMIN || (
-                c.getVisibility() == CollectionVisibility.INTERNAL
-                        && role == SpaceMemberRole.CONTRIBUTOR
-        );// || role == SpaceRole.OWNER;
+        return role == SpaceMemberRole.ADMIN
+                || (c.getVisibility() == CollectionVisibility.INTERNAL
+                        && role == SpaceMemberRole.CONTRIBUTOR); // || role == SpaceRole.OWNER;
     }
 }

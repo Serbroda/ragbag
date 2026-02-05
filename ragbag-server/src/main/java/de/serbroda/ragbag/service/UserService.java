@@ -5,12 +5,11 @@ import de.serbroda.ragbag.model.Space;
 import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.repository.UserRepository;
 import jakarta.transaction.Transactional;
+import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
-
-import java.util.Optional;
 
 @Transactional
 @RequiredArgsConstructor
@@ -63,5 +62,4 @@ public class UserService {
         }
         return collectionService.createCollection(collection);
     }
-
 }

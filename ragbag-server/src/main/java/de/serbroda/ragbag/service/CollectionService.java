@@ -6,13 +6,12 @@ import de.serbroda.ragbag.model.shared.CollectionVisibility;
 import de.serbroda.ragbag.model.shared.SpaceMemberRole;
 import de.serbroda.ragbag.repository.CollectionRepository;
 import de.serbroda.ragbag.repository.SpaceMemberRepository;
-import lombok.RequiredArgsConstructor;
-import org.springframework.stereotype.Service;
-
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
 
 @RequiredArgsConstructor
 @Service
@@ -35,10 +34,7 @@ public class CollectionService {
         return collectionRepository.save(collection);
     }
 
-    public List<CollectionDto> getAllowedCollectionTree(
-            String spaceId,
-            String userId
-    ) {
+    public List<CollectionDto> getAllowedCollectionTree(String spaceId, String userId) {
 
         // 1️⃣ Rolle des Users im Space bestimmen
         SpaceMemberRole role = spaceMemberRepository
@@ -51,41 +47,29 @@ public class CollectionService {
         }
 
         // 2️⃣ Alle Collections des Spaces flach laden
-        List<Collection> collections =
-                collectionRepository.findBySpace_Id(spaceId);
+        List<Collection> collections = collectionRepository.findBySpace_Id(spaceId);
 
         // 3️⃣ Nach parent_id gruppieren
-        Map<String, List<Collection>> byParent =
-                collections.stream()
-                        .collect(Collectors.groupingBy(
-                                c -> c.getParent() != null
-                                        ? c.getParent().getId()
-                                        : ROOT
-                        ));
+        Map<String, List<Collection>> byParent = collections.stream()
+                .collect(Collectors.groupingBy(
+                        c -> c.getParent() != null ? c.getParent().getId() : ROOT));
 
         // 4️⃣ Tree bauen (Root = parentId null)
-        return buildTree(
-                ROOT,
-                null,
-                byParent,
-                role
-        );
+        return buildTree(ROOT, null, byParent, role);
     }
 
     /* =========================================================
-       Interne Helfer
-       ========================================================= */
+    Interne Helfer
+    ========================================================= */
 
     private List<CollectionDto> buildTree(
             String parentId,
             CollectionVisibility parentVisibility,
             Map<String, List<Collection>> byParent,
-            SpaceMemberRole role
-    ) {
+            SpaceMemberRole role) {
 
         return byParent.getOrDefault(parentId, List.of()).stream()
                 .map(collection -> {
-
                     CollectionVisibility effectiveVisibility =
                             minVisibility(parentVisibility, collection.getVisibility());
 
@@ -97,40 +81,26 @@ public class CollectionService {
                             .id(collection.getId())
                             .name(collection.getName())
                             .parentId(ROOT.equals(parentId) ? null : parentId)
-                            .children(buildTree(
-                                    collection.getId(),
-                                    effectiveVisibility,
-                                    byParent,
-                                    role
-                            ))
+                            .children(buildTree(collection.getId(), effectiveVisibility, byParent, role))
                             .build();
-
                 })
                 .filter(Objects::nonNull)
                 .toList();
     }
 
-    private CollectionVisibility minVisibility(
-            CollectionVisibility parent,
-            CollectionVisibility own
-    ) {
+    private CollectionVisibility minVisibility(CollectionVisibility parent, CollectionVisibility own) {
         if (parent == null) {
             return own;
         }
 
-        return parent.ordinal() < own.ordinal()
-                ? parent
-                : own;
+        return parent.ordinal() < own.ordinal() ? parent : own;
     }
 
-    private boolean canRead(
-            SpaceMemberRole role,
-            CollectionVisibility visibility
-    ) {
+    private boolean canRead(SpaceMemberRole role, CollectionVisibility visibility) {
         return switch (visibility) {
             case PUBLIC -> true;
             case INTERNAL -> role != SpaceMemberRole.VIEWER;
-            case PRIVATE -> role == SpaceMemberRole.ADMIN;//|| role == SpaceMemberRole.OWNER;
+            case PRIVATE -> role == SpaceMemberRole.ADMIN; // || role == SpaceMemberRole.OWNER;
         };
     }
 }

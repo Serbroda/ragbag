@@ -1,5 +1,7 @@
 package de.serbroda.ragbag.controller;
 
+import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
+
 import de.serbroda.ragbag.generated.api.CollectionsApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
@@ -7,16 +9,13 @@ import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
 import de.serbroda.ragbag.model.Collection;
 import de.serbroda.ragbag.security.UserPrincipal;
 import de.serbroda.ragbag.service.CollectionService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
-
-import java.util.List;
-
-import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 
 @RequiredArgsConstructor
 @RestController
@@ -43,22 +42,20 @@ public class CollectionController implements CollectionsApi {
                 .id(collection.getId())
                 .name(collection.getName())
                 .description(collection.getDescription())
-                .build()
-        );
+                .build());
     }
 
     @Override
     public ResponseEntity<List<CollectionDto>> getCollections(String spaceId) {
-        UserPrincipal principal = (UserPrincipal)  SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        List<CollectionDto> collections = collectionService.getAllowedCollectionTree(
-                spaceId,
-                principal.getUserId()
-        );
+        UserPrincipal principal = (UserPrincipal)
+                SecurityContextHolder.getContext().getAuthentication().getPrincipal();
+        List<CollectionDto> collections = collectionService.getAllowedCollectionTree(spaceId, principal.getUserId());
         return ResponseEntity.ok(collections);
     }
 
     @Override
-    public ResponseEntity<CollectionDto> updateCollection(String collectionId, UpdateCollectionDto updateCollectionDto) {
+    public ResponseEntity<CollectionDto> updateCollection(
+            String collectionId, UpdateCollectionDto updateCollectionDto) {
         return CollectionsApi.super.updateCollection(collectionId, updateCollectionDto);
     }
 }
