@@ -1,4 +1,4 @@
-@SPACE_ID = {{__SPACE_ID__}}
+@SPACE_ID = 13eb774c-be3c-435e-82e7-623203f06871
 
 ### GET request to example server
 
@@ -13,5 +13,11 @@ Content-Type: application/json
 ### GET request to example server
 
 GET {{host}}/api/v1/spaces/{{SPACE_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+### POST request to example server
+
+POST {{host}}/api/v1/spaces/{{SPACE_ID}}/join
 Authorization: {{__SESSION_AUTH_HEADER__}}
 Content-Type: application/json

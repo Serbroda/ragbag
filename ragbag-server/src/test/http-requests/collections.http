@@ -1,4 +1,4 @@
-@SPACE_ID = {{__SPACE_ID__}}
+@SPACE_ID = 13eb774c-be3c-435e-82e7-623203f06871
 @COLLECTION_ID = {{__COLLECTION_ID__}}
 
 ### GET request to example server

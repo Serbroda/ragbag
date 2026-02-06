@@ -135,7 +135,7 @@ export class SpacesApi extends runtime.BaseAPI {
         }
         const response = await this.request({
             path: `/v1/spaces/{spaceId}/join`.replace(`{${"spaceId"}}`, encodeURIComponent(String(requestParameters['spaceId']))),
-            method: 'GET',
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
         }, initOverrides);

@@ -17,12 +17,18 @@ import * as runtime from '../runtime';
 import type {
   LoginRequest,
   LoginResponse,
+  RegisterRequest,
+  UserDto,
 } from '../models/index';
 import {
     LoginRequestFromJSON,
     LoginRequestToJSON,
     LoginResponseFromJSON,
     LoginResponseToJSON,
+    RegisterRequestFromJSON,
+    RegisterRequestToJSON,
+    UserDtoFromJSON,
+    UserDtoToJSON,
 } from '../models/index';
 
 export interface LoginOperationRequest {
@@ -31,6 +37,10 @@ export interface LoginOperationRequest {
 
 export interface RefreshRequest {
     refreshToken: string;
+}
+
+export interface RegisterOperationRequest {
+    registerRequest: RegisterRequest;
 }
 
 /**
@@ -155,6 +165,50 @@ export class AuthApi extends runtime.BaseAPI {
      */
     async refresh(requestParameters: RefreshRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse> {
         const response = await this.refreshRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Register a new user
+     */
+    async registerRaw(requestParameters: RegisterOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDto>> {
+        if (requestParameters['registerRequest'] == null) {
+            throw new runtime.RequiredError(
+                'registerRequest',
+                'Required parameter "registerRequest" was null or undefined when calling register().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/auth/register`,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RegisterRequestToJSON(requestParameters['registerRequest']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Register a new user
+     */
+    async register(requestParameters: RegisterOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
+        const response = await this.registerRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

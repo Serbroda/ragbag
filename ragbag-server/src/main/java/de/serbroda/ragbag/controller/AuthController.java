@@ -3,10 +3,13 @@ package de.serbroda.ragbag.controller;
 import de.serbroda.ragbag.generated.api.AuthApi;
 import de.serbroda.ragbag.generated.model.LoginRequest;
 import de.serbroda.ragbag.generated.model.LoginResponse;
+import de.serbroda.ragbag.generated.model.RegisterRequest;
+import de.serbroda.ragbag.generated.model.UserDto;
 import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.security.JwtService;
 import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.security.UserPrincipal;
+import de.serbroda.ragbag.service.RegisterService;
 import de.serbroda.ragbag.service.UserService;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
@@ -32,6 +35,7 @@ public class AuthController implements AuthApi {
     private final JwtService jwtService;
     private final JwtDecoder jwtDecoder;
     private final UserService userService;
+    private final RegisterService registerService;
 
     @Override
     public ResponseEntity<LoginResponse> login(LoginRequest loginRequest) {
@@ -96,5 +100,12 @@ public class AuthController implements AuthApi {
         return ResponseEntity.noContent()
                 .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
                 .build();
+    }
+
+    @Override
+    public ResponseEntity<UserDto> register(RegisterRequest registerRequest) {
+        User user = registerService.register(
+                registerRequest.getUsername(), registerRequest.getEmail(), registerRequest.getPassword());
+        return ResponseEntity.ok(new UserDto(user.getId(), user.getUsername(), user.getEmail()));
     }
 }

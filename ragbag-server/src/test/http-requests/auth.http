@@ -1,5 +1,17 @@
-@USER=admin
-@PASSWORD=test123
+@USER=danny
+@EMAIL=danny@example.com
+@PASSWORD=pass123
+
+### GET request to example server
+
+POST {{host}}/api/auth/register
+Content-Type: application/json
+
+{
+    "username": "{{USER}}",
+    "email": "{{EMAIL}}",
+    "password": "{{PASSWORD}}"
+}
 
 ### GET request to example server
 

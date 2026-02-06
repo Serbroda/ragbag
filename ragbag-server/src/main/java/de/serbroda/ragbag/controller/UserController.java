@@ -2,31 +2,32 @@ package de.serbroda.ragbag.controller;
 
 import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 
-import de.serbroda.ragbag.security.JwtService;
+import de.serbroda.ragbag.generated.api.UsersApi;
+import de.serbroda.ragbag.generated.model.UserDto;
+import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.security.SecurityUtils;
-import io.swagger.v3.oas.annotations.Operation;
-import io.swagger.v3.oas.annotations.security.SecurityRequirement;
-import io.swagger.v3.oas.annotations.tags.Tag;
-import java.util.Map;
+import de.serbroda.ragbag.service.UserService;
 import lombok.RequiredArgsConstructor;
-import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
-@SecurityRequirement(name = "basicAuth")
-@Tag(name = "Users", description = "Manage users")
 @RequiredArgsConstructor
 @RestController
-@RequestMapping(PUBLIC_API_PREFIX + "/v1/users")
-public class UserController {
+@RequestMapping(PUBLIC_API_PREFIX)
+public class UserController implements UsersApi {
 
-    private final JwtService jwtService;
+    private final UserService userService;
 
-    @Operation(summary = "Get current user info")
-    @GetMapping("/me")
-    public Map<String, String> me() {
-        return Map.of(
-                "userId", SecurityUtils.currentUserId(),
-                "username", SecurityUtils.currentUsername());
+    @Override
+    public ResponseEntity<UserDto> me() {
+        User user = userService
+                .findUserById(SecurityUtils.currentUserId())
+                .orElseThrow(() -> new IllegalStateException("Current user not found"));
+        return ResponseEntity.ok(new UserDto.Builder()
+                .id(user.getId())
+                .username(user.getUsername())
+                .email(user.getEmail())
+                .build());
     }
 }

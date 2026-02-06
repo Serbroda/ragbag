@@ -99,7 +99,7 @@ public class CollectionService {
     private boolean canRead(SpaceMemberRole role, CollectionVisibility visibility) {
         return switch (visibility) {
             case PUBLIC -> true;
-            case INTERNAL -> role != SpaceMemberRole.VIEWER;
+            case INTERNAL -> true; // role != SpaceMemberRole.VIEWER;
             case PRIVATE -> role == SpaceMemberRole.ADMIN; // || role == SpaceMemberRole.OWNER;
         };
     }

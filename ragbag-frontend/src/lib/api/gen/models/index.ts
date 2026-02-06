@@ -8,6 +8,8 @@ export * from './CreateCollectionDto';
 export * from './LoginRequest';
 export * from './LoginResponse';
 export * from './ModelError';
+export * from './RegisterRequest';
 export * from './SpaceDto';
 export * from './UpdateBookmarkDto';
 export * from './UpdateCollectionDto';
+export * from './UserDto';

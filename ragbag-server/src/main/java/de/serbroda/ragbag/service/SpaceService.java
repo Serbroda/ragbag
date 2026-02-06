@@ -75,9 +75,9 @@ public class SpaceService {
                     return sm;
                 });
 
-        if (member.getRole() == role) {
-            return; // User already has the same role
-        }
+        //        if (member.getRole() == role) {
+        //            return; // User already has the same role
+        //        }
 
         member.setRole(role);
         space.getMembers().add(member);
@@ -91,7 +91,9 @@ public class SpaceService {
 
     public Set<Space> getSpacesForUser(String userId) {
         Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy_Id(userId));
-        spaceMemberRepository.findByUser_Id(userId).forEach(sm -> spaces.add(sm.getSpace()));
+        spaceMemberRepository.findByUser_Id(userId).forEach(sm -> {
+            spaces.add(sm.getSpace());
+        });
         return spaces;
     }
 
