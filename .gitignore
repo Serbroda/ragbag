@@ -298,3 +298,4 @@ package
 # End of https://www.toptal.com/developers/gitignore/api/git,java,maven,intellij+all,node,svelte
 
 node/
+data/

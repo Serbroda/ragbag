@@ -42,7 +42,7 @@ public class UserService {
         });
     }
 
-    private boolean anyExists(String... usernamesOrEmails) {
+    public boolean anyExists(String... usernamesOrEmails) {
         for (String uoe : usernamesOrEmails) {
             if (userRepository.findUserByUsernameOrEmail(uoe).isPresent()) {
                 return true;

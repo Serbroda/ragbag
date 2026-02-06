@@ -12,6 +12,10 @@ public class DataInitializerImpl implements DataInitializer {
 
     @Override
     public void initializeData() {
+        if (userService.anyExists("admin")) {
+            return;
+        }
+
         // final String password = UUID.randomUUID().toString();
         final String password = "test123";
         registerService.register("admin", "admin@example.com", password);
