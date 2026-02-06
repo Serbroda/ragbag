@@ -119,6 +119,32 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/spaces/{spaceId}/join:
+    get:
+      summary: Join a space
+      operationId: joinSpace
+      tags:
+        - spaces
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '203':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   # Collections
   /v1/spaces/{spaceId}/collections:
     get:
@@ -567,6 +593,8 @@ components:
         application/json:
           schema:
             $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
 
   securitySchemes:
     bearerAuth:

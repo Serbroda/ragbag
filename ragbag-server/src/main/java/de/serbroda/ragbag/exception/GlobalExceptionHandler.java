@@ -3,7 +3,10 @@ package de.serbroda.ragbag.exception;
 import jakarta.servlet.http.HttpServletRequest;
 import java.net.URI;
 import java.util.Map;
+import java.util.Objects;
 import java.util.stream.Collectors;
+
+import org.apache.commons.lang3.StringUtils;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.authorization.AuthorizationDeniedException;
@@ -43,12 +46,12 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(AuthorizationDeniedException.class)
+    @ExceptionHandler({AuthorizationDeniedException.class, ForbiddenException.class})
     public ProblemDetail handleAuthorizationDeniedException(
             AuthorizationDeniedException ex, HttpServletRequest request) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         problem.setTitle("Access denied");
-        problem.setDetail("Access denied for resource");
+        problem.setDetail(Objects.toString(ex.getMessage(), "Access denied for resource"));
         problem.setInstance(URI.create(request.getRequestURI()));
         return problem;
     }

@@ -26,6 +26,10 @@ export interface GetSpaceRequest {
     spaceId: string;
 }
 
+export interface JoinSpaceRequest {
+    spaceId: string;
+}
+
 /**
  * 
  */
@@ -104,6 +108,46 @@ export class SpacesApi extends runtime.BaseAPI {
     async getSpaces(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SpaceDto>> {
         const response = await this.getSpacesRaw(initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Join a space
+     */
+    async joinSpaceRaw(requestParameters: JoinSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling joinSpace().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/v1/spaces/{spaceId}/join`.replace(`{${"spaceId"}}`, encodeURIComponent(String(requestParameters['spaceId']))),
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Join a space
+     */
+    async joinSpace(requestParameters: JoinSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.joinSpaceRaw(requestParameters, initOverrides);
     }
 
 }

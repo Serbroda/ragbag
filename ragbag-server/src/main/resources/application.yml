@@ -23,5 +23,8 @@ springdoc:
 
 security:
   jwt:
-    secret: "CHANGE_ME_TO_A_VERY_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS"
-    expiration: 3600 # Sekunden (1h)
+    issuer: ragbag
+    secret: "CHANGE_ME_TO_A_VERY_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS" # openssl rand -base64 32
+    expiration:
+      accessToken: 15 # minutes
+      refreshToken: 20160 # minutes (14 days)

@@ -22,7 +22,6 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(PUBLIC_API_PREFIX)
 public class SpaceController implements SpacesApi {
 
-    private final UserService userService;
     private final SpaceService spaceService;
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
@@ -40,5 +39,11 @@ public class SpaceController implements SpacesApi {
         return ResponseEntity.ok(spaces.stream()
                 .map(s -> new SpaceDto(s.getId(), s.getName(), s.getDescription()))
                 .toList());
+    }
+
+    @Override
+    public ResponseEntity<Void> joinSpace(String spaceId) {
+        spaceService.joinSpace(SecurityUtils.currentUserId(), spaceId, null);
+        return ResponseEntity.noContent().build();
     }
 }

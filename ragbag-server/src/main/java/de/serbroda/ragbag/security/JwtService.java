@@ -2,6 +2,8 @@ package de.serbroda.ragbag.security;
 
 import java.time.Instant;
 import java.time.temporal.ChronoUnit;
+import java.util.Map;
+import java.util.UUID;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.oauth2.jose.jws.MacAlgorithm;
 import org.springframework.security.oauth2.jwt.JwsHeader;
@@ -19,48 +21,63 @@ public class JwtService {
     }
 
     private final JwtEncoder encoder;
-    private final long expirationSeconds;
+    private final String issuer;
+    private final int expirationAccessTokenMinutes;
+    private final int expirationRefreshTokenMinutes;
 
-    public JwtService(JwtEncoder encoder, @Value("${security.jwt.expiration}") long expirationSeconds) {
+    public JwtService(
+            JwtEncoder encoder,
+            @Value("${security.jwt.issuer:ragbag}") String issuer,
+            @Value("${security.jwt.expiration.accessToken:15}") int expirationAccessTokenMinutes,
+            @Value("${security.jwt.expiration.refreshToken:20160}") int expirationRefreshTokenMinutes) {
         this.encoder = encoder;
-        this.expirationSeconds = expirationSeconds;
+        this.issuer = issuer;
+        this.expirationAccessTokenMinutes = expirationAccessTokenMinutes;
+        this.expirationRefreshTokenMinutes = expirationRefreshTokenMinutes;
     }
 
-    public String generateAccessToken(String userId, String username, long tokenVersion) {
+    public String generateToken(String subject, Map<String, Object> claims, Instant expiresAt) {
         Instant now = Instant.now();
+        final String jti = UUID.randomUUID().toString();
 
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("ragbag")
+        JwtClaimsSet claimsSet = JwtClaimsSet.builder()
+                .issuer(issuer)
                 .issuedAt(now)
-                .expiresAt(now.plus(15, ChronoUnit.MINUTES))
-                .subject(userId)
-                .claim("username", username)
-                .claim("type", TokenType.ACCESS.name())
-                .claim("token_version", tokenVersion)
-                .claim("roles", new String[] {"USER"})
+                .expiresAt(expiresAt)
+                .subject(subject)
+                .id(jti)
+                .claims((c) -> c.putAll(claims))
                 .build();
 
-        return encode(claims);
+        return encode(claimsSet);
+    }
+
+    // spotless:off
+    public String generateAccessToken(String userId, String username, long tokenVersion) {
+        return generateToken(
+                userId,
+                Map.of(
+                        "username", username,
+                        "type", TokenType.REFRESH.name(),
+                        "token_version", tokenVersion,
+                        "roles", new String[] {"USER"}
+                ),
+                Instant.now().plus(expirationAccessTokenMinutes, ChronoUnit.MINUTES));
     }
 
     public String generateRefreshToken(String userId) {
-        Instant now = Instant.now();
-
-        JwtClaimsSet claims = JwtClaimsSet.builder()
-                .issuer("ragbag")
-                .issuedAt(now)
-                .expiresAt(now.plus(14, ChronoUnit.DAYS))
-                .subject(userId)
-                .claim("type", JwtService.TokenType.REFRESH.name())
-                .claim("roles", new String[] {"USER"})
-                .build();
-
-        return encode(claims);
+        return generateToken(
+                userId,
+                Map.of(
+                        "type", TokenType.REFRESH.name(),
+                        "roles", new String[] {"USER"}
+                ),
+                Instant.now().plus(expirationRefreshTokenMinutes, ChronoUnit.MINUTES));
     }
 
+    // spotless:on
     private String encode(JwtClaimsSet claims) {
         JwsHeader header = JwsHeader.with(MacAlgorithm.HS256).type("JWT").build();
-
         return encoder.encode(JwtEncoderParameters.from(header, claims)).getTokenValue();
     }
 }

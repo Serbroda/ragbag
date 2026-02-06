@@ -2,5 +2,11 @@
 ### GET request to example server
 
 GET {{host}}/api/v1/users/me
-Authorization: {{SESSION_AUTH_HEADER}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+### GET request to example server
+
+GET {{host}}/api/v1/users/tkn
+Authorization: {{__SESSION_AUTH_HEADER__}}
 Content-Type: application/json
