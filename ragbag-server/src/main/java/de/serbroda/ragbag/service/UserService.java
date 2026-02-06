@@ -1,13 +1,11 @@
 package de.serbroda.ragbag.service;
 
-import de.serbroda.ragbag.model.Collection;
-import de.serbroda.ragbag.model.Space;
+import de.serbroda.ragbag.exception.EntityAlreadyExistsException;
 import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.repository.UserRepository;
 import jakarta.transaction.Transactional;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
-import org.apache.commons.lang3.StringUtils;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
@@ -18,53 +16,23 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
-    private final SpaceService spaceService;
-    private final CollectionService collectionService;
 
     public Optional<User> findUserById(String id) {
         return userRepository.findById(id);
     }
 
-    public Optional<User> findUserByUsernameOrEmail(String usernameOrEmail) {
-        return userRepository.findUserByUsernameOrEmail(usernameOrEmail);
-    }
-
     public User createUser(String username, String email, final String passwordPlain) {
-        if (userRepository.findUserByUsernameOrEmail(username).isPresent()) {
-            throw new IllegalArgumentException("Username already exists: " + username);
+        if (anyExists(username.toLowerCase(), email.toLowerCase())) {
+            throw new EntityAlreadyExistsException("User with same username or email already exists");
         }
 
         User user = new User();
         user.setUsername(username.toLowerCase());
         user.setEmail(email.toLowerCase());
         user.setPassword(passwordEncoder.encode(passwordPlain));
+        user.setTokenVersion(0);
 
-        user = userRepository.save(user);
-
-        Space space = spaceService.createSpace(user, StringUtils.capitalize(user.getUsername()) + "'s Space");
-
-        Collection food = createCollection(user, space, "Food", null);
-        createCollection(user, space, "Fruits", food);
-        createCollection(user, space, "Vegetables", food);
-        Collection meat = createCollection(user, space, "Meat", food);
-        createCollection(user, space, "Beef", meat);
-        createCollection(user, space, "Pork", meat);
-
-        createCollection(user, space, "Books", null);
-
-        return user;
-    }
-
-    private Collection createCollection(User user, Space space, String name, Collection parent) {
-        Collection collection = new Collection();
-        collection.setSpace(space);
-        collection.setName(name);
-        collection.setCreatedBy(user);
-
-        if (parent != null) {
-            collection.setParent(parent);
-        }
-        return collectionService.createCollection(collection);
+        return userRepository.save(user);
     }
 
     public void incrementTokenVersion(String userId) {
@@ -72,5 +40,14 @@ public class UserService {
             user.setTokenVersion(user.getTokenVersion() + 1);
             userRepository.save(user);
         });
+    }
+
+    private boolean anyExists(String... usernamesOrEmails) {
+        for (String uoe : usernamesOrEmails) {
+            if (userRepository.findUserByUsernameOrEmail(uoe).isPresent()) {
+                return true;
+            }
+        }
+        return false;
     }
 }

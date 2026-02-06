@@ -16,12 +16,12 @@ Content-Type: application/json
 
         const accessToken = response.body.access_token;
 
-        client.global.set("ACCESS_TOKEN", accessToken);
-        client.global.set("SESSION_AUTH_HEADER", `Bearer ${accessToken}`);
+        client.global.set("__ACCESS_TOKEN__", accessToken);
+        client.global.set("__SESSION_AUTH_HEADER__", `Bearer ${accessToken}`);
 
         const cookieString = response.headers.valuesOf("Set-Cookie")[0]
         if (cookieString && cookieString.includes("=")) {
-            client.global.set("REFRESH_TOKEN", cookieString.split(";")[0].split("=")[1]);
+            client.global.set("__REFRESH_TOKEN__", cookieString.split(";")[0].split("=")[1]);
         }
     }
 %}
@@ -34,16 +34,16 @@ POST {{host}}/api/auth/refresh
 
         const accessToken = response.body.access_token;
 
-        client.global.set("ACCESS_TOKEN", accessToken);
-        client.global.set("SESSION_AUTH_HEADER", `Bearer ${accessToken}`);
+        client.global.set("__ACCESS_TOKEN__", accessToken);
+        client.global.set("__SESSION_AUTH_HEADER__", `Bearer ${accessToken}`);
 
         const cookieString = response.headers.valuesOf("Set-Cookie")[0]
         if (cookieString && cookieString.includes("=")) {
-            client.global.set("REFRESH_TOKEN", cookieString.split(";")[0].split("=")[1]);
+            client.global.set("__REFRESH_TOKEN__", cookieString.split(";")[0].split("=")[1]);
         }
     }
 %}
 
 ### POST Refresh Token
 POST {{host}}/api/auth/logout/all
-Authorization: {{SESSION_AUTH_HEADER}}
+Authorization: {{__SESSION_AUTH_HEADER__}}

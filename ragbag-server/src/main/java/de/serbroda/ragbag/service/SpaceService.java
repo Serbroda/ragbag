@@ -19,6 +19,7 @@ import org.springframework.stereotype.Service;
 @Service
 public class SpaceService {
 
+    private final UserService userService;
     private final SpaceRepository spaceRepository;
     private final SpaceMemberRepository spaceMemberRepository;
 
@@ -26,19 +27,23 @@ public class SpaceService {
         return spaceRepository.findById(spaceId);
     }
 
-    public Space createSpace(User user, String name) {
+    public Space createSpace(String userId, CreateSpaceCommand cmd) {
+        User user = userService
+                .findUserById(userId)
+                .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
+
         Space space = new Space();
-        space.setName(name);
+        space.setName(cmd.name());
         space.setCreatedBy(user);
 
         space = spaceRepository.save(space);
 
-        joinSpace(user, space, SpaceMemberRole.ADMIN);
+        joinSpaceInternal(user, space, SpaceMemberRole.ADMIN);
 
         return space;
     }
 
-    public void joinSpace(User user, Space space, SpaceMemberRole role) {
+    private void joinSpaceInternal(User user, Space space, SpaceMemberRole role) {
         SpaceMember member = spaceMemberRepository
                 .findBySpaceAndUser_Id(space, user.getId())
                 .orElseGet(() -> {
@@ -68,4 +73,6 @@ public class SpaceService {
         spaceMemberRepository.findByUser_Id(userId).forEach(sm -> spaces.add(sm.getSpace()));
         return spaces;
     }
+
+    public record CreateSpaceCommand(String name) {}
 }

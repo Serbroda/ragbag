@@ -3,6 +3,7 @@ package de.serbroda.ragbag.controller;
 import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 import static de.serbroda.ragbag.security.DomainPermissionEvaluator.DOMAIN_PREFIX_COLELCTION;
 
+import de.serbroda.ragbag.exception.CollectionNotFoundException;
 import de.serbroda.ragbag.generated.api.CollectionsApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
@@ -37,7 +38,9 @@ public class CollectionController implements CollectionsApi {
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'READ')")
     @Override
     public ResponseEntity<CollectionDto> getCollection(String collectionId) {
-        Collection collection = collectionService.getCollection(collectionId);
+        Collection collection = collectionService
+                .getCollection(collectionId)
+                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
         return ResponseEntity.ok(new CollectionDto.Builder()
                 .id(collection.getId())
                 .name(collection.getName())
@@ -48,8 +51,19 @@ public class CollectionController implements CollectionsApi {
     @Override
     public ResponseEntity<List<CollectionDto>> getCollections(String spaceId) {
         List<CollectionDto> collections =
-                collectionService.getAllowedCollectionTree(spaceId, SecurityUtils.currentUserId());
+                collectionService.getAllowedCollectionTree(spaceId, SecurityUtils.currentUserId()).stream()
+                        .map(this::toDto)
+                        .toList();
         return ResponseEntity.ok(collections);
+    }
+
+    public CollectionDto toDto(CollectionService.CollectionNode node) {
+        return new CollectionDto.Builder()
+                .id(node.id())
+                .name(node.name())
+                .parentId(node.parentId())
+                .children(node.children().stream().map(this::toDto).toList())
+                .build();
     }
 
     @Override

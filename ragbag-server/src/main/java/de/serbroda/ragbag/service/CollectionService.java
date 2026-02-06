@@ -1,6 +1,5 @@
 package de.serbroda.ragbag.service;
 
-import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.model.Collection;
 import de.serbroda.ragbag.model.shared.CollectionVisibility;
 import de.serbroda.ragbag.model.shared.SpaceMemberRole;
@@ -9,6 +8,7 @@ import de.serbroda.ragbag.repository.SpaceMemberRepository;
 import java.util.List;
 import java.util.Map;
 import java.util.Objects;
+import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -22,8 +22,8 @@ public class CollectionService {
     private final CollectionRepository collectionRepository;
     private final SpaceMemberRepository spaceMemberRepository;
 
-    public Collection getCollection(String id) {
-        return collectionRepository.findById(id).orElse(null);
+    public Optional<Collection> getCollection(String id) {
+        return collectionRepository.findById(id);
     }
 
     public List<Collection> getCollectionsBySpace(String spaceId) {
@@ -34,7 +34,7 @@ public class CollectionService {
         return collectionRepository.save(collection);
     }
 
-    public List<CollectionDto> getAllowedCollectionTree(String spaceId, String userId) {
+    public List<CollectionNode> getAllowedCollectionTree(String spaceId, String userId) {
 
         // 1️⃣ Rolle des Users im Space bestimmen
         SpaceMemberRole role = spaceMemberRepository
@@ -62,7 +62,7 @@ public class CollectionService {
     Interne Helfer
     ========================================================= */
 
-    private List<CollectionDto> buildTree(
+    private List<CollectionNode> buildTree(
             String parentId,
             CollectionVisibility parentVisibility,
             Map<String, List<Collection>> byParent,
@@ -77,12 +77,12 @@ public class CollectionService {
                         return null; // Subtree abschneiden
                     }
 
-                    return new CollectionDto.Builder()
-                            .id(collection.getId())
-                            .name(collection.getName())
-                            .parentId(ROOT.equals(parentId) ? null : parentId)
-                            .children(buildTree(collection.getId(), effectiveVisibility, byParent, role))
-                            .build();
+                    return new CollectionNode(
+                            collection.getId(),
+                            collection.getName(),
+                            collection.getDescription(),
+                            ROOT.equals(parentId) ? null : parentId,
+                            buildTree(collection.getId(), effectiveVisibility, byParent, role));
                 })
                 .filter(Objects::nonNull)
                 .toList();
@@ -103,4 +103,7 @@ public class CollectionService {
             case PRIVATE -> role == SpaceMemberRole.ADMIN; // || role == SpaceMemberRole.OWNER;
         };
     }
+
+    public record CollectionNode(
+            String id, String name, String description, String parentId, List<CollectionNode> children) {}
 }

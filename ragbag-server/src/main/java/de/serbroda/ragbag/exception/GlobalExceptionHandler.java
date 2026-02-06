@@ -33,6 +33,16 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
+    @ExceptionHandler(EntityAlreadyExistsException.class)
+    public ProblemDetail handleEntityAlreadyExistsException(
+            EntityAlreadyExistsException ex, HttpServletRequest request) {
+        ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
+        problem.setTitle("Conflict");
+        problem.setDetail("There is a conflict with the current state of the resource");
+        problem.setInstance(URI.create(request.getRequestURI()));
+        return problem;
+    }
+
     @ExceptionHandler(AuthorizationDeniedException.class)
     public ProblemDetail handleAuthorizationDeniedException(
             AuthorizationDeniedException ex, HttpServletRequest request) {
