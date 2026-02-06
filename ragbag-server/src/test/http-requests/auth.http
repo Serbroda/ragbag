@@ -1,14 +1,48 @@
+@USER=admin
+@PASSWORD=test123
+
 ### GET request to example server
 
 POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-    "username": "admin",
-    "password": "test123"
+    "username": "{{USER}}",
+    "password": "{{PASSWORD}}"
 }
 
 > {%
-    const authHeader = `Bearer ${response.body.access_token}`;
-    client.global.set("SESSION_AUTH_HEADER", authHeader);
+    if (response.status >= 200 && response.status <= 299) {
+
+        const accessToken = response.body.access_token;
+
+        client.global.set("ACCESS_TOKEN", accessToken);
+        client.global.set("SESSION_AUTH_HEADER", `Bearer ${accessToken}`);
+
+        const cookieString = response.headers.valuesOf("Set-Cookie")[0]
+        if (cookieString && cookieString.includes("=")) {
+            client.global.set("REFRESH_TOKEN", cookieString.split(";")[0].split("=")[1]);
+        }
+    }
 %}
+
+### POST Refresh Token
+POST {{host}}/api/auth/refresh
+
+> {%
+    if (response.status >= 200 && response.status <= 299) {
+
+        const accessToken = response.body.access_token;
+
+        client.global.set("ACCESS_TOKEN", accessToken);
+        client.global.set("SESSION_AUTH_HEADER", `Bearer ${accessToken}`);
+
+        const cookieString = response.headers.valuesOf("Set-Cookie")[0]
+        if (cookieString && cookieString.includes("=")) {
+            client.global.set("REFRESH_TOKEN", cookieString.split(";")[0].split("=")[1]);
+        }
+    }
+%}
+
+### POST Refresh Token
+POST {{host}}/api/auth/logout
