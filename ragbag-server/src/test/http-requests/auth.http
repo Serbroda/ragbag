@@ -46,3 +46,7 @@ POST {{host}}/api/auth/refresh
 
 ### POST Refresh Token
 POST {{host}}/api/auth/logout
+
+### POST Refresh Token
+POST {{host}}/api/auth/logout/all
+Authorization: {{SESSION_AUTH_HEADER}}

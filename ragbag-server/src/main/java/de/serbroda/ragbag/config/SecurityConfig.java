@@ -1,5 +1,6 @@
 package de.serbroda.ragbag.config;
 
+import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.repository.UserRepository;
 import de.serbroda.ragbag.security.DomainUserDetailsService;
 import java.util.List;
@@ -41,7 +42,8 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers("/h2-console/**", "/api/auth/**", "/api/docs/**")
+                .authorizeHttpRequests(auth -> auth.requestMatchers(
+                                "/h2-console/**", "/api/auth/login", "/api/auth/refresh", "/api/docs/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
@@ -61,10 +63,13 @@ public class SecurityConfig {
         return new JwtAuthenticationConverter() {
             {
                 setJwtGrantedAuthoritiesConverter(jwt -> {
-                    String userId = jwt.getClaimAsString("user_id");
+                    String userId = jwt.getClaimAsString("sub");
+                    long tokenVersion = jwt.getClaim("token_version");
 
-                    if (userService.findById(userId).isEmpty()) {
-                        throw new JwtException("User is blocked");
+                    User user = userService.findById(userId).orElseThrow(() -> new JwtException("User blocked"));
+
+                    if (tokenVersion < user.getTokenVersion()) {
+                        throw new JwtException("Token invalidated");
                     }
 
                     return jwt.getClaimAsStringList("roles").stream()

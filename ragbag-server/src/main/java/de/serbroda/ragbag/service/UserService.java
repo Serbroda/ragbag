@@ -66,4 +66,11 @@ public class UserService {
         }
         return collectionService.createCollection(collection);
     }
+
+    public void incrementTokenVersion(String userId) {
+        userRepository.findById(userId).ifPresent(user -> {
+            user.setTokenVersion(user.getTokenVersion() + 1);
+            userRepository.save(user);
+        });
+    }
 }

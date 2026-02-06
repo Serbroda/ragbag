@@ -31,6 +31,9 @@
             <column name="password" type="varchar(60)">
                 <constraints nullable="false"/>
             </column>
+            <column name="token_version" type="int" defaultValueNumeric="0">
+                <constraints nullable="false"/>
+            </column>
         </createTable>
     </changeSet>
 

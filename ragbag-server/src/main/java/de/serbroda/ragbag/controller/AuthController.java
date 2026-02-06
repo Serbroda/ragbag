@@ -3,6 +3,7 @@ package de.serbroda.ragbag.controller;
 import com.fasterxml.jackson.annotation.JsonProperty;
 import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.security.JwtService;
+import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.security.UserPrincipal;
 import de.serbroda.ragbag.service.UserService;
 import jakarta.servlet.http.HttpServletResponse;
@@ -17,6 +18,7 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.web.bind.annotation.*;
@@ -38,7 +40,11 @@ public class AuthController {
 
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
-        String accessToken = jwtService.generateAccessToken(principal.getUserId(), principal.getUsername());
+        User user = userService
+                .findUserById(principal.getUserId())
+                .orElseThrow(() -> new DisabledException("User blocked"));
+
+        String accessToken = jwtService.generateAccessToken(user.getId(), user.getUsername(), user.getTokenVersion());
 
         String refreshToken = jwtService.generateRefreshToken(principal.getUserId());
 
@@ -72,14 +78,25 @@ public class AuthController {
 
         User user = userService.findUserById(userId).orElseThrow(() -> new DisabledException("User blocked"));
 
-        String newAccessToken = jwtService.generateAccessToken(user.getId(), user.getUsername());
+        String newAccessToken =
+                jwtService.generateAccessToken(user.getId(), user.getUsername(), user.getTokenVersion());
 
         return ResponseEntity.ok(new LoginResponse(newAccessToken));
     }
 
     @PostMapping("/logout")
     public ResponseEntity<Void> logout(HttpServletResponse response) {
+        deleteRefreshTokenCookie(response);
+        return ResponseEntity.noContent().build();
+    }
 
+    @PostMapping("/logout/all")
+    public void logoutAll(HttpServletResponse response) {
+        userService.incrementTokenVersion(SecurityUtils.currentUserId());
+        deleteRefreshTokenCookie(response);
+    }
+
+    private void deleteRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .path("/api/auth/refresh")
                 .maxAge(0)
@@ -87,8 +104,6 @@ public class AuthController {
                 .build();
 
         response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
-
-        return ResponseEntity.noContent().build();
     }
 
     public record LoginRequest(

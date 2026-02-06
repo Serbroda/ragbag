@@ -20,10 +20,10 @@ public final class SecurityUtils {
     }
 
     public static String currentUserId() {
-        return currentJwt().getClaimAsString("user_id");
+        return currentJwt().getSubject();
     }
 
     public static String currentUsername() {
-        return currentJwt().getSubject();
+        return currentJwt().getClaimAsString("username");
     }
 }

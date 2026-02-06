@@ -26,7 +26,7 @@ public class JwtService {
         this.expirationSeconds = expirationSeconds;
     }
 
-    public String generateAccessToken(String userId, String username) {
+    public String generateAccessToken(String userId, String username, long tokenVersion) {
         Instant now = Instant.now();
 
         JwtClaimsSet claims = JwtClaimsSet.builder()
@@ -36,6 +36,8 @@ public class JwtService {
                 .subject(userId)
                 .claim("username", username)
                 .claim("type", TokenType.ACCESS.name())
+                .claim("token_version", tokenVersion)
+                .claim("roles", new String[] {"USER"})
                 .build();
 
         return encode(claims);
@@ -50,6 +52,7 @@ public class JwtService {
                 .expiresAt(now.plus(14, ChronoUnit.DAYS))
                 .subject(userId)
                 .claim("type", JwtService.TokenType.REFRESH.name())
+                .claim("roles", new String[] {"USER"})
                 .build();
 
         return encode(claims);

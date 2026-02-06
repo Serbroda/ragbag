@@ -25,6 +25,9 @@ public class User extends AbstractBaseEntity {
     @Column(nullable = false, length = 60)
     private String password;
 
+    @Column(nullable = false)
+    private int tokenVersion = 0;
+
     @OneToMany(mappedBy = "user")
     private Set<SpaceMember> spaces = new HashSet<>();
 }
