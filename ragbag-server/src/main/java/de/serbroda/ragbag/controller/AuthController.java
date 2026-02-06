@@ -1,12 +1,13 @@
 package de.serbroda.ragbag.controller;
 
-import com.fasterxml.jackson.annotation.JsonProperty;
+import de.serbroda.ragbag.generated.api.AuthApi;
+import de.serbroda.ragbag.generated.model.LoginRequest;
+import de.serbroda.ragbag.generated.model.LoginResponse;
 import de.serbroda.ragbag.model.User;
 import de.serbroda.ragbag.security.JwtService;
 import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.security.UserPrincipal;
 import de.serbroda.ragbag.service.UserService;
-import jakarta.servlet.http.HttpServletResponse;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpHeaders;
@@ -18,7 +19,6 @@ import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
-import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.web.bind.annotation.*;
@@ -26,17 +26,17 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping("/api/auth")
-public class AuthController {
+public class AuthController implements AuthApi {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final JwtDecoder jwtDecoder;
     private final UserService userService;
 
-    @PostMapping("/login")
-    public ResponseEntity<LoginResponse> login(@RequestBody LoginRequest request, HttpServletResponse response) {
+    @Override
+    public ResponseEntity<LoginResponse> login(LoginRequest loginRequest) {
         Authentication auth = authenticationManager.authenticate(
-                new UsernamePasswordAuthenticationToken(request.username(), request.password()));
+                new UsernamePasswordAuthenticationToken(loginRequest.getUsername(), loginRequest.getPassword()));
 
         UserPrincipal principal = (UserPrincipal) auth.getPrincipal();
 
@@ -56,14 +56,13 @@ public class AuthController {
                 .maxAge(Duration.ofDays(14))
                 .build();
 
-        response.addHeader(HttpHeaders.SET_COOKIE, refreshCookie.toString());
-
-        return ResponseEntity.ok(new LoginResponse(accessToken));
+        return ResponseEntity.ok()
+                .header(HttpHeaders.SET_COOKIE, refreshCookie.toString())
+                .body(new LoginResponse(accessToken));
     }
 
-    @PostMapping("/refresh")
-    public ResponseEntity<LoginResponse> refresh(
-            @CookieValue(name = "refresh_token", required = false) String refreshToken) {
+    @Override
+    public ResponseEntity<LoginResponse> refresh(String refreshToken) {
         if (refreshToken == null) {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
@@ -84,32 +83,18 @@ public class AuthController {
         return ResponseEntity.ok(new LoginResponse(newAccessToken));
     }
 
-    @PostMapping("/logout")
-    public ResponseEntity<Void> logout(HttpServletResponse response) {
-        deleteRefreshTokenCookie(response);
-        return ResponseEntity.noContent().build();
-    }
-
-    @PostMapping("/logout/all")
-    public void logoutAll(HttpServletResponse response) {
+    @Override
+    public ResponseEntity<Void> logoutAll() {
         userService.incrementTokenVersion(SecurityUtils.currentUserId());
-        deleteRefreshTokenCookie(response);
-    }
 
-    private void deleteRefreshTokenCookie(HttpServletResponse response) {
         ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
                 .path("/api/auth/refresh")
                 .maxAge(0)
                 .httpOnly(true)
                 .build();
 
-        response.addHeader(HttpHeaders.SET_COOKIE, deleteCookie.toString());
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .build();
     }
-
-    public record LoginRequest(
-            @JsonProperty("username") String username,
-            @JsonProperty("password") String password) {}
-
-    public record LoginResponse(
-            @JsonProperty("access_token") String accessToken) {}
 }

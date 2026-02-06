@@ -4,6 +4,72 @@ info:
   version: 1.0.0
 
 paths:
+  # Authentication
+  /auth/login:
+    post:
+      summary: Login
+      operationId: login
+      tags:
+        - auth
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: >
+                HttpOnly refresh token cookie.
+                Path=/api/auth/refresh; SameSite=Lax; Secure (in prod).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refresh
+      description: >
+        Uses the HttpOnly refresh_token cookie to issue a new access token.
+      tags:
+        - auth
+      parameters:
+        - in: cookie
+          name: refresh_token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout/all:
+    get:
+      summary: Logout from all devices
+      operationId: logoutAll
+      tags:
+        - auth
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '203':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # Spaces
   /v1/spaces:
     get:
@@ -11,6 +77,8 @@ paths:
       operationId: getSpaces
       tags:
         - spaces
+      security:
+        - bearerAuth: []
       responses:
         '200':
           description: OK
@@ -29,6 +97,8 @@ paths:
       operationId: getSpace
       tags:
         - spaces
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: spaceId
@@ -56,6 +126,8 @@ paths:
       operationId: getCollections
       tags:
         - collections
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: spaceId
@@ -80,6 +152,8 @@ paths:
       operationId: createCollection
       tags:
         - collections
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: spaceId
@@ -112,6 +186,8 @@ paths:
       operationId: getCollection
       tags:
         - collections
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: collectionId
@@ -136,6 +212,8 @@ paths:
       operationId: updateCollection
       tags:
         - collections
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: collectionId
@@ -166,6 +244,8 @@ paths:
       operationId: deleteCollection
       tags:
         - collections
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: collectionId
@@ -189,6 +269,8 @@ paths:
       operationId: getBookmarks
       tags:
         - bookmarks
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: collectionId
@@ -213,6 +295,8 @@ paths:
       operationId: createBookmark
       tags:
         - bookmarks
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: collectionId
@@ -245,6 +329,8 @@ paths:
       operationId: getBookmark
       tags:
         - bookmarks
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: bookmarkId
@@ -269,6 +355,8 @@ paths:
       operationId: updateBookmark
       tags:
         - bookmarks
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: bookmarkId
@@ -299,6 +387,8 @@ paths:
       operationId: deleteBookmark
       tags:
         - bookmarks
+      security:
+        - bearerAuth: [ ]
       parameters:
         - in: path
           name: bookmarkId
@@ -314,6 +404,7 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
 components:
   schemas:
     ID:
@@ -323,11 +414,35 @@ components:
       minLength: 36
       maxLength: 36
 
+    JWT:
+      type: string
+      description: JSON Web Token
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdW..."
+
     Error:
       type: object
       properties:
         message:
           type: string
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          $ref: '#/components/schemas/JWT'
+      required:
+        - access_token
 
     SpaceDto:
       properties:
