@@ -9,6 +9,7 @@ import de.serbroda.ragbag.repository.SpaceMemberRepository;
 import de.serbroda.ragbag.repository.SpaceRepository;
 import jakarta.transaction.Transactional;
 import java.util.HashSet;
+import java.util.Optional;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -20,6 +21,10 @@ public class SpaceService {
 
     private final SpaceRepository spaceRepository;
     private final SpaceMemberRepository spaceMemberRepository;
+
+    public Optional<Space> findById(String spaceId) {
+        return spaceRepository.findById(spaceId);
+    }
 
     public Space createSpace(User user, String name) {
         Space space = new Space();

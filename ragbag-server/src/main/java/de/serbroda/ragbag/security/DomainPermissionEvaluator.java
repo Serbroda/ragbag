@@ -14,6 +14,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DomainPermissionEvaluator implements PermissionEvaluator {
 
+    public static final String DOMAIN_PREFIX_COLELCTION = "COLLECTION";
+    public static final String DOMAIN_PREFIX_SPACE = "SPACE";
+
     private final PermissionService permissionService;
 
     @Override
@@ -27,7 +30,7 @@ public class DomainPermissionEvaluator implements PermissionEvaluator {
         }
 
         Jwt jwt = jwtAuth.getToken();
-        String userId = jwt.getClaimAsString("user_id");
+        String userId = jwt.getSubject();
 
         if (targetDomainObject instanceof Collection collection) {
             return permissionService.hasPermission(
@@ -49,10 +52,15 @@ public class DomainPermissionEvaluator implements PermissionEvaluator {
         }
 
         Jwt jwt = jwtAuth.getToken();
-        String userId = jwt.getClaimAsString("user_id");
+        String userId = jwt.getSubject();
 
-        if ("COLLECTION".equalsIgnoreCase(targetType)) {
+        if (DOMAIN_PREFIX_COLELCTION.equalsIgnoreCase(targetType)) {
             return permissionService.hasPermission(
+                    userId, targetId.toString(), Permission.valueOf(permission.toString()));
+        }
+
+        if (DOMAIN_PREFIX_SPACE.equalsIgnoreCase(targetType)) {
+            return permissionService.hasPermissionForSpace(
                     userId, targetId.toString(), Permission.valueOf(permission.toString()));
         }
 

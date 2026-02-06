@@ -1,6 +1,7 @@
 package de.serbroda.ragbag.controller;
 
 import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
+import static de.serbroda.ragbag.security.DomainPermissionEvaluator.DOMAIN_PREFIX_COLELCTION;
 
 import de.serbroda.ragbag.generated.api.CollectionsApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
@@ -33,7 +34,7 @@ public class CollectionController implements CollectionsApi {
         return CollectionsApi.super.deleteCollection(collectionId);
     }
 
-    @PreAuthorize("hasPermission(#collectionId, 'COLLECTION', 'READ')")
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'READ')")
     @Override
     public ResponseEntity<CollectionDto> getCollection(String collectionId) {
         Collection collection = collectionService.getCollection(collectionId);

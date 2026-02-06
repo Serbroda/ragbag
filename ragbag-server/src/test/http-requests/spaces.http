@@ -7,3 +7,9 @@ Content-Type: application/json
 > {%
     client.global.set("SPACE_ID", response.body[0].id);
 %}
+
+### GET request to example server
+
+GET {{host}}/api/v1/spaces/{{SPACE_ID}}
+Authorization: {{SESSION_AUTH_HEADER}}
+Content-Type: application/json
