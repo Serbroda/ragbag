@@ -8,7 +8,6 @@ import de.serbroda.ragbag.generated.model.SpaceDto;
 import de.serbroda.ragbag.model.Space;
 import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.service.SpaceService;
-import de.serbroda.ragbag.service.UserService;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;

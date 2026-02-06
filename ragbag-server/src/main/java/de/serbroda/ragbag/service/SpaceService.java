@@ -1,6 +1,5 @@
 package de.serbroda.ragbag.service;
 
-import de.serbroda.ragbag.exception.ConflictException;
 import de.serbroda.ragbag.exception.ForbiddenException;
 import de.serbroda.ragbag.exception.SpaceNotFoundException;
 import de.serbroda.ragbag.model.Space;
@@ -52,8 +51,7 @@ public class SpaceService {
                 .findUserById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Space space = spaceRepository.findById(spaceId)
-                        .orElseThrow(() -> new SpaceNotFoundException(spaceId));
+        Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new SpaceNotFoundException(spaceId));
 
         if (role == null) {
             role = SpaceMemberRole.VIEWER;
