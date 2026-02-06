@@ -1,15 +1,12 @@
 ### GET request to example server
 
-< _js/auth.js
-
-GET {{host}}/api/v1/collections/6da0f6ed-6143-44d7-826c-6b62868ebce6
-Authorization: {{AUTH_HEADER}}
-Accept: application/json
+GET {{host}}/api/v1/spaces/e7608415-348c-4e69-a43e-ed1c3bea2971/collections
+Authorization: {{SESSION_AUTH_HEADER}}
+Content-Type: application/json
 
 ### GET request to example server
 
-< _js/auth.js
+GET {{host}}/api/v1/collections/c040793c-1224-49bc-b75b-74767d2eb351
+Authorization: {{SESSION_AUTH_HEADER}}
+Content-Type: application/json
 
-GET {{host}}/api/v1/spaces/{{SPACE_ID}}/collections
-Authorization: {{AUTH_HEADER}}
-Accept: application/json

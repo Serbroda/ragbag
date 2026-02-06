@@ -15,7 +15,13 @@ spring:
     change-log: classpath:/db/changelog/db.changelog-master.xml
 
 springdoc:
+  #packages-to-scan: de.serbroda.ragbag.generated
   api-docs:
     path: /api/docs
   swagger-ui:
     path: /api/docs/swagger-ui
+
+security:
+  jwt:
+    secret: "CHANGE_ME_TO_A_VERY_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS"
+    expiration: 3600 # Sekunden (1h)

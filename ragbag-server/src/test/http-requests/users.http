@@ -1,7 +1,6 @@
+
 ### GET request to example server
 
-< _js/auth.js
-
 GET {{host}}/api/v1/users/me
-Authorization: {{AUTH_HEADER}}
-Accept: application/json
+Authorization: {{SESSION_AUTH_HEADER}}
+Content-Type: application/json

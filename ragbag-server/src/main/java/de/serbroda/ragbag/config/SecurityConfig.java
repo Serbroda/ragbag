@@ -1,7 +1,9 @@
 package de.serbroda.ragbag.config;
 
+import de.serbroda.ragbag.repository.UserRepository;
 import de.serbroda.ragbag.security.DomainUserDetailsService;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
 import org.springframework.security.access.PermissionEvaluator;
@@ -14,29 +16,63 @@ import org.springframework.security.config.Customizer;
 import org.springframework.security.config.annotation.authentication.builders.AuthenticationManagerBuilder;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
+import org.springframework.security.config.http.SessionCreationPolicy;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.web.cors.CorsConfiguration;
 import org.springframework.web.cors.CorsConfigurationSource;
 import org.springframework.web.cors.UrlBasedCorsConfigurationSource;
 
 @EnableMethodSecurity
+@RequiredArgsConstructor
 @Configuration
 public class SecurityConfig {
 
+    private final UserRepository userRepository;
+
     @Bean
     public SecurityFilterChain securityFilterChain(HttpSecurity http) throws Exception {
+
         http.cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
+                .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(auth -> auth.requestMatchers("/h2-console/**", "/api/auth/**", "/api/docs/**")
                         .permitAll()
                         .anyRequest()
                         .authenticated())
                 .headers(headers -> headers.frameOptions(frame -> frame.sameOrigin()))
-                .httpBasic(Customizer.withDefaults());
+                //                .oauth2ResourceServer(oauth -> oauth
+                //                        .jwt(Customizer.withDefaults())
+                //                )
+                .oauth2ResourceServer(oauth ->
+                        oauth.jwt(jwt -> jwt.jwtAuthenticationConverter(jwtAuthenticationConverter(userRepository))));
 
         return http.build();
+    }
+
+    @Bean
+    JwtAuthenticationConverter jwtAuthenticationConverter(UserRepository userService) {
+
+        return new JwtAuthenticationConverter() {
+            {
+                setJwtGrantedAuthoritiesConverter(jwt -> {
+                    String userId = jwt.getClaimAsString("user_id");
+
+                    if (userService.findById(userId).isEmpty()) {
+                        throw new JwtException("User is blocked");
+                    }
+
+                    return jwt.getClaimAsStringList("roles").stream()
+                            .map(role -> (GrantedAuthority) new SimpleGrantedAuthority(role))
+                            .toList();
+                });
+            }
+        };
     }
 
     @Bean
@@ -59,15 +95,9 @@ public class SecurityConfig {
     }
 
     @Bean
-    public MethodSecurityExpressionHandler methodSecurityExpressionHandler(PermissionEvaluator permissionEvaluator) {
-        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
-        handler.setPermissionEvaluator(permissionEvaluator);
-        return handler;
-    }
-
-    @Bean
     public AuthenticationProvider authenticationProvider(
             DomainUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
+
         DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
         provider.setUserDetailsService(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
@@ -81,5 +111,13 @@ public class SecurityConfig {
         return http.getSharedObject(AuthenticationManagerBuilder.class)
                 .authenticationProvider(authenticationProvider)
                 .build();
+    }
+
+    @Bean
+    public MethodSecurityExpressionHandler methodSecurityExpressionHandler(PermissionEvaluator permissionEvaluator) {
+
+        DefaultMethodSecurityExpressionHandler handler = new DefaultMethodSecurityExpressionHandler();
+        handler.setPermissionEvaluator(permissionEvaluator);
+        return handler;
     }
 }

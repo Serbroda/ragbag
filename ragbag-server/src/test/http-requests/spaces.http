@@ -1,10 +1,8 @@
 ### GET request to example server
 
-< _js/auth.js
-
 GET {{host}}/api/v1/spaces
-Authorization: {{AUTH_HEADER}}
-Accept: application/json
+Authorization: {{SESSION_AUTH_HEADER}}
+Content-Type: application/json
 
 > {%
     client.global.set("SPACE_ID", response.body[0].id);

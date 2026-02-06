@@ -7,13 +7,12 @@ import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
 import de.serbroda.ragbag.model.Collection;
-import de.serbroda.ragbag.security.UserPrincipal;
+import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.service.CollectionService;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -47,9 +46,8 @@ public class CollectionController implements CollectionsApi {
 
     @Override
     public ResponseEntity<List<CollectionDto>> getCollections(String spaceId) {
-        UserPrincipal principal = (UserPrincipal)
-                SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-        List<CollectionDto> collections = collectionService.getAllowedCollectionTree(spaceId, principal.getUserId());
+        List<CollectionDto> collections =
+                collectionService.getAllowedCollectionTree(spaceId, SecurityUtils.currentUserId());
         return ResponseEntity.ok(collections);
     }
 

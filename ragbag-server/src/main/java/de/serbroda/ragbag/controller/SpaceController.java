@@ -5,14 +5,13 @@ import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 import de.serbroda.ragbag.generated.api.SpacesApi;
 import de.serbroda.ragbag.generated.model.SpaceDto;
 import de.serbroda.ragbag.model.Space;
-import de.serbroda.ragbag.security.UserPrincipal;
+import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.service.SpaceService;
 import de.serbroda.ragbag.service.UserService;
 import java.util.List;
 import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
-import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
@@ -31,10 +30,7 @@ public class SpaceController implements SpacesApi {
 
     @Override
     public ResponseEntity<List<SpaceDto>> getSpaces() {
-        UserPrincipal principal = (UserPrincipal)
-                SecurityContextHolder.getContext().getAuthentication().getPrincipal();
-
-        Set<Space> spaces = spaceService.getSpacesForUser(principal.getUserId());
+        Set<Space> spaces = spaceService.getSpacesForUser(SecurityUtils.currentUserId());
         return ResponseEntity.ok(spaces.stream()
                 .map(s -> new SpaceDto(s.getId(), s.getName(), s.getDescription()))
                 .toList());

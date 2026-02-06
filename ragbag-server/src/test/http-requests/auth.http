@@ -1,0 +1,14 @@
+### GET request to example server
+
+POST {{host}}/api/auth/login
+Content-Type: application/json
+
+{
+    "username": "admin",
+    "password": "test123"
+}
+
+> {%
+    const authHeader = `Bearer ${response.body.access_token}`;
+    client.global.set("SESSION_AUTH_HEADER", authHeader);
+%}

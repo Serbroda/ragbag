@@ -6,6 +6,8 @@ import java.io.Serializable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.PermissionEvaluator;
 import org.springframework.security.core.Authentication;
+import org.springframework.security.oauth2.jwt.Jwt;
+import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationToken;
 import org.springframework.stereotype.Component;
 
 @Component
@@ -20,11 +22,16 @@ public class DomainPermissionEvaluator implements PermissionEvaluator {
             return false;
         }
 
-        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            return false;
+        }
+
+        Jwt jwt = jwtAuth.getToken();
+        String userId = jwt.getClaimAsString("user_id");
 
         if (targetDomainObject instanceof Collection collection) {
             return permissionService.hasPermission(
-                    principal.getUserId(), collection.getId(), Permission.valueOf(permission.toString()));
+                    userId, collection.getId(), Permission.valueOf(permission.toString()));
         }
 
         return false;
@@ -37,11 +44,16 @@ public class DomainPermissionEvaluator implements PermissionEvaluator {
             return false;
         }
 
-        UserPrincipal principal = (UserPrincipal) authentication.getPrincipal();
+        if (!(authentication instanceof JwtAuthenticationToken jwtAuth)) {
+            return false;
+        }
+
+        Jwt jwt = jwtAuth.getToken();
+        String userId = jwt.getClaimAsString("user_id");
 
         if ("COLLECTION".equalsIgnoreCase(targetType)) {
             return permissionService.hasPermission(
-                    principal.getUserId(), targetId.toString(), Permission.valueOf(permission.toString()));
+                    userId, targetId.toString(), Permission.valueOf(permission.toString()));
         }
 
         return false;

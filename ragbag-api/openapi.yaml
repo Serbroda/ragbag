@@ -4,6 +4,7 @@ info:
   version: 1.0.0
 
 paths:
+  # Spaces
   /v1/spaces:
     get:
       summary: Get all spaces
@@ -459,4 +460,4 @@ components:
       bearerFormat: JWT
 
 security:
-  - bearerAuth: [ ]
+  - bearerAuth: []

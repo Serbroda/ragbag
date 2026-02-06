@@ -59,7 +59,7 @@ public class SpaceService {
     }
 
     public Set<Space> getSpacesForUser(String userId) {
-        Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy_id(userId));
+        Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy_Id(userId));
         spaceMemberRepository.findByUser_Id(userId).forEach(sm -> spaces.add(sm.getSpace()));
         return spaces;
     }

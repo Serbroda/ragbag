@@ -21,6 +21,10 @@ public class UserService {
     private final SpaceService spaceService;
     private final CollectionService collectionService;
 
+    public Optional<User> findUserById(String id) {
+        return userRepository.findById(id);
+    }
+
     public Optional<User> findUserByUsernameOrEmail(String usernameOrEmail) {
         return userRepository.findUserByUsernameOrEmail(usernameOrEmail);
     }
