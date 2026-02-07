@@ -1,4 +1,4 @@
-package de.serbroda.ragbag.controller;
+package de.serbroda.ragbag.config;
 
 import java.sql.SQLException;
 import javax.sql.DataSource;

@@ -8,6 +8,7 @@ import de.serbroda.ragbag.generated.api.CollectionsApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
+import de.serbroda.ragbag.mapper.CollectionDtoMapper;
 import de.serbroda.ragbag.model.Collection;
 import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.service.CollectionService;
@@ -24,12 +25,15 @@ import org.springframework.web.bind.annotation.RestController;
 public class CollectionController implements CollectionsApi {
 
     private final CollectionService collectionService;
+    private final CollectionDtoMapper mapper;
 
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
     @Override
     public ResponseEntity<CollectionDto> createCollection(String spaceId, CreateCollectionDto createCollectionDto) {
         return CollectionsApi.super.createCollection(spaceId, createCollectionDto);
     }
 
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'DELETE')")
     @Override
     public ResponseEntity<Void> deleteCollection(String collectionId) {
         return CollectionsApi.super.deleteCollection(collectionId);
@@ -52,18 +56,9 @@ public class CollectionController implements CollectionsApi {
     public ResponseEntity<List<CollectionDto>> getCollections(String spaceId) {
         List<CollectionDto> collections =
                 collectionService.getAllowedCollectionTree(spaceId, SecurityUtils.currentUserId()).stream()
-                        .map(this::toDto)
+                        .map(mapper::toDto)
                         .toList();
         return ResponseEntity.ok(collections);
-    }
-
-    public CollectionDto toDto(CollectionService.CollectionNode node) {
-        return new CollectionDto.Builder()
-                .id(node.id())
-                .name(node.name())
-                .parentId(node.parentId())
-                .children(node.children().stream().map(this::toDto).toList())
-                .build();
     }
 
     @Override
