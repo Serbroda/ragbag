@@ -1,8 +1,8 @@
 package de.serbroda.ragbag.config;
 
-import de.serbroda.ragbag.model.User;
-import de.serbroda.ragbag.repository.UserRepository;
 import de.serbroda.ragbag.security.DomainUserDetailsService;
+import de.serbroda.ragbag.user.User;
+import de.serbroda.ragbag.user.UserRepository;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.context.annotation.Bean;

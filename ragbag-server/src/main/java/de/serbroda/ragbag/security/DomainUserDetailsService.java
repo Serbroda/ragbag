@@ -1,7 +1,8 @@
 package de.serbroda.ragbag.security;
 
-import de.serbroda.ragbag.model.User;
-import de.serbroda.ragbag.repository.UserRepository;
+import de.serbroda.ragbag.auth.UserPrincipal;
+import de.serbroda.ragbag.user.User;
+import de.serbroda.ragbag.user.UserRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.security.core.userdetails.UserDetailsService;
