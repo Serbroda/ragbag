@@ -1,13 +1,14 @@
 package de.serbroda.ragbag.collection;
 
-import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_COLELCTION;
+import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.CollectionsApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
 import de.serbroda.ragbag.security.SecurityUtils;
+import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -21,7 +22,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class CollectionController implements CollectionsApi {
 
     private final CollectionService collectionService;
-    private final CollectionDtoMapper mapper;
+    private final CollectionMapper mapper;
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
     @Override
@@ -40,7 +41,7 @@ public class CollectionController implements CollectionsApi {
     public ResponseEntity<CollectionDto> getCollection(String collectionId) {
         Collection collection = collectionService
                 .getCollection(collectionId)
-                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found: " + collectionId));
         return ResponseEntity.ok(new CollectionDto.Builder()
                 .id(collection.getId())
                 .name(collection.getName())

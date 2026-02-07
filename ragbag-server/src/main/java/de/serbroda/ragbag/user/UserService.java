@@ -1,6 +1,6 @@
 package de.serbroda.ragbag.user;
 
-import de.serbroda.ragbag.shared.exception.EntityAlreadyExistsException;
+import de.serbroda.ragbag.shared.exception.ResourceAlreadyExistsException;
 import jakarta.transaction.Transactional;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
@@ -21,7 +21,7 @@ public class UserService {
 
     public User createUser(String username, String email, final String passwordPlain) {
         if (anyExists(username.toLowerCase(), email.toLowerCase())) {
-            throw new EntityAlreadyExistsException("User with same username or email already exists");
+            throw new ResourceAlreadyExistsException("User with same username or email already exists");
         }
 
         User user = new User();

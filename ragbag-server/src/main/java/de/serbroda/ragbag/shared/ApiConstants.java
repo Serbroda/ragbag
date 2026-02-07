@@ -1,6 +1,6 @@
-package de.serbroda.ragbag.config;
+package de.serbroda.ragbag.shared;
 
-public class AppConstants {
+public class ApiConstants {
 
     public static final String PUBLIC_API_PREFIX = "/api";
 }

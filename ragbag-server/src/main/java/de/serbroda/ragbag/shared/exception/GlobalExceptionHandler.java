@@ -34,9 +34,9 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler(EntityAlreadyExistsException.class)
+    @ExceptionHandler(ResourceAlreadyExistsException.class)
     public ProblemDetail handleEntityAlreadyExistsException(
-            EntityAlreadyExistsException ex, HttpServletRequest request) {
+            ResourceAlreadyExistsException ex, HttpServletRequest request) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.CONFLICT);
         problem.setTitle("Conflict");
         problem.setDetail("There is a conflict with the current state of the resource");
@@ -44,7 +44,7 @@ public class GlobalExceptionHandler {
         return problem;
     }
 
-    @ExceptionHandler({AuthorizationDeniedException.class, ForbiddenException.class})
+    @ExceptionHandler({AuthorizationDeniedException.class, AccessDeniedException.class})
     public ProblemDetail handleAuthorizationDeniedException(Exception ex, HttpServletRequest request) {
         ProblemDetail problem = ProblemDetail.forStatus(HttpStatus.FORBIDDEN);
         problem.setTitle("Access denied");

@@ -1,6 +1,6 @@
 package de.serbroda.ragbag.user;
 
-import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
+import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.UsersApi;
 import de.serbroda.ragbag.generated.model.UserDto;

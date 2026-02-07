@@ -1,6 +1,7 @@
 package de.serbroda.ragbag.space;
 
-import de.serbroda.ragbag.shared.exception.ForbiddenException;
+import de.serbroda.ragbag.shared.exception.AccessDeniedException;
+import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
 import jakarta.transaction.Transactional;
@@ -44,14 +45,16 @@ public class SpaceService {
                 .findUserById(userId)
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
-        Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new SpaceNotFoundException(spaceId));
+        Space space = spaceRepository
+                .findById(spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
 
         if (role == null) {
             role = SpaceMemberRole.VIEWER;
         }
 
         if (role == SpaceMemberRole.VIEWER && !SpaceVisibility.PUBLIC.equals(space.getVisibility())) {
-            throw new ForbiddenException("Cannot join space as viewer because it is not public");
+            throw new AccessDeniedException("Cannot join space as viewer because it is not public");
         }
 
         joinSpaceInternal(user, space, role);

@@ -1,7 +1,7 @@
 package de.serbroda.ragbag.space;
 
-import static de.serbroda.ragbag.config.AppConstants.PUBLIC_API_PREFIX;
 import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_SPACE;
+import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.SpacesApi;
 import de.serbroda.ragbag.generated.model.SpaceDto;

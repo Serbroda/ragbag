@@ -1,14 +1,13 @@
 package de.serbroda.ragbag.security.permission;
 
 import de.serbroda.ragbag.collection.Collection;
-import de.serbroda.ragbag.collection.CollectionNotFoundException;
 import de.serbroda.ragbag.collection.CollectionRepository;
 import de.serbroda.ragbag.collection.CollectionVisibility;
+import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.space.Space;
 import de.serbroda.ragbag.space.SpaceMember;
 import de.serbroda.ragbag.space.SpaceMemberRepository;
 import de.serbroda.ragbag.space.SpaceMemberRole;
-import de.serbroda.ragbag.space.SpaceNotFoundException;
 import de.serbroda.ragbag.space.SpaceRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -24,7 +23,7 @@ public class PermissionService {
     public boolean hasPermission(String userId, String collectionId, Permission permission) {
         Collection collection = collectionRepository
                 .findById(collectionId)
-                .orElseThrow(() -> new CollectionNotFoundException(collectionId));
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found: " + collectionId));
 
         Space space = collection.getSpace();
 
@@ -45,7 +44,9 @@ public class PermissionService {
     }
 
     public boolean hasPermissionForSpace(String userId, String spaceId, Permission permission) {
-        Space space = spaceRepository.findById(spaceId).orElseThrow(() -> new SpaceNotFoundException(spaceId));
+        Space space = spaceRepository
+                .findById(spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
 
         SpaceMemberRole role = spaceMemberRepository
                 .findBySpaceAndUser_Id(space, userId)

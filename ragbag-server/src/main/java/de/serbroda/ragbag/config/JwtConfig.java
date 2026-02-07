@@ -29,9 +29,9 @@ public class JwtConfig {
         SecretKey secretKey = new SecretKeySpec(secret.getBytes(StandardCharsets.UTF_8), "HmacSHA256");
 
         OctetSequenceKey jwk = new OctetSequenceKey.Builder(secretKey)
-                .algorithm(JWSAlgorithm.HS256) // 🔴 WICHTIG
-                .keyUse(KeyUse.SIGNATURE) // 🔴 WICHTIG
-                .keyID("ragbag-hs256") // 🔴 WICHTIG
+                .algorithm(JWSAlgorithm.HS256)
+                .keyUse(KeyUse.SIGNATURE)
+                .keyID("ragbag-hs256")
                 .build();
 
         JWKSet jwkSet = new JWKSet(jwk);

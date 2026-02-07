@@ -4,7 +4,7 @@ import de.serbroda.ragbag.generated.model.CollectionDto;
 import org.springframework.stereotype.Component;
 
 @Component
-public class CollectionDtoMapper {
+public class CollectionMapper {
 
     public CollectionDto toDto(CollectionService.CollectionNode node) {
         return new CollectionDto.Builder()
