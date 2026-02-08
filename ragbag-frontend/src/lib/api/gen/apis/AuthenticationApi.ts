@@ -46,7 +46,7 @@ export interface RegisterOperationRequest {
 /**
  * 
  */
-export class AuthApi extends runtime.BaseAPI {
+export class AuthenticationApi extends runtime.BaseAPI {
 
     /**
      * Login

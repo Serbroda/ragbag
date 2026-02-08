@@ -1,8 +1,9 @@
-apis/AuthApi.ts
-apis/BookmarksApi.ts
-apis/CollectionsApi.ts
-apis/SpacesApi.ts
-apis/UsersApi.ts
+apis/AuthenticationApi.ts
+apis/BookmarkApi.ts
+apis/CollectionApi.ts
+apis/InviteApi.ts
+apis/SpaceApi.ts
+apis/UserApi.ts
 apis/index.ts
 index.ts
 models/BookmarkDto.ts
@@ -10,6 +11,8 @@ models/CollectionDto.ts
 models/CollectionVisibilityDto.ts
 models/CreateBookmarkDto.ts
 models/CreateCollectionDto.ts
+models/CreateInviteRequest.ts
+models/InviteDto.ts
 models/LoginRequest.ts
 models/LoginResponse.ts
 models/ModelError.ts

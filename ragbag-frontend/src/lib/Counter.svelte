@@ -3,7 +3,7 @@
     // import {Configuration, SpaceControllerApi} from "./api/gen";
 
     import {apiConfig, setBasicAuth} from "./api/client";
-    import {SpacesApi} from "./api/gen";
+    import {SpaceApi} from "./api/gen";
 
     let count: number = $state(0)
     const increment = () => {
@@ -13,7 +13,7 @@
     async function way3() {
         setBasicAuth("admin", "test123");
 
-        const api = new SpacesApi(apiConfig());
+        const api = new SpaceApi(apiConfig());
         const response = await api.getSpaces();
         console.log(response);
     }

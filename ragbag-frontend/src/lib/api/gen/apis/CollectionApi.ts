@@ -53,7 +53,7 @@ export interface UpdateCollectionRequest {
 /**
  * 
  */
-export class CollectionsApi extends runtime.BaseAPI {
+export class CollectionApi extends runtime.BaseAPI {
 
     /**
      * Create a collection

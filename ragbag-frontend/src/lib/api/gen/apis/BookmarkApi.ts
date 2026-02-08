@@ -53,7 +53,7 @@ export interface UpdateBookmarkRequest {
 /**
  * 
  */
-export class BookmarksApi extends runtime.BaseAPI {
+export class BookmarkApi extends runtime.BaseAPI {
 
     /**
      * Create a bookmark

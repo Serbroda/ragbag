@@ -25,7 +25,7 @@ import {
 /**
  * 
  */
-export class UsersApi extends runtime.BaseAPI {
+export class UserApi extends runtime.BaseAPI {
 
     /**
      * Get current user

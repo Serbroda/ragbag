@@ -1,7 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
-export * from './AuthApi';
-export * from './BookmarksApi';
-export * from './CollectionsApi';
-export * from './SpacesApi';
-export * from './UsersApi';
+export * from './AuthenticationApi';
+export * from './BookmarkApi';
+export * from './CollectionApi';
+export * from './InviteApi';
+export * from './SpaceApi';
+export * from './UserApi';

@@ -21,6 +21,10 @@
             </column>
             <column name="created_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
             <column name="updated_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+            <column name="created_by" type="varchar(36)">
+                <constraints nullable="false" referencedTableName="users" referencedColumnNames="id"
+                             foreignKeyName="fk_collections_created_by_users_id"/>
+            </column>
 
             <column name="space_id" type="varchar(36)">
                 <constraints nullable="false" referencedTableName="spaces" referencedColumnNames="id"
@@ -34,14 +38,7 @@
             <column name="name" type="varchar(80)">
                 <constraints nullable="false"/>
             </column>
-            <column name="visibility" type="varchar(80)">
-                <constraints nullable="false"/>
-            </column>
             <column name="description" type="varchar(max)"/>
-            <column name="created_by" type="varchar(36)">
-                <constraints nullable="false" referencedTableName="users" referencedColumnNames="id"
-                             foreignKeyName="fk_collections_created_by_users_id"/>
-            </column>
         </createTable>
     </changeSet>
 

@@ -2,7 +2,7 @@ package de.serbroda.ragbag.user;
 
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
-import de.serbroda.ragbag.generated.api.UsersApi;
+import de.serbroda.ragbag.generated.api.UserApi;
 import de.serbroda.ragbag.generated.model.UserDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +13,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX)
-public class UserController implements UsersApi {
+public class UserController implements UserApi {
 
     private final UserService userService;
 

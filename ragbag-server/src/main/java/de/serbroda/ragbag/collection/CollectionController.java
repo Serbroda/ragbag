@@ -3,7 +3,7 @@ package de.serbroda.ragbag.collection;
 import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_COLELCTION;
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
-import de.serbroda.ragbag.generated.api.CollectionsApi;
+import de.serbroda.ragbag.generated.api.CollectionApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
@@ -19,7 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX)
-public class CollectionController implements CollectionsApi {
+public class CollectionController implements CollectionApi {
 
     private final CollectionService collectionService;
     private final CollectionMapper mapper;
@@ -27,13 +27,13 @@ public class CollectionController implements CollectionsApi {
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
     @Override
     public ResponseEntity<CollectionDto> createCollection(String spaceId, CreateCollectionDto createCollectionDto) {
-        return CollectionsApi.super.createCollection(spaceId, createCollectionDto);
+        return CollectionApi.super.createCollection(spaceId, createCollectionDto);
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'DELETE')")
     @Override
     public ResponseEntity<Void> deleteCollection(String collectionId) {
-        return CollectionsApi.super.deleteCollection(collectionId);
+        return CollectionApi.super.deleteCollection(collectionId);
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'READ')")
@@ -61,6 +61,6 @@ public class CollectionController implements CollectionsApi {
     @Override
     public ResponseEntity<CollectionDto> updateCollection(
             String collectionId, UpdateCollectionDto updateCollectionDto) {
-        return CollectionsApi.super.updateCollection(collectionId, updateCollectionDto);
+        return CollectionApi.super.updateCollection(collectionId, updateCollectionDto);
     }
 }

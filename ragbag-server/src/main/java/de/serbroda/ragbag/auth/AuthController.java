@@ -2,7 +2,7 @@ package de.serbroda.ragbag.auth;
 
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
-import de.serbroda.ragbag.generated.api.AuthApi;
+import de.serbroda.ragbag.generated.api.AuthenticationApi;
 import de.serbroda.ragbag.generated.model.LoginRequest;
 import de.serbroda.ragbag.generated.model.LoginResponse;
 import de.serbroda.ragbag.generated.model.RegisterRequest;
@@ -28,7 +28,7 @@ import org.springframework.web.bind.annotation.*;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX)
-public class AuthController implements AuthApi {
+public class AuthController implements AuthenticationApi {
 
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;

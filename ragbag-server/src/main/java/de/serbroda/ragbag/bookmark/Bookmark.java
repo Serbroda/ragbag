@@ -2,9 +2,8 @@ package de.serbroda.ragbag.bookmark;
 
 import de.serbroda.ragbag.collection.Collection;
 import de.serbroda.ragbag.shared.base.AbstractBaseEntity;
-import jakarta.persistence.Entity;
-import jakarta.persistence.ManyToOne;
-import jakarta.persistence.Table;
+import de.serbroda.ragbag.user.User;
+import jakarta.persistence.*;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -20,4 +19,8 @@ public class Bookmark extends AbstractBaseEntity {
 
     @ManyToOne
     private Collection collection;
+
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = "created_by", nullable = false)
+    private User createdBy;
 }

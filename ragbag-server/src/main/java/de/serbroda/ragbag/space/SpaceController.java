@@ -3,7 +3,7 @@ package de.serbroda.ragbag.space;
 import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_SPACE;
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
-import de.serbroda.ragbag.generated.api.SpacesApi;
+import de.serbroda.ragbag.generated.api.SpaceApi;
 import de.serbroda.ragbag.generated.model.SpaceDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import java.util.List;
@@ -17,7 +17,7 @@ import org.springframework.web.bind.annotation.RestController;
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX)
-public class SpaceController implements SpacesApi {
+public class SpaceController implements SpaceApi {
 
     private final SpaceService spaceService;
 
@@ -36,11 +36,5 @@ public class SpaceController implements SpacesApi {
         return ResponseEntity.ok(spaces.stream()
                 .map(s -> new SpaceDto(s.getId(), s.getName(), s.getDescription()))
                 .toList());
-    }
-
-    @Override
-    public ResponseEntity<Void> joinSpace(String spaceId) {
-        spaceService.joinSpace(SecurityUtils.currentUserId(), spaceId, null);
-        return ResponseEntity.noContent().build();
     }
 }

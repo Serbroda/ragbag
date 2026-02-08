@@ -10,7 +10,7 @@ paths:
       summary: Register a new user
       operationId: register
       tags:
-        - auth
+        - Authentication
       requestBody:
         required: true
         content:
@@ -32,7 +32,7 @@ paths:
       summary: Login
       operationId: login
       tags:
-        - auth
+        - Authentication
       requestBody:
         required: true
         content:
@@ -61,7 +61,7 @@ paths:
       description: >
         Uses the HttpOnly refresh_token cookie to issue a new access token.
       tags:
-        - auth
+        - Authentication
       parameters:
         - in: cookie
           name: refresh_token
@@ -83,7 +83,7 @@ paths:
       summary: Logout from all devices
       operationId: logoutAll
       tags:
-        - auth
+        - Authentication
       security:
         - bearerAuth: [ ]
       responses:
@@ -98,7 +98,7 @@ paths:
       summary: Get current user
       operationId: me
       tags:
-        - users
+        - User
       security:
         - bearerAuth: [ ]
       responses:
@@ -117,7 +117,7 @@ paths:
       summary: Get all spaces
       operationId: getSpaces
       tags:
-        - spaces
+        - Space
       security:
         - bearerAuth: []
       responses:
@@ -137,7 +137,7 @@ paths:
       summary: Get a space
       operationId: getSpace
       tags:
-        - spaces
+        - Space
       security:
         - bearerAuth: [ ]
       parameters:
@@ -160,39 +160,13 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
-  /v1/spaces/{spaceId}/join:
-    post:
-      summary: Join a space
-      operationId: joinSpace
-      tags:
-        - spaces
-      security:
-        - bearerAuth: [ ]
-      parameters:
-        - in: path
-          name: spaceId
-          required: true
-          schema:
-            $ref: '#/components/schemas/ID'
-      responses:
-        '203':
-          $ref: '#/components/responses/NoContent'
-        '401':
-          $ref: '#/components/responses/Unauthorized'
-        '403':
-          $ref: '#/components/responses/Forbidden'
-        '404':
-          $ref: '#/components/responses/NotFound'
-        '409':
-          $ref: '#/components/responses/Conflict'
-
   # Collections
   /v1/spaces/{spaceId}/collections:
     get:
       summary: Get all collections of a space
       operationId: getCollections
       tags:
-        - collections
+        - Collection
       security:
         - bearerAuth: [ ]
       parameters:
@@ -218,7 +192,7 @@ paths:
       summary: Create a collection
       operationId: createCollection
       tags:
-        - collections
+        - Collection
       security:
         - bearerAuth: [ ]
       parameters:
@@ -252,7 +226,7 @@ paths:
       summary: Get a collection
       operationId: getCollection
       tags:
-        - collections
+        - Collection
       security:
         - bearerAuth: [ ]
       parameters:
@@ -278,7 +252,7 @@ paths:
       summary: Update a collection
       operationId: updateCollection
       tags:
-        - collections
+        - Collection
       security:
         - bearerAuth: [ ]
       parameters:
@@ -310,7 +284,7 @@ paths:
       summary: Delete a collection
       operationId: deleteCollection
       tags:
-        - collections
+        - Collection
       security:
         - bearerAuth: [ ]
       parameters:
@@ -335,7 +309,7 @@ paths:
       summary: Get all bookmarks of a collection
       operationId: getBookmarks
       tags:
-        - bookmarks
+        - Bookmark
       security:
         - bearerAuth: [ ]
       parameters:
@@ -361,7 +335,7 @@ paths:
       summary: Create a bookmark
       operationId: createBookmark
       tags:
-        - bookmarks
+        - Bookmark
       security:
         - bearerAuth: [ ]
       parameters:
@@ -395,7 +369,7 @@ paths:
       summary: Get a bookmark
       operationId: getBookmark
       tags:
-        - bookmarks
+        - Bookmark
       security:
         - bearerAuth: [ ]
       parameters:
@@ -421,7 +395,7 @@ paths:
       summary: Update a bookmark
       operationId: updateBookmark
       tags:
-        - bookmarks
+        - Bookmark
       security:
         - bearerAuth: [ ]
       parameters:
@@ -453,7 +427,7 @@ paths:
       summary: Delete a bookmark
       operationId: deleteBookmark
       tags:
-        - bookmarks
+        - Bookmark
       security:
         - bearerAuth: [ ]
       parameters:
@@ -471,6 +445,81 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  # Invites
+  /api/invites:
+    post:
+      summary: Create an invite link
+      tags: 
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+      responses:
+        '201':
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteDto'
+
+    get:
+      summary: List invites created by current user
+      tags: 
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: List of invites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InviteDto'
+
+  /api/invites/{token}:
+    post:
+      summary: Accept an invite
+      tags:
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invite accepted
+        '400':
+          description: Invite invalid or expired
+        '409':
+          description: Invite already used
+
+    delete:
+      summary: Revoke an invite
+      tags:
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Invite revoked
 
 components:
   schemas:
@@ -641,6 +690,57 @@ components:
           type: string
       required:
         - url
+
+    InviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+        targetType:
+          type: string
+          enum: [ SPACE, COLLECTION ]
+        targetId:
+          type: string
+        role:
+          type: string
+          enum: [ VIEWER, CONTRIBUTOR ]
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        maxUses:
+          type: integer
+          nullable: true
+        usedCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        invitedBy:
+          type: string
+
+    CreateInviteRequest:
+      type: object
+      required:
+        - targetType
+        - targetId
+      properties:
+        targetType:
+          type: string
+          enum: [ SPACE, COLLECTION ]
+        targetId:
+          type: string
+        role:
+          type: string
+          enum: [ VIEWER, CONTRIBUTOR ]
+          default: VIEWER
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        maxUses:
+          type: integer
+          nullable: true
 
   responses:
     BadRequest:

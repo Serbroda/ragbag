@@ -9,5 +9,6 @@
     <include file="/db/changelog/1.0/002_create_table_spaces.xml"/>
     <include file="/db/changelog/1.0/003_create_table_collections.xml"/>
     <include file="/db/changelog/1.0/004_create_table_bookmarks.xml"/>
+    <include file="/db/changelog/1.0/005_create_table_invites.xml"/>
 
 </databaseChangeLog>

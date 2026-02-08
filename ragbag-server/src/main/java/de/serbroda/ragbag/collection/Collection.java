@@ -20,10 +20,6 @@ public class Collection extends AbstractBaseEntity {
 
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 80)
-    private CollectionVisibility visibility = CollectionVisibility.INTERNAL;
-
     @ManyToOne
     private Space space;
 

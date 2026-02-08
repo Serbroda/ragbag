@@ -19,10 +19,6 @@ public class Space extends AbstractBaseEntity {
 
     private String description;
 
-    @Enumerated(EnumType.STRING)
-    @Column(nullable = false, length = 80)
-    private SpaceVisibility visibility = SpaceVisibility.PRIVATE;
-
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;

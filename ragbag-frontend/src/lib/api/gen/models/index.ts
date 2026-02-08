@@ -5,6 +5,8 @@ export * from './CollectionDto';
 export * from './CollectionVisibilityDto';
 export * from './CreateBookmarkDto';
 export * from './CreateCollectionDto';
+export * from './CreateInviteRequest';
+export * from './InviteDto';
 export * from './LoginRequest';
 export * from './LoginResponse';
 export * from './ModelError';

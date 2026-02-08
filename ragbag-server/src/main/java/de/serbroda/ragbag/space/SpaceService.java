@@ -1,6 +1,5 @@
 package de.serbroda.ragbag.space;
 
-import de.serbroda.ragbag.shared.exception.AccessDeniedException;
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
@@ -35,7 +34,7 @@ public class SpaceService {
 
         space = spaceRepository.save(space);
 
-        joinSpaceInternal(user, space, SpaceMemberRole.ADMIN);
+        joinSpaceInternal(user, space, SpaceMemberRole.OWNER);
 
         return space;
     }
@@ -51,10 +50,6 @@ public class SpaceService {
 
         if (role == null) {
             role = SpaceMemberRole.VIEWER;
-        }
-
-        if (role == SpaceMemberRole.VIEWER && !SpaceVisibility.PUBLIC.equals(space.getVisibility())) {
-            throw new AccessDeniedException("Cannot join space as viewer because it is not public");
         }
 
         joinSpaceInternal(user, space, role);
