@@ -72,7 +72,7 @@ export interface InviteDto {
      * @type {string}
      * @memberof InviteDto
      */
-    invitedBy?: string;
+    createdBy?: string;
 }
 
 
@@ -120,7 +120,7 @@ export function InviteDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean):
         'maxUses': json['maxUses'] == null ? undefined : json['maxUses'],
         'usedCount': json['usedCount'] == null ? undefined : json['usedCount'],
         'createdAt': json['createdAt'] == null ? undefined : (new Date(json['createdAt'])),
-        'invitedBy': json['invitedBy'] == null ? undefined : json['invitedBy'],
+        'createdBy': json['createdBy'] == null ? undefined : json['createdBy'],
     };
 }
 
@@ -143,7 +143,7 @@ export function InviteDtoToJSONTyped(value?: InviteDto | null, ignoreDiscriminat
         'maxUses': value['maxUses'],
         'usedCount': value['usedCount'],
         'createdAt': value['createdAt'] == null ? undefined : ((value['createdAt']).toISOString()),
-        'invitedBy': value['invitedBy'],
+        'createdBy': value['createdBy'],
     };
 }
 

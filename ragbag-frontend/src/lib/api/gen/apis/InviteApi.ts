@@ -25,15 +25,15 @@ import {
     InviteDtoToJSON,
 } from '../models/index';
 
-export interface ApiInvitesPostRequest {
-    createInviteRequest: CreateInviteRequest;
-}
-
-export interface ApiInvitesTokenDeleteRequest {
+export interface AcceptInviteRequest {
     token: string;
 }
 
-export interface ApiInvitesTokenPostRequest {
+export interface CreateInviteOperationRequest {
+    createInviteRequest: CreateInviteRequest;
+}
+
+export interface DeleteInviteRequest {
     token: string;
 }
 
@@ -43,9 +43,16 @@ export interface ApiInvitesTokenPostRequest {
 export class InviteApi extends runtime.BaseAPI {
 
     /**
-     * List invites created by current user
+     * Accept an invite
      */
-    async apiInvitesGetRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<InviteDto>>> {
+    async acceptInviteRaw(requestParameters: AcceptInviteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling acceptInvite().'
+            );
+        }
+
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -59,31 +66,30 @@ export class InviteApi extends runtime.BaseAPI {
             }
         }
         const response = await this.request({
-            path: `/api/invites`,
-            method: 'GET',
+            path: `/v1/invites/{token}`.replace(`{${"token"}}`, encodeURIComponent(String(requestParameters['token']))),
+            method: 'POST',
             headers: headerParameters,
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(InviteDtoFromJSON));
+        return new runtime.VoidApiResponse(response);
     }
 
     /**
-     * List invites created by current user
+     * Accept an invite
      */
-    async apiInvitesGet(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<InviteDto>> {
-        const response = await this.apiInvitesGetRaw(initOverrides);
-        return await response.value();
+    async acceptInvite(requestParameters: AcceptInviteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.acceptInviteRaw(requestParameters, initOverrides);
     }
 
     /**
      * Create an invite link
      */
-    async apiInvitesPostRaw(requestParameters: ApiInvitesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InviteDto>> {
+    async createInviteRaw(requestParameters: CreateInviteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InviteDto>> {
         if (requestParameters['createInviteRequest'] == null) {
             throw new runtime.RequiredError(
                 'createInviteRequest',
-                'Required parameter "createInviteRequest" was null or undefined when calling apiInvitesPost().'
+                'Required parameter "createInviteRequest" was null or undefined when calling createInvite().'
             );
         }
 
@@ -102,7 +108,7 @@ export class InviteApi extends runtime.BaseAPI {
             }
         }
         const response = await this.request({
-            path: `/api/invites`,
+            path: `/v1/invites`,
             method: 'POST',
             headers: headerParameters,
             query: queryParameters,
@@ -115,19 +121,19 @@ export class InviteApi extends runtime.BaseAPI {
     /**
      * Create an invite link
      */
-    async apiInvitesPost(requestParameters: ApiInvitesPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InviteDto> {
-        const response = await this.apiInvitesPostRaw(requestParameters, initOverrides);
+    async createInvite(requestParameters: CreateInviteOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InviteDto> {
+        const response = await this.createInviteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
     /**
      * Revoke an invite
      */
-    async apiInvitesTokenDeleteRaw(requestParameters: ApiInvitesTokenDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+    async deleteInviteRaw(requestParameters: DeleteInviteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
         if (requestParameters['token'] == null) {
             throw new runtime.RequiredError(
                 'token',
-                'Required parameter "token" was null or undefined when calling apiInvitesTokenDelete().'
+                'Required parameter "token" was null or undefined when calling deleteInvite().'
             );
         }
 
@@ -144,7 +150,7 @@ export class InviteApi extends runtime.BaseAPI {
             }
         }
         const response = await this.request({
-            path: `/api/invites/{token}`.replace(`{${"token"}}`, encodeURIComponent(String(requestParameters['token']))),
+            path: `/v1/invites/{token}`.replace(`{${"token"}}`, encodeURIComponent(String(requestParameters['token']))),
             method: 'DELETE',
             headers: headerParameters,
             query: queryParameters,
@@ -156,21 +162,14 @@ export class InviteApi extends runtime.BaseAPI {
     /**
      * Revoke an invite
      */
-    async apiInvitesTokenDelete(requestParameters: ApiInvitesTokenDeleteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.apiInvitesTokenDeleteRaw(requestParameters, initOverrides);
+    async deleteInvite(requestParameters: DeleteInviteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteInviteRaw(requestParameters, initOverrides);
     }
 
     /**
-     * Accept an invite
+     * List invites created by current user
      */
-    async apiInvitesTokenPostRaw(requestParameters: ApiInvitesTokenPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
-        if (requestParameters['token'] == null) {
-            throw new runtime.RequiredError(
-                'token',
-                'Required parameter "token" was null or undefined when calling apiInvitesTokenPost().'
-            );
-        }
-
+    async getInvitesRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<InviteDto>>> {
         const queryParameters: any = {};
 
         const headerParameters: runtime.HTTPHeaders = {};
@@ -184,20 +183,21 @@ export class InviteApi extends runtime.BaseAPI {
             }
         }
         const response = await this.request({
-            path: `/api/invites/{token}`.replace(`{${"token"}}`, encodeURIComponent(String(requestParameters['token']))),
-            method: 'POST',
+            path: `/v1/invites`,
+            method: 'GET',
             headers: headerParameters,
             query: queryParameters,
         }, initOverrides);
 
-        return new runtime.VoidApiResponse(response);
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(InviteDtoFromJSON));
     }
 
     /**
-     * Accept an invite
+     * List invites created by current user
      */
-    async apiInvitesTokenPost(requestParameters: ApiInvitesTokenPostRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
-        await this.apiInvitesTokenPostRaw(requestParameters, initOverrides);
+    async getInvites(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<InviteDto>> {
+        const response = await this.getInvitesRaw(initOverrides);
+        return await response.value();
     }
 
 }

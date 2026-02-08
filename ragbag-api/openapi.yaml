@@ -447,9 +447,10 @@ paths:
           $ref: '#/components/responses/NotFound'
 
   # Invites
-  /api/invites:
+  /v1/invites:
     post:
       summary: Create an invite link
+      operationId: createInvite
       tags: 
         - Invite
       security:
@@ -470,6 +471,7 @@ paths:
 
     get:
       summary: List invites created by current user
+      operationId: getInvites
       tags: 
         - Invite
       security:
@@ -484,9 +486,10 @@ paths:
                 items:
                   $ref: '#/components/schemas/InviteDto'
 
-  /api/invites/{token}:
+  /v1/invites/{token}:
     post:
       summary: Accept an invite
+      operationId: acceptInvite
       tags:
         - Invite
       security:
@@ -507,6 +510,7 @@ paths:
 
     delete:
       summary: Revoke an invite
+      operationId: deleteInvite
       tags:
         - Invite
       security:
@@ -716,7 +720,7 @@ components:
         createdAt:
           type: string
           format: date-time
-        invitedBy:
+        createdBy:
           type: string
 
     CreateInviteRequest:

@@ -49,6 +49,8 @@
             <column name="used_count" type="int" defaultValueNumeric="0">
                 <constraints nullable="false"/>
             </column>
+
+            <column name="role" type="varchar(80)"/>
         </createTable>
     </changeSet>
 

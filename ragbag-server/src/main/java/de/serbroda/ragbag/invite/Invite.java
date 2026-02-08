@@ -37,6 +37,9 @@ public class Invite extends AbstractBaseEntity {
     @Column(nullable = false)
     private int usedCount = 0;
 
+    @Column(nullable = false, length = 80)
+    private String role;
+
     @Transient
     public boolean isExpired() {
         if (expiresAt != null && expiresAt.before(new Date())) {

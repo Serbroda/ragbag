@@ -44,7 +44,8 @@ public class PermissionService {
 
         return switch (permission) {
             case READ -> true; // Mitglied = lesen erlaubt
-            case WRITE -> role == SpaceMemberRole.ADMIN || role == SpaceMemberRole.CONTRIBUTOR || role == SpaceMemberRole.OWNER;
+            case WRITE ->
+                role == SpaceMemberRole.ADMIN || role == SpaceMemberRole.CONTRIBUTOR || role == SpaceMemberRole.OWNER;
             case DELETE -> role == SpaceMemberRole.OWNER;
         };
     }
