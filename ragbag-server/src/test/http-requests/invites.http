@@ -1,7 +1,7 @@
 @SPACE_ID = {{__SPACE_ID__}}
 @TOKEN = {{__TOKEN__}}
 
-### GET request to example server
+### Create an invite
 
 POST {{host}}/api/v1/invites
 Authorization: {{__SESSION_AUTH_HEADER__}}
@@ -17,11 +17,17 @@ Content-Type: application/json
     client.global.set("__TOKEN__", response.body.token);
 %}
 
-### GET request to example server
+### List invites created by current user
 
 GET {{host}}/api/v1/invites
 Authorization: {{__SESSION_AUTH_HEADER__}}
 
-### POST request to example server
-POST {{host}}/api/v1/invites/{{__TOKEN__}}
+### Accept an invite
+
+POST {{host}}/api/v1/invites/{{TOKEN}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+
+### Delete / revoke an invite
+
+DELETE {{host}}/api/v1/invites/{{TOKEN}}
 Authorization: {{__SESSION_AUTH_HEADER__}}

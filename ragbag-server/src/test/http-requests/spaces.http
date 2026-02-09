@@ -16,9 +16,3 @@ Content-Type: application/json
 GET {{host}}/api/v1/spaces/{{SPACE_ID}}
 Authorization: {{__SESSION_AUTH_HEADER__}}
 Content-Type: application/json
-
-### POST request to example server
-
-POST {{host}}/api/v1/spaces/{{SPACE_ID}}/join
-Authorization: {{__SESSION_AUTH_HEADER__}}
-Content-Type: application/json

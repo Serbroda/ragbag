@@ -1,6 +1,7 @@
 package de.serbroda.ragbag.collection;
 
 import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_COLELCTION;
+import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_SPACE;
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.CollectionApi;
@@ -24,16 +25,25 @@ public class CollectionController implements CollectionApi {
     private final CollectionService collectionService;
     private final CollectionMapper mapper;
 
-    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'WRITE')")
     @Override
     public ResponseEntity<CollectionDto> createCollection(String spaceId, CreateCollectionDto createCollectionDto) {
-        return CollectionApi.super.createCollection(spaceId, createCollectionDto);
+        Collection collection = collectionService.createCollection(
+                SecurityUtils.currentUserId(),
+                new CollectionService.CreateCollectionCommand(spaceId, createCollectionDto.getName()));
+
+        return ResponseEntity.ok(new CollectionDto.Builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .build());
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'DELETE')")
     @Override
     public ResponseEntity<Void> deleteCollection(String collectionId) {
-        return CollectionApi.super.deleteCollection(collectionId);
+        collectionService.deleteCollection(collectionId);
+        return ResponseEntity.noContent().build();
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'READ')")
@@ -58,9 +68,16 @@ public class CollectionController implements CollectionApi {
         return ResponseEntity.ok(collections);
     }
 
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
     @Override
     public ResponseEntity<CollectionDto> updateCollection(
             String collectionId, UpdateCollectionDto updateCollectionDto) {
-        return CollectionApi.super.updateCollection(collectionId, updateCollectionDto);
+        Collection collection = collectionService.updateCollection(
+                collectionId, new CollectionService.UpdateCollectionCommand(updateCollectionDto.getName()));
+        return ResponseEntity.ok(new CollectionDto.Builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .build());
     }
 }

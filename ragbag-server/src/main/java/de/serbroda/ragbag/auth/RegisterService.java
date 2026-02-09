@@ -40,14 +40,9 @@ public class RegisterService {
     }
 
     private Collection createCollection(User user, Space space, String name, Collection parent) {
-        Collection collection = new Collection();
-        collection.setSpace(space);
-        collection.setName(name);
-        collection.setCreatedBy(user);
-
-        if (parent != null) {
-            collection.setParent(parent);
-        }
-        return collectionService.createCollection(collection);
+        return collectionService.createCollection(
+                user.getId(),
+                new CollectionService.CreateCollectionCommand(
+                        space.getId(), name, parent != null ? parent.getId() : null));
     }
 }

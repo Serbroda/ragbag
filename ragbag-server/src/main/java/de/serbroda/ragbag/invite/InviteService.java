@@ -2,6 +2,7 @@ package de.serbroda.ragbag.invite;
 
 import de.serbroda.ragbag.collection.CollectionService;
 import de.serbroda.ragbag.shared.exception.AccessDeniedException;
+import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.space.SpaceMember;
 import de.serbroda.ragbag.space.SpaceMemberRole;
 import de.serbroda.ragbag.space.SpaceService;
@@ -11,6 +12,7 @@ import java.security.NoSuchAlgorithmException;
 import java.security.SecureRandom;
 import java.util.Base64;
 import java.util.Date;
+import java.util.List;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
@@ -81,6 +83,20 @@ public class InviteService {
 
         invite.setUsedCount(invite.getUsedCount() + 1);
         inviteRepository.save(invite);
+    }
+
+    public List<Invite> getInvitesByUser(String userId) {
+        return inviteRepository.findByCreatedBy_Id(userId);
+    }
+
+    public void deleteInvite(String userId, String token) {
+        Invite invite = inviteRepository
+                .findByToken(token)
+                .orElseThrow(() -> new ResourceNotFoundException("Invite not found"));
+        if (!invite.getCreatedBy().getId().equals(userId)) {
+            throw new AccessDeniedException("User is not the creator of this invite");
+        }
+        inviteRepository.delete(invite);
     }
 
     public Optional<Invite> findByToken(String token) {

@@ -1,7 +1,7 @@
-@SPACE_ID = 13eb774c-be3c-435e-82e7-623203f06871
+@SPACE_ID = 9cabe671-c64d-4ba8-ae2b-08f97390f8a6
 @COLLECTION_ID = {{__COLLECTION_ID__}}
 
-### GET request to example server
+### Get all collections of a space
 
 GET {{host}}/api/v1/spaces/{{SPACE_ID}}/collections
 Authorization: {{__SESSION_AUTH_HEADER__}}
@@ -11,8 +11,37 @@ Content-Type: application/json
     client.global.set("__COLLECTION_ID__", response.body[0].id);
 %}
 
-### GET request to example server
+### Get a collection
 
 GET {{host}}/api/v1/collections/{{COLLECTION_ID}}
 Authorization: {{__SESSION_AUTH_HEADER__}}
 Content-Type: application/json
+
+### Create a collection
+
+POST {{host}}/api/v1/spaces/{{SPACE_ID}}/collections
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+{
+  "name": "My Collection"
+}
+
+> {%
+    client.global.set("__COLLECTION_ID__", response.body.id);
+%}
+
+### Update a collection
+
+PUT {{host}}/api/v1/collections/{{COLLECTION_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+{
+  "name": "Renamed Collection"
+}
+
+### Delete a collection
+
+DELETE {{host}}/api/v1/collections/{{COLLECTION_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}

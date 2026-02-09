@@ -1,0 +1,53 @@
+@COLLECTION_ID = {{__COLLECTION_ID__}}
+@BOOKMARK_ID = {{__BOOKMARK_ID__}}
+
+### Get all bookmarks of a collection
+
+GET {{host}}/api/v1/collections/{{COLLECTION_ID}}/bookmarks
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+> {%
+    if (response.body.length > 0) {
+        client.global.set("__BOOKMARK_ID__", response.body[0].id);
+    }
+%}
+
+### Get a bookmark
+
+GET {{host}}/api/v1/bookmarks/{{BOOKMARK_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+### Create a bookmark
+
+POST {{host}}/api/v1/collections/{{COLLECTION_ID}}/bookmarks
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+{
+  "url": "https://example.com",
+  "title": "Example",
+  "description": "An example bookmark"
+}
+
+> {%
+    client.global.set("__BOOKMARK_ID__", response.body.id);
+%}
+
+### Update a bookmark
+
+PUT {{host}}/api/v1/bookmarks/{{BOOKMARK_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+{
+  "url": "https://example.com/updated",
+  "title": "Updated Example",
+  "description": "An updated bookmark"
+}
+
+### Delete a bookmark
+
+DELETE {{host}}/api/v1/bookmarks/{{BOOKMARK_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}

@@ -19,6 +19,7 @@ import org.springframework.web.bind.annotation.RestController;
 public class InviteController implements InviteApi {
 
     private final InviteService inviteService;
+    private final InviteMapper inviteMapper;
 
     @Override
     public ResponseEntity<Void> acceptInvite(String token) {
@@ -39,14 +40,7 @@ public class InviteController implements InviteApi {
                             createInviteRequest.getMaxUses(),
                             createInviteRequest.getRole().name()));
 
-            return ResponseEntity.ok(new InviteDto()
-                    .token(invite.getToken())
-                    .targetType(InviteDto.TargetTypeEnum.valueOf(
-                            invite.getTargetType().name()))
-                    .targetId(invite.getTargetId())
-                    .expiresAt(invite.getExpiresAt())
-                    .maxUses(invite.getMaxUses())
-                    .usedCount(invite.getUsedCount()));
+            return ResponseEntity.ok(inviteMapper.toDto(invite));
         } catch (NoSuchAlgorithmException e) {
             return ResponseEntity.status(500).build();
         }
@@ -54,11 +48,15 @@ public class InviteController implements InviteApi {
 
     @Override
     public ResponseEntity<Void> deleteInvite(String token) {
-        return InviteApi.super.deleteInvite(token);
+        inviteService.deleteInvite(SecurityUtils.currentUserId(), token);
+        return ResponseEntity.noContent().build();
     }
 
     @Override
     public ResponseEntity<List<InviteDto>> getInvites() {
-        return InviteApi.super.getInvites();
+        List<InviteDto> invites = inviteService.getInvitesByUser(SecurityUtils.currentUserId()).stream()
+                .map(inviteMapper::toDto)
+                .toList();
+        return ResponseEntity.ok(invites);
     }
 }

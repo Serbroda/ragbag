@@ -25,6 +25,12 @@ export interface CreateCollectionDto {
      * @memberof CreateCollectionDto
      */
     name: string;
+    /**
+     * UUID
+     * @type {string}
+     * @memberof CreateCollectionDto
+     */
+    parentId?: string;
 }
 
 /**
@@ -46,6 +52,7 @@ export function CreateCollectionDtoFromJSONTyped(json: any, ignoreDiscriminator:
     return {
         
         'name': json['name'],
+        'parentId': json['parentId'] == null ? undefined : json['parentId'],
     };
 }
 
@@ -61,6 +68,7 @@ export function CreateCollectionDtoToJSONTyped(value?: CreateCollectionDto | nul
     return {
         
         'name': value['name'],
+        'parentId': value['parentId'],
     };
 }
 
