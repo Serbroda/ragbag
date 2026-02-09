@@ -2,6 +2,11 @@
 @EMAIL=danny@example.com
 @PASSWORD=pass123
 
+@LOGIN_USER = {{USER}}
+@LOGIN_PASSWORD = {{PASSWORD}}
+#@LOGIN_USER = admin
+#@LOGIN_PASSWORD = test123
+
 ### GET request to example server
 
 POST {{host}}/api/auth/register
@@ -19,8 +24,8 @@ POST {{host}}/api/auth/login
 Content-Type: application/json
 
 {
-    "username": "{{USER}}",
-    "password": "{{PASSWORD}}"
+    "username": "{{LOGIN_USER}}",
+    "password": "{{LOGIN_PASSWORD}}"
 }
 
 > {%

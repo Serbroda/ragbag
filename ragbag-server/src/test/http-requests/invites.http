@@ -13,8 +13,15 @@ Content-Type: application/json
   "role": "VIEWER"
 }
 
+> {%
+    client.global.set("__TOKEN__", response.body.token);
+%}
 
 ### GET request to example server
 
 GET {{host}}/api/v1/invites
+Authorization: {{__SESSION_AUTH_HEADER__}}
+
+### POST request to example server
+POST {{host}}/api/v1/invites/{{__TOKEN__}}
 Authorization: {{__SESSION_AUTH_HEADER__}}
