@@ -84,25 +84,6 @@
 
                         </configuration>
                     </execution>
-
-                    <execution>
-                        <id>generate-frontend-sdk</id>
-                        <phase>generate-sources</phase>
-                        <goals>
-                            <goal>generate</goal>
-                        </goals>
-                        <configuration>
-                            <inputSpec>${project.basedir}/openapi.yaml</inputSpec>
-                            <generatorName>typescript-fetch</generatorName>
-                            <output>${project.basedir}/../ragbag-frontend/src/lib/api/gen</output>
-
-                            <additionalProperties>
-                                <useSingleRequestParameter>true</useSingleRequestParameter>
-                                <supportsES6>true</supportsES6>
-                                <typescriptThreePlus>true</typescriptThreePlus>
-                            </additionalProperties>
-                        </configuration>
-                    </execution>
                 </executions>
             </plugin>
 

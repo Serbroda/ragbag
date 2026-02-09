@@ -1,4 +1,4 @@
-import {Configuration} from "./gen";
+import {Configuration} from "ragbag-frontend-sdk";
 
 let authHeader: string | undefined;
 

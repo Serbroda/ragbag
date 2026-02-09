@@ -3,7 +3,7 @@
     // import {Configuration, SpaceControllerApi} from "./api/gen";
 
     import {apiConfig, setBasicAuth} from "./api/client";
-    import {SpaceApi} from "./api/gen";
+    import {SpaceApi} from "ragbag-frontend-sdk";
 
     let count: number = $state(0)
     const increment = () => {
