@@ -16,20 +16,76 @@
 import * as runtime from '../runtime';
 import type {
   SpaceDto,
+  UpdateSpaceDto,
 } from '../models/index';
 import {
     SpaceDtoFromJSON,
     SpaceDtoToJSON,
+    UpdateSpaceDtoFromJSON,
+    UpdateSpaceDtoToJSON,
 } from '../models/index';
+
+export interface DeleteSpaceRequest {
+    spaceId: string;
+}
 
 export interface GetSpaceRequest {
     spaceId: string;
+}
+
+export interface LeaveSpaceRequest {
+    spaceId: string;
+}
+
+export interface UpdateSpaceRequest {
+    spaceId: string;
+    updateSpaceDto: UpdateSpaceDto;
 }
 
 /**
  * 
  */
 export class SpaceApi extends runtime.BaseAPI {
+
+    /**
+     * Delete a space
+     */
+    async deleteSpaceRaw(requestParameters: DeleteSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling deleteSpace().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/v1/spaces/{spaceId}`.replace(`{${"spaceId"}}`, encodeURIComponent(String(requestParameters['spaceId']))),
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete a space
+     */
+    async deleteSpace(requestParameters: DeleteSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteSpaceRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Get a space
@@ -103,6 +159,97 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async getSpaces(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SpaceDto>> {
         const response = await this.getSpacesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Leave a space
+     */
+    async leaveSpaceRaw(requestParameters: LeaveSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling leaveSpace().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/v1/spaces/{spaceId}/leave`.replace(`{${"spaceId"}}`, encodeURIComponent(String(requestParameters['spaceId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        }, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Leave a space
+     */
+    async leaveSpace(requestParameters: LeaveSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.leaveSpaceRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Update a space
+     */
+    async updateSpaceRaw(requestParameters: UpdateSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpaceDto>> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling updateSpace().'
+            );
+        }
+
+        if (requestParameters['updateSpaceDto'] == null) {
+            throw new runtime.RequiredError(
+                'updateSpaceDto',
+                'Required parameter "updateSpaceDto" was null or undefined when calling updateSpace().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/v1/spaces/{spaceId}`.replace(`{${"spaceId"}}`, encodeURIComponent(String(requestParameters['spaceId']))),
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UpdateSpaceDtoToJSON(requestParameters['updateSpaceDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpaceDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Update a space
+     */
+    async updateSpace(requestParameters: UpdateSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceDto> {
+        const response = await this.updateSpaceRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

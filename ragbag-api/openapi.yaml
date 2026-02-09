@@ -159,6 +159,84 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update a space
+      operationId: updateSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSpaceDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a space
+      operationId: deleteSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/leave:
+    post:
+      summary: Leave a space
+      operationId: leaveSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   # Collections
   /v1/spaces/{spaceId}/collections:
@@ -601,6 +679,15 @@ components:
           type: string
       required:
         - id
+        - name
+
+    UpdateSpaceDto:
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
         - name
 
     SpaceDtoList:

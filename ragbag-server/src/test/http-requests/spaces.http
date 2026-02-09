@@ -1,7 +1,6 @@
-//@SPACE_ID = 13eb774c-be3c-435e-82e7-623203f06871
 @SPACE_ID = {{__SPACE_ID__}}
 
-### GET request to example server
+### Get all spaces
 
 GET {{host}}/api/v1/spaces
 Authorization: {{__SESSION_AUTH_HEADER__}}
@@ -11,8 +10,29 @@ Content-Type: application/json
     client.global.set("__SPACE_ID__", response.body[0].id);
 %}
 
-### GET request to example server
+### Get a space
 
 GET {{host}}/api/v1/spaces/{{SPACE_ID}}
 Authorization: {{__SESSION_AUTH_HEADER__}}
 Content-Type: application/json
+
+### Update a space
+
+PUT {{host}}/api/v1/spaces/{{SPACE_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+{
+  "name": "Renamed Space",
+  "description": "Updated description"
+}
+
+### Leave a space
+
+POST {{host}}/api/v1/spaces/{{SPACE_ID}}/leave
+Authorization: {{__SESSION_AUTH_HEADER__}}
+
+### Delete a space
+
+DELETE {{host}}/api/v1/spaces/{{SPACE_ID}}
+Authorization: {{__SESSION_AUTH_HEADER__}}

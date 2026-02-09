@@ -75,7 +75,29 @@ public class SpaceService {
         spaceRepository.save(space);
     }
 
-    public void leaveSpace(User user, Space space) {
+    public Space updateSpace(String spaceId, UpdateSpaceCommand cmd) {
+        Space space = spaceRepository
+                .findById(spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
+        space.setName(cmd.name());
+        space.setDescription(cmd.description());
+        return spaceRepository.save(space);
+    }
+
+    public void deleteSpace(String spaceId) {
+        spaceRepository
+                .findById(spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
+        spaceRepository.deleteById(spaceId);
+    }
+
+    public void leaveSpace(String userId, String spaceId) {
+        User user = userService
+                .findUserById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        Space space = spaceRepository
+                .findById(spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
         space.getMembers().removeIf(member -> member.getUser().getId().equals(user.getId()));
         spaceRepository.save(space);
     }
@@ -89,4 +111,6 @@ public class SpaceService {
     }
 
     public record CreateSpaceCommand(String name) {}
+
+    public record UpdateSpaceCommand(String name, String description) {}
 }

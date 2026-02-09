@@ -14,4 +14,5 @@ export * from './RegisterRequest';
 export * from './SpaceDto';
 export * from './UpdateBookmarkDto';
 export * from './UpdateCollectionDto';
+export * from './UpdateSpaceDto';
 export * from './UserDto';

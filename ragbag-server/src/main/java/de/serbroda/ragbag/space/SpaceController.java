@@ -5,6 +5,7 @@ import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.SpaceApi;
 import de.serbroda.ragbag.generated.model.SpaceDto;
+import de.serbroda.ragbag.generated.model.UpdateSpaceDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import java.util.List;
 import java.util.Set;
@@ -36,5 +37,27 @@ public class SpaceController implements SpaceApi {
         return ResponseEntity.ok(spaces.stream()
                 .map(s -> new SpaceDto(s.getId(), s.getName(), s.getDescription()))
                 .toList());
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'WRITE')")
+    @Override
+    public ResponseEntity<SpaceDto> updateSpace(String spaceId, UpdateSpaceDto updateSpaceDto) {
+        Space space = spaceService.updateSpace(
+                spaceId,
+                new SpaceService.UpdateSpaceCommand(updateSpaceDto.getName(), updateSpaceDto.getDescription()));
+        return ResponseEntity.ok(new SpaceDto(space.getId(), space.getName(), space.getDescription()));
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'DELETE')")
+    @Override
+    public ResponseEntity<Void> deleteSpace(String spaceId) {
+        spaceService.deleteSpace(spaceId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @Override
+    public ResponseEntity<Void> leaveSpace(String spaceId) {
+        spaceService.leaveSpace(SecurityUtils.currentUserId(), spaceId);
+        return ResponseEntity.noContent().build();
     }
 }

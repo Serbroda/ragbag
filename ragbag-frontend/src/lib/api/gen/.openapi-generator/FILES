@@ -20,6 +20,7 @@ models/RegisterRequest.ts
 models/SpaceDto.ts
 models/UpdateBookmarkDto.ts
 models/UpdateCollectionDto.ts
+models/UpdateSpaceDto.ts
 models/UserDto.ts
 models/index.ts
 runtime.ts
