@@ -63,6 +63,26 @@ public class CollectionService {
         return collectionRepository.save(collection);
     }
 
+    public Collection moveCollection(String id, MoveCollectionCommand cmd) {
+        Collection collection = collectionRepository
+                .findById(id)
+                .orElseThrow(() -> new ResourceNotFoundException("Collection not found: " + id));
+
+        if (cmd.parentId() != null) {
+            if (cmd.parentId().equals(id)) {
+                throw new IllegalArgumentException("A collection cannot be its own parent");
+            }
+            Collection newParent = collectionRepository
+                    .findById(cmd.parentId())
+                    .orElseThrow(() -> new ResourceNotFoundException("Parent collection not found: " + cmd.parentId()));
+            collection.setParent(newParent);
+        } else {
+            collection.setParent(null);
+        }
+
+        return collectionRepository.save(collection);
+    }
+
     public void deleteCollection(String id) {
         collectionRepository
                 .findById(id)
@@ -109,4 +129,6 @@ public class CollectionService {
     }
 
     public record UpdateCollectionCommand(String name) {}
+
+    public record MoveCollectionCommand(String parentId) {}
 }

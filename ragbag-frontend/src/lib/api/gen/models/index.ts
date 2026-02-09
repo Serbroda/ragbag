@@ -10,6 +10,7 @@ export * from './InviteDto';
 export * from './LoginRequest';
 export * from './LoginResponse';
 export * from './ModelError';
+export * from './MoveCollectionDto';
 export * from './RegisterRequest';
 export * from './SpaceDto';
 export * from './UpdateBookmarkDto';

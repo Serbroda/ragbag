@@ -17,6 +17,7 @@ import * as runtime from '../runtime';
 import type {
   CollectionDto,
   CreateCollectionDto,
+  MoveCollectionDto,
   UpdateCollectionDto,
 } from '../models/index';
 import {
@@ -24,6 +25,8 @@ import {
     CollectionDtoToJSON,
     CreateCollectionDtoFromJSON,
     CreateCollectionDtoToJSON,
+    MoveCollectionDtoFromJSON,
+    MoveCollectionDtoToJSON,
     UpdateCollectionDtoFromJSON,
     UpdateCollectionDtoToJSON,
 } from '../models/index';
@@ -43,6 +46,11 @@ export interface GetCollectionRequest {
 
 export interface GetCollectionsRequest {
     spaceId: string;
+}
+
+export interface MoveCollectionRequest {
+    collectionId: string;
+    moveCollectionDto: MoveCollectionDto;
 }
 
 export interface UpdateCollectionRequest {
@@ -225,6 +233,57 @@ export class CollectionApi extends runtime.BaseAPI {
      */
     async getCollections(requestParameters: GetCollectionsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionDto>> {
         const response = await this.getCollectionsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Move a collection to a new parent
+     */
+    async moveCollectionRaw(requestParameters: MoveCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionDto>> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling moveCollection().'
+            );
+        }
+
+        if (requestParameters['moveCollectionDto'] == null) {
+            throw new runtime.RequiredError(
+                'moveCollectionDto',
+                'Required parameter "moveCollectionDto" was null or undefined when calling moveCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const response = await this.request({
+            path: `/v1/collections/{collectionId}/move`.replace(`{${"collectionId"}}`, encodeURIComponent(String(requestParameters['collectionId']))),
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: MoveCollectionDtoToJSON(requestParameters['moveCollectionDto']),
+        }, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CollectionDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Move a collection to a new parent
+     */
+    async moveCollection(requestParameters: MoveCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionDto> {
+        const response = await this.moveCollectionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -381,6 +381,40 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/collections/{collectionId}/move:
+    post:
+      summary: Move a collection to a new parent
+      operationId: moveCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveCollectionDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # Bookmarks
   /v1/collections/{collectionId}/bookmarks:
     get:
@@ -740,6 +774,14 @@ components:
           type: string
       required:
         - name
+
+    MoveCollectionDto:
+      type: object
+      properties:
+        parentId:
+          $ref: '#/components/schemas/ID'
+          nullable: true
+          description: Target parent collection ID, or null to move to root
 
     BookmarkDto:
       properties:

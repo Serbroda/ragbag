@@ -41,6 +41,16 @@ Content-Type: application/json
   "name": "Renamed Collection"
 }
 
+### Move a collection to a new parent
+
+POST {{host}}/api/v1/collections/{{COLLECTION_ID}}/move
+Authorization: {{__SESSION_AUTH_HEADER__}}
+Content-Type: application/json
+
+{
+  "parentId": null
+}
+
 ### Delete a collection
 
 DELETE {{host}}/api/v1/collections/{{COLLECTION_ID}}

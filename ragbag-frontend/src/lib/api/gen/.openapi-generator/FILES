@@ -16,6 +16,7 @@ models/InviteDto.ts
 models/LoginRequest.ts
 models/LoginResponse.ts
 models/ModelError.ts
+models/MoveCollectionDto.ts
 models/RegisterRequest.ts
 models/SpaceDto.ts
 models/UpdateBookmarkDto.ts

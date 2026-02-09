@@ -7,6 +7,7 @@ import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 import de.serbroda.ragbag.generated.api.CollectionApi;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
+import de.serbroda.ragbag.generated.model.MoveCollectionDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
@@ -78,6 +79,20 @@ public class CollectionController implements CollectionApi {
                 .id(collection.getId())
                 .name(collection.getName())
                 .description(collection.getDescription())
+                .build());
+    }
+
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
+    @Override
+    public ResponseEntity<CollectionDto> moveCollection(String collectionId, MoveCollectionDto moveCollectionDto) {
+        Collection collection = collectionService.moveCollection(
+                collectionId, new CollectionService.MoveCollectionCommand(moveCollectionDto.getParentId()));
+        return ResponseEntity.ok(new CollectionDto.Builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .parentId(
+                        collection.getParent() != null ? collection.getParent().getId() : null)
                 .build());
     }
 }
