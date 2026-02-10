@@ -1,8 +1,5 @@
 <script lang="ts">
-    // import {apiConfig, setBasicAuth} from "./api/client";
-    // import {Configuration, SpaceControllerApi} from "./api/gen";
-
-    import {apiConfig, setBasicAuth} from "./api/client";
+    import {apiConfig, login} from "./api/client";
     import {SpaceApi} from "ragbag-frontend-sdk";
 
     let count: number = $state(0)
@@ -11,7 +8,7 @@
     }
 
     async function way3() {
-        setBasicAuth("admin", "test123");
+        await login("admin", "test123");
 
         const api = new SpaceApi(apiConfig());
         const response = await api.getSpaces();
@@ -19,34 +16,6 @@
     }
 
     way3();
-
-    //
-    // async function way2() {
-    //     setBasicAuth("admin", "test123");
-    //
-    //     const api = new SpaceControllerApi(apiConfig());
-    //
-    //     const response = await api.getSpaces();
-    //     console.log(response);
-    // }
-    //
-    // async function way1() {
-    //     const api = new SpaceControllerApi(
-    //         new Configuration({
-    //             //basePath: import.meta.env.VITE_API_URL
-    //             basePath: "http://localhost:8080"
-    //         })
-    //     );
-    //
-    //     const response = await api.getSpaces({
-    //         headers: {
-    //             Authorization: `Basic ${btoa('admin:test123')}`
-    //         }
-    //     });
-    //     console.log(response);
-    // }
-    //
-    // way2();
 </script>
 
 <button onclick={increment}>
