@@ -31,7 +31,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.basedir}/../ragbag-api/openapi.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/../openapi/openapi.yaml</inputSpec>
                             <generatorName>typescript-fetch</generatorName>
                             <output>${project.build.directory}/generated-sources</output>
 

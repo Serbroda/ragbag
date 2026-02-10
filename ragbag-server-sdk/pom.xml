@@ -3,7 +3,7 @@
          xsi:schemaLocation="http://maven.apache.org/POM/4.0.0 https://maven.apache.org/xsd/maven-4.0.0.xsd">
     <modelVersion>4.0.0</modelVersion>
 
-    <artifactId>ragbag-api</artifactId>
+    <artifactId>ragbag-server-sdk</artifactId>
 
     <parent>
         <groupId>de.serbroda</groupId>
@@ -62,7 +62,7 @@
                             <goal>generate</goal>
                         </goals>
                         <configuration>
-                            <inputSpec>${project.basedir}/openapi.yaml</inputSpec>
+                            <inputSpec>${project.basedir}/../openapi/openapi.yaml</inputSpec>
                             <generatorName>spring</generatorName>
                             <output>${project.basedir}/target/generated-sources</output>
 

@@ -16,7 +16,7 @@
     </parent>
 
     <modules>
-        <module>ragbag-api</module>
+        <module>ragbag-server-sdk</module>
         <module>ragbag-frontend-sdk</module>
         <module>ragbag-frontend</module>
         <module>ragbag-server</module>

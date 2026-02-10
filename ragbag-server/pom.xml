@@ -49,7 +49,7 @@
 
         <dependency>
             <groupId>de.serbroda</groupId>
-            <artifactId>ragbag-api</artifactId>
+            <artifactId>ragbag-server-sdk</artifactId>
             <version>${project.version}</version>
         </dependency>
 
