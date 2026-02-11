@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Navbar, NavBrand, Button, Sidebar, SidebarGroup, SidebarItem, SidebarWrapper } from 'flowbite-svelte';
+	import { Navbar, NavBrand, Button, Sidebar, SidebarGroup, SidebarItem, SidebarWrapper, SidebarDropdownWrapper } from 'flowbite-svelte';
+	import { ShoppingBagSolid } from "flowbite-svelte-icons";
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
 
@@ -53,9 +54,36 @@
 		alwaysOpen
 		position="fixed"
 		class="top-[61px] z-40 h-[calc(100vh-61px)]"
+		isSingle={false}
+		backdrop={false}
+		params={{ x: -50, duration: 50 }}
 	>
 		<SidebarWrapper class="h-full">
 			<SidebarGroup>
+				<SidebarDropdownWrapper label="Shop" classes={{ btn: "p-2" }}>
+					{#snippet icon()}
+						<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
+					{/snippet}
+					<SidebarItem label="Products" href="" />
+				</SidebarDropdownWrapper>
+				<SidebarDropdownWrapper label="Vegetables" classes={{ btn: "p-2" }}>
+					{#snippet icon()}
+						<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
+					{/snippet}
+					<SidebarItem label="Fruits" href="" />
+				</SidebarDropdownWrapper>
+				<SidebarDropdownWrapper label="Tech" classes={{ btn: "p-2" }}>
+					{#snippet icon()}
+						<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
+					{/snippet}
+					<SidebarDropdownWrapper label="Monitors" classes={{ btn: "p-2" }}>
+						{#snippet icon()}
+							<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
+						{/snippet}
+						<SidebarItem label="Flatscreen" href="" />
+						<SidebarItem label="LCD" href="" />
+					</SidebarDropdownWrapper>
+				</SidebarDropdownWrapper>
 				<SidebarItem label="Dashboard" href="/" />
 				<SidebarItem label="Spaces" href="/spaces" />
 				<SidebarItem label="Bookmarks" href="/bookmarks" />

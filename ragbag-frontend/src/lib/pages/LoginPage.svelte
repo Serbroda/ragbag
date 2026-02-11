@@ -50,7 +50,7 @@
 				await login(username, password);
 				navigate('/');
 			}
-		} catch {
+		} catch (err) {
 			error = isRegister
 				? 'Registration failed. Please try again.'
 				: 'Login failed. Please check your credentials.';
@@ -61,7 +61,7 @@
 </script>
 
 <div class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-	<Card class="w-full max-w-md">
+	<Card class="w-full max-w-md p-10">
 		<h2 class="mb-4 text-center text-2xl font-bold text-gray-900 dark:text-white">Ragbag</h2>
 		<p class="mb-4 text-center text-sm text-gray-500 dark:text-gray-400">
 			{isRegister ? 'Create a new account' : 'Sign in to your account'}

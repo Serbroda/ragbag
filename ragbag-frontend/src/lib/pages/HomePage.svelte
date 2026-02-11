@@ -2,6 +2,7 @@
     import {UserApi} from "ragbag-frontend-sdk";
     import {apiConfig} from "../api/client";
     import type {UserDto} from "ragbag-frontend-sdk/src/models";
+    import { Checkbox } from "flowbite-svelte";
 
     let user = $state<UserDto | null>(null);
 
@@ -24,4 +25,6 @@
     {:else}
         <p class="text-gray-500 dark:text-gray-400">Welcome to Ragbag.</p>
     {/if}
+
+    <Checkbox checked>Checked state</Checkbox>
 </main>

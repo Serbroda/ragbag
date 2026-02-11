@@ -10,6 +10,7 @@
     "check": "svelte-check --tsconfig ./tsconfig.app.json && tsc -p tsconfig.node.json"
   },
   "dependencies": {
+    "flowbite-svelte-icons": "^3.1.0",
     "ragbag-frontend-sdk": "file:../ragbag-frontend-sdk/target/generated-sources/ragbag-frontend-sdk-0.0.1-SNAPSHOT.tgz",
     "sv-router": "^0.14.0"
   },
