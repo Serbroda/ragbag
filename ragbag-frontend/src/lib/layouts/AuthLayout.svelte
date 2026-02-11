@@ -2,11 +2,12 @@
 	import type { Snippet } from 'svelte';
 	import { Navbar, NavBrand, Button, Sidebar, SidebarWrapper } from 'flowbite-svelte';
 	import { HomeSolid, GlobeSolid, StarSolid, TagSolid } from 'flowbite-svelte-icons';
-	import { logout } from '../api/client';
+	import {apiConfig, logout} from '../api/client';
 	import { navigate } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
-	import type { TreeNode } from '../components/tree';
+	import {collectionsToTree, type TreeNode} from '../components/tree';
+	import {CollectionApi, SpaceApi} from "ragbag-frontend-sdk";
 
 	let { children }: { children: Snippet } = $props();
 
@@ -52,57 +53,28 @@
 		navigate('/login');
 	}
 
-	let menuTree = $state<TreeNode[]>([
-		{
-			label: 'Dashboard',
-			href: '/',
-		},
-		{
-			label: 'Shop',
-			href: '/shop',
-			expanded: true,
-			children: [
-				{ label: 'Products', href: '/shop/products' },
-				{ label: 'Orders', href: '/shop/orders' },
-			],
-		},
-		{
-			label: 'Vegetables',
-			href: '/vegetables',
-			children: [
-				{ label: 'Fruits', href: '/vegetables/fruits' },
-				{ label: 'Roots', href: '/vegetables/roots' },
-			],
-		},
-		{
-			label: 'Tech',
-			href: '/tech',
-			children: [
-				{
-					label: 'Monitors',
-					href: '/tech/monitors',
-					children: [
-						{ label: 'Flatscreen', href: '/tech/monitors/flatscreen' },
-						{ label: 'LCD', href: '/tech/monitors/lcd' },
-						{ label: 'Another very long technology name', href: '/tech/monitors/lcd' },
-					],
-				},
-				{ label: 'Keyboards', href: '/tech/keyboards' },
-			],
-		},
-		{
-			label: 'Spaces',
-			href: '/spaces',
-		},
-		{
-			label: 'Bookmarks',
-			href: '/bookmarks',
-		},
-	]);
+	const spaceApi = new SpaceApi(apiConfig());
+	const collectionApi = new CollectionApi(apiConfig());
+
+	let menuTree = $state<TreeNode[]>([]);
+
+	async function loadCollections() {
+		const spaces = await spaceApi.getSpaces();
+		const collections = await collectionApi.getCollections({ spaceId: spaces[0].id });
+		menuTree = collectionsToTree(collections);
+	}
+
+	loadCollections();
 
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 
-	function handleMove(movedNode: TreeNode, newParent: TreeNode) {
+	async function handleMove(movedNode: TreeNode, newParent: TreeNode) {
+		await collectionApi.moveCollection({
+			collectionId: movedNode.id!,
+			moveCollectionDto: {
+				parentId: newParent.id!,
+			}
+		});
 		console.log(`Moved "${movedNode.label}" into "${newParent.label}"`);
 		// TODO: backend call, e.g.:
 		// await collectionApi.move({ id: movedNode.id, parentId: newParent.id });
@@ -159,7 +131,11 @@
 				</ul>
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
-				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} />
+				<DraggableTreeList
+						bind:nodes={menuTree}
+						onmove={handleMove}
+						draggable={true}
+				/>
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
 				<ul class="space-y-0.5 py-2">

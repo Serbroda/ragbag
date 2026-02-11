@@ -1,11 +1,30 @@
 import type { Component } from 'svelte';
+import type { CollectionDto } from 'ragbag-frontend-sdk';
 
 export interface TreeNode {
+	id?: string;
 	label: string;
 	href?: string;
 	expanded?: boolean;
 	icon?: Component<{ class?: string }>;
 	children?: TreeNode[];
+}
+
+/** Map a CollectionDto tree to a TreeNode tree. */
+export function collectionToTreeNode(collection: CollectionDto): TreeNode {
+	return {
+		id: collection.id,
+		label: collection.name,
+		children: collection.children?.length
+			? collection.children.map(collectionToTreeNode)
+			: undefined,
+		href: `/collections/${collection.id}`,
+	};
+}
+
+/** Map an array of CollectionDto to TreeNode[]. */
+export function collectionsToTree(collections: CollectionDto[]): TreeNode[] {
+	return collections.map(collectionToTreeNode);
 }
 
 /** Remove a node (by reference) from anywhere in the tree. Returns true if found. */
