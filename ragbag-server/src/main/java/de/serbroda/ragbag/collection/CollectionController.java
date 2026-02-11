@@ -60,6 +60,7 @@ public class CollectionController implements CollectionApi {
                 .build());
     }
 
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<List<CollectionDto>> getCollections(String spaceId) {
         List<CollectionDto> collections =

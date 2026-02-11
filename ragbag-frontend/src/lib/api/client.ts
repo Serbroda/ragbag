@@ -21,6 +21,14 @@ export function apiConfig(): Configuration {
     });
 }
 
+export async function register(username: string, email: string, password: string): Promise<void> {
+    const api = new AuthenticationApi(new Configuration({
+        basePath: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
+        credentials: 'include',
+    }));
+    await api.register({registerRequest: {username, email, password}});
+}
+
 export async function login(username: string, password: string): Promise<void> {
     const api = new AuthenticationApi(new Configuration({
         basePath: import.meta.env.VITE_API_URL || "http://localhost:8080/api",
