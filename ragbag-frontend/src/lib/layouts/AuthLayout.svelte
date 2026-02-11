@@ -10,6 +10,33 @@
 
 	let sidebarOpen = $state(false);
 
+	// --- Resize ---
+	const MIN_WIDTH = 200;
+	const MAX_WIDTH = 480;
+	const DEFAULT_WIDTH = 256;
+
+	let sidebarWidth = $state(DEFAULT_WIDTH);
+	let isResizing = $state(false);
+
+	function startResize(e: MouseEvent) {
+		e.preventDefault();
+		isResizing = true;
+
+		const onMouseMove = (e: MouseEvent) => {
+			sidebarWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX));
+		};
+
+		const onMouseUp = () => {
+			isResizing = false;
+			document.removeEventListener('mousemove', onMouseMove);
+			document.removeEventListener('mouseup', onMouseUp);
+		};
+
+		document.addEventListener('mousemove', onMouseMove);
+		document.addEventListener('mouseup', onMouseUp);
+	}
+
+	// --- Navigation ---
 	function toggleSidebar() {
 		sidebarOpen = !sidebarOpen;
 	}
@@ -70,12 +97,10 @@
 		},
 	];
 
-	const bottomTree: TreeNode[] = [
-		{ label: 'Settings', href: '/settings' },
-	];
+	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 </script>
 
-<div class="min-h-screen bg-gray-50 dark:bg-gray-900">
+<div class="min-h-screen bg-gray-50 dark:bg-gray-900" class:select-none={isResizing}>
 	<!-- Top Bar -->
 	<Navbar class="border-b border-gray-200 dark:border-gray-700">
 		<div class="flex items-center gap-2">
@@ -86,11 +111,17 @@
 				onclick={toggleSidebar}
 			>
 				<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
-					<path fill-rule="evenodd" d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z" clip-rule="evenodd" />
+					<path
+						fill-rule="evenodd"
+						d="M3 5a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 10a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1zM3 15a1 1 0 011-1h12a1 1 0 110 2H4a1 1 0 01-1-1z"
+						clip-rule="evenodd"
+					/>
 				</svg>
 			</button>
 			<NavBrand>
-				<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white">Ragbag</span>
+				<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white"
+					>Ragbag</span
+				>
 			</NavBrand>
 		</div>
 		<div class="flex items-center">
@@ -98,7 +129,7 @@
 		</div>
 	</Navbar>
 
-	<!-- Sidebar + Content -->
+	<!-- Sidebar -->
 	<Sidebar
 		isOpen={sidebarOpen}
 		{closeSidebar}
@@ -108,6 +139,7 @@
 		class="top-[61px] z-40 h-[calc(100vh-61px)]"
 		backdrop={false}
 		params={{ x: -50, duration: 50 }}
+		style="width: {sidebarWidth}px"
 	>
 		<SidebarWrapper class="flex h-full flex-col justify-between overflow-y-auto">
 			<nav>
@@ -127,8 +159,32 @@
 		</SidebarWrapper>
 	</Sidebar>
 
+	<!-- Resize Handle (desktop only) -->
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
+	<div
+		class="fixed top-[61px] z-50 hidden h-[calc(100vh-61px)] w-1.5 cursor-col-resize md:block"
+		class:bg-primary-500={isResizing}
+		style:left="{sidebarWidth - 3}px"
+		onmousedown={startResize}
+	>
+		<div
+			class="h-full w-full hover:bg-gray-300 dark:hover:bg-gray-600"
+			class:!bg-primary-500={isResizing}
+		></div>
+	</div>
+
 	<!-- Main Content -->
-	<div class="p-4 md:ml-64">
-		{@render children()}
+	<div class="p-4" style:margin-left="0" style:--sidebar-w="{sidebarWidth}px">
+		<div class="md-sidebar-offset">
+			{@render children()}
+		</div>
 	</div>
 </div>
+
+<style>
+	@media (min-width: 768px) {
+		.md-sidebar-offset {
+			margin-left: var(--sidebar-w);
+		}
+	}
+</style>
