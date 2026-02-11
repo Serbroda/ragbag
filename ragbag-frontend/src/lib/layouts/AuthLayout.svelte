@@ -81,7 +81,7 @@
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" class:select-none={isResizing}>
 	<!-- Top Bar -->
-	<Navbar class="border-b border-gray-200 dark:border-gray-700">
+	<Navbar class="border-b border-gray-200 dark:border-gray-800">
 		<div class="flex items-center gap-2">
 			<button
 				type="button"
@@ -98,7 +98,7 @@
 				</svg>
 			</button>
 			<NavBrand>
-				<span class="self-center whitespace-nowrap text-xl font-semibold dark:text-white"
+				<span class="brand-glow self-center whitespace-nowrap text-xl font-bold tracking-tight"
 					>Ragbag</span
 				>
 			</NavBrand>
@@ -107,6 +107,7 @@
 			<Button size="sm" color="light" onclick={handleLogout}>Logout</Button>
 		</div>
 	</Navbar>
+	<div class="navbar-accent"></div>
 
 	<!-- Sidebar -->
 	<Sidebar
