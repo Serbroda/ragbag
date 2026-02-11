@@ -129,6 +129,7 @@
 				</ul>
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
+				<h3 class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Collections</h3>
 				<DraggableTreeList
 						bind:nodes={menuTree}
 						onmove={handleMove}
