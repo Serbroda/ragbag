@@ -68,16 +68,14 @@
 
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 
-	async function handleMove(movedNode: TreeNode, newParent: TreeNode) {
+	async function handleMove(movedNode: TreeNode, newParent: TreeNode | null) {
 		await collectionApi.moveCollection({
 			collectionId: movedNode.id!,
 			moveCollectionDto: {
-				parentId: newParent.id!,
+				parentId: newParent?.id ?? undefined,
 			}
 		});
-		console.log(`Moved "${movedNode.label}" into "${newParent.label}"`);
-		// TODO: backend call, e.g.:
-		// await collectionApi.move({ id: movedNode.id, parentId: newParent.id });
+		console.log(`Moved "${movedNode.label}" ${newParent ? `into "${newParent.label}"` : 'to root'}`);
 	}
 </script>
 
