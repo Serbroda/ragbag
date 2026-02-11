@@ -19,26 +19,6 @@
 		class="group flex items-center rounded-md text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
 		style:padding-left={paddingLeft}
 	>
-		<!-- Expand/Collapse toggle -->
-		<button
-			type="button"
-			class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:text-gray-600 dark:text-gray-500 dark:hover:text-gray-300"
-			aria-label={expanded ? 'Collapse' : 'Expand'}
-			onclick={() => (expanded = !expanded)}
-			class:invisible={!hasChildren}
-		>
-			<svg
-				class="h-3.5 w-3.5 transition-transform duration-150"
-				class:rotate-90={expanded}
-				fill="none"
-				viewBox="0 0 24 24"
-				stroke="currentColor"
-				stroke-width="2"
-			>
-				<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
-			</svg>
-		</button>
-
 		<!-- Icon -->
 		{#if node.icon}
 			{@const Icon = node.icon}
@@ -49,21 +29,38 @@
 		{#if node.href}
 			<a
 				href={node.href}
-				class="flex-1 truncate rounded-md py-1.5 hover:text-gray-900 dark:hover:text-white"
-				class:px-2={!node.icon}
-				class:ps-1.5={!!node.icon}
+				class="flex-1 truncate rounded-md px-2 py-1.5 hover:text-gray-900 dark:hover:text-white"
 			>
 				{node.label}
 			</a>
 		{:else}
 			<button
 				type="button"
-				class="flex-1 truncate rounded-md py-1.5 text-left hover:text-gray-900 dark:hover:text-white"
-				class:px-2={!node.icon}
-				class:ps-1.5={!!node.icon}
+				class="flex-1 truncate rounded-md px-2 py-1.5 text-left hover:text-gray-900 dark:hover:text-white"
 				onclick={() => hasChildren && (expanded = !expanded)}
 			>
 				{node.label}
+			</button>
+		{/if}
+
+		<!-- Expand/Collapse toggle (right-aligned) -->
+		{#if hasChildren}
+			<button
+				type="button"
+				class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:text-gray-600 me-1 dark:text-gray-500 dark:hover:text-gray-300"
+				aria-label={expanded ? 'Collapse' : 'Expand'}
+				onclick={() => (expanded = !expanded)}
+			>
+				<svg
+					class="h-3.5 w-3.5 transition-transform duration-150"
+					class:rotate-90={expanded}
+					fill="none"
+					viewBox="0 0 24 24"
+					stroke="currentColor"
+					stroke-width="2"
+				>
+					<path stroke-linecap="round" stroke-linejoin="round" d="M9 5l7 7-7 7" />
+				</svg>
 			</button>
 		{/if}
 	</div>
