@@ -5,6 +5,7 @@
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
+	import DraggableTreeList from '../components/DraggableTreeList.svelte';
 	import type { TreeNode } from '../components/tree';
 
 	let { children }: { children: Snippet } = $props();
@@ -51,7 +52,7 @@
 		navigate('/login');
 	}
 
-	let menuTree: TreeNode[] = [
+	let menuTree = $state<TreeNode[]>([
 		{
 			label: 'Dashboard',
 			href: '/',
@@ -97,9 +98,15 @@
 			label: 'Bookmarks',
 			href: '/bookmarks',
 		},
-	];
+	]);
 
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
+
+	function handleMove(movedNode: TreeNode, newParent: TreeNode) {
+		console.log(`Moved "${movedNode.label}" into "${newParent.label}"`);
+		// TODO: backend call, e.g.:
+		// await collectionApi.move({ id: movedNode.id, parentId: newParent.id });
+	}
 </script>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" class:select-none={isResizing}>
@@ -151,12 +158,8 @@
 					<TreeItem node={{ label: 'Tags', icon: TagSolid }} />
 				</ul>
 			</nav>
-			<nav>
-				<ul class="space-y-0.5 py-2 border-t border-gray-200 dark:border-gray-700">
-					{#each menuTree as node (node.label)}
-						<TreeItem {node} />
-					{/each}
-				</ul>
+			<nav class="border-t border-gray-200 dark:border-gray-700">
+				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} />
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
 				<ul class="space-y-0.5 py-2">

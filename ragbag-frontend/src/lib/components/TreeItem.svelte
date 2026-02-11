@@ -1,10 +1,18 @@
 <script lang="ts">
+	import { getContext } from 'svelte';
 	import type { TreeNode } from './tree';
+	import { isDescendantOrSelf } from './tree';
 	import TreeItem from './TreeItem.svelte';
+	import { DRAG_CTX_KEY, type DragContext } from './DraggableTreeList.svelte';
 
-	let { node, depth = 0 }: { node: TreeNode; depth?: number } = $props();
+	let {
+		node,
+		depth = 0,
+		draggable: isDraggable = false,
+	}: { node: TreeNode; depth?: number; draggable?: boolean } = $props();
 
 	let expanded = $state(false);
+	let isDropTarget = $state(false);
 
 	$effect(() => {
 		if (node.expanded) expanded = true;
@@ -12,12 +20,62 @@
 
 	const hasChildren = $derived(node.children && node.children.length > 0);
 	const paddingLeft = $derived(`${0.75 + depth * 1.25}rem`);
+
+	// Drag context — getContext must be called at top level, but we only use it when isDraggable
+	const dragCtx = getContext<DragContext | undefined>(DRAG_CTX_KEY);
+	const dropHandler = getContext<((target: TreeNode) => void) | undefined>('tree-drop');
+
+	function handleDragStart(e: DragEvent) {
+		if (!dragCtx) return;
+		dragCtx.start(node);
+		if (e.dataTransfer) {
+			e.dataTransfer.effectAllowed = 'move';
+		}
+	}
+
+	function handleDragOver(e: DragEvent) {
+		if (!dragCtx?.draggedNode) return;
+		if (dragCtx.draggedNode === node) return;
+		if (isDescendantOrSelf(dragCtx.draggedNode, node)) return;
+		e.preventDefault();
+		if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+		isDropTarget = true;
+	}
+
+	function handleDragLeave() {
+		isDropTarget = false;
+	}
+
+	function handleDrop(e: DragEvent) {
+		e.preventDefault();
+		isDropTarget = false;
+		dropHandler?.(node);
+	}
+
+	function handleDragEnd() {
+		isDropTarget = false;
+		dragCtx?.end();
+	}
+
+	const isDragged = $derived(dragCtx?.draggedNode === node);
 </script>
 
 <li>
+	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="group flex items-center rounded-md text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+		class:opacity-40={isDragged}
+		class:ring-2={isDropTarget}
+		class:ring-primary-500={isDropTarget}
+		class:bg-primary-50={isDropTarget}
+		class:dark:bg-primary-900={isDropTarget}
 		style:padding-left={paddingLeft}
+		draggable={isDraggable ? 'true' : undefined}
+		ondragstart={isDraggable ? handleDragStart : undefined}
+		ondragover={isDraggable ? handleDragOver : undefined}
+		ondragleave={isDraggable ? handleDragLeave : undefined}
+		ondrop={isDraggable ? handleDrop : undefined}
+		ondragend={isDraggable ? handleDragEnd : undefined}
 	>
 		<!-- Icon -->
 		{#if node.icon}
@@ -69,7 +127,7 @@
 	{#if hasChildren && expanded}
 		<ul>
 			{#each node.children! as child (child.label)}
-				<TreeItem node={child} depth={depth + 1} />
+				<TreeItem node={child} depth={depth + 1} draggable={isDraggable} />
 			{/each}
 		</ul>
 	{/if}
