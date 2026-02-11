@@ -12,7 +12,7 @@
 
 <script lang="ts">
 	import { setContext } from 'svelte';
-	import { removeNode, isDescendantOrSelf } from './tree';
+	import { isDescendantOrSelf } from './tree';
 	import TreeItem from './TreeItem.svelte';
 
 	let {
@@ -22,7 +22,7 @@
 	}: {
 		nodes: TreeNode[];
 		draggable?: boolean;
-		onmove?: (movedNode: TreeNode, newParent: TreeNode | null) => void;
+		onmove?: (movedNode: TreeNode, newParent: TreeNode | null) => Promise<void>;
 	} = $props();
 
 	let draggedNode = $state<TreeNode | null>(null);
@@ -43,37 +43,37 @@
 
 	setContext(DRAG_CTX_KEY, ctx);
 
-	export function handleDrop(targetNode: TreeNode) {
+	async function handleDrop(targetNode: TreeNode) {
 		if (!draggedNode || draggedNode === targetNode) return;
 		if (isDescendantOrSelf(draggedNode, targetNode)) return;
 
 		const moved = draggedNode;
-		removeNode(nodes, moved);
-		if (!targetNode.children) targetNode.children = [];
-		targetNode.children.push(moved);
-		targetNode.expanded = true;
-
-		nodes = [...nodes];
-		onmove?.(moved, targetNode);
 		draggedNode = null;
+
+		try {
+			await onmove?.(moved, targetNode);
+		} catch (err) {
+			console.error('Move failed:', err);
+		}
 	}
 
-	function handleRootDrop(e: DragEvent) {
+	async function handleRootDrop(e: DragEvent) {
 		e.preventDefault();
 		rootDropTarget = false;
 		if (!draggedNode) return;
-
-		// Already at root level — nothing to do
 		if (nodes.includes(draggedNode)) {
 			draggedNode = null;
 			return;
 		}
 
 		const moved = draggedNode;
-		removeNode(nodes, moved);
-		nodes = [...nodes, moved];
-		onmove?.(moved, null);
 		draggedNode = null;
+
+		try {
+			await onmove?.(moved, null);
+		} catch (err) {
+			console.error('Move to root failed:', err);
+		}
 	}
 
 	function handleRootDragOver(e: DragEvent) {

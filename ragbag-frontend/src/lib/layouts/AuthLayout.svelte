@@ -75,7 +75,7 @@
 				parentId: newParent?.id ?? undefined,
 			}
 		});
-		console.log(`Moved "${movedNode.label}" ${newParent ? `into "${newParent.label}"` : 'to root'}`);
+		await loadCollections();
 	}
 </script>
 
