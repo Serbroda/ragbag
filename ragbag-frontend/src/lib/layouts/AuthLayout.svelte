@@ -1,9 +1,10 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Navbar, NavBrand, Button, Sidebar, SidebarGroup, SidebarItem, SidebarWrapper, SidebarDropdownWrapper } from 'flowbite-svelte';
-	import { ShoppingBagSolid } from "flowbite-svelte-icons";
+	import { Navbar, NavBrand, Button, Sidebar, SidebarWrapper } from 'flowbite-svelte';
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
+	import TreeItem from '../components/TreeItem.svelte';
+	import type { TreeNode } from '../components/tree';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -21,6 +22,57 @@
 		await logout();
 		navigate('/login');
 	}
+
+	const menuTree: TreeNode[] = [
+		{
+			label: 'Dashboard',
+			href: '/',
+		},
+		{
+			label: 'Shop',
+			href: '/shop',
+			expanded: true,
+			children: [
+				{ label: 'Products', href: '/shop/products' },
+				{ label: 'Orders', href: '/shop/orders' },
+			],
+		},
+		{
+			label: 'Vegetables',
+			href: '/vegetables',
+			children: [
+				{ label: 'Fruits', href: '/vegetables/fruits' },
+				{ label: 'Roots', href: '/vegetables/roots' },
+			],
+		},
+		{
+			label: 'Tech',
+			href: '/tech',
+			children: [
+				{
+					label: 'Monitors',
+					href: '/tech/monitors',
+					children: [
+						{ label: 'Flatscreen', href: '/tech/monitors/flatscreen' },
+						{ label: 'LCD', href: '/tech/monitors/lcd' },
+					],
+				},
+				{ label: 'Keyboards', href: '/tech/keyboards' },
+			],
+		},
+		{
+			label: 'Spaces',
+			href: '/spaces',
+		},
+		{
+			label: 'Bookmarks',
+			href: '/bookmarks',
+		},
+	];
+
+	const bottomTree: TreeNode[] = [
+		{ label: 'Settings', href: '/settings' },
+	];
 </script>
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -54,43 +106,24 @@
 		alwaysOpen
 		position="fixed"
 		class="top-[61px] z-40 h-[calc(100vh-61px)]"
-		isSingle={false}
 		backdrop={false}
 		params={{ x: -50, duration: 50 }}
 	>
-		<SidebarWrapper class="h-full">
-			<SidebarGroup>
-				<SidebarDropdownWrapper label="Shop" classes={{ btn: "p-2" }}>
-					{#snippet icon()}
-						<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
-					{/snippet}
-					<SidebarItem label="Products" href="" />
-				</SidebarDropdownWrapper>
-				<SidebarDropdownWrapper label="Vegetables" classes={{ btn: "p-2" }}>
-					{#snippet icon()}
-						<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
-					{/snippet}
-					<SidebarItem label="Fruits" href="" />
-				</SidebarDropdownWrapper>
-				<SidebarDropdownWrapper label="Tech" classes={{ btn: "p-2" }}>
-					{#snippet icon()}
-						<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
-					{/snippet}
-					<SidebarDropdownWrapper label="Monitors" classes={{ btn: "p-2" }}>
-						{#snippet icon()}
-							<ShoppingBagSolid class="h-5 w-5 text-gray-500 transition duration-75 group-hover:text-gray-900 dark:text-gray-400 dark:group-hover:text-white" />
-						{/snippet}
-						<SidebarItem label="Flatscreen" href="" />
-						<SidebarItem label="LCD" href="" />
-					</SidebarDropdownWrapper>
-				</SidebarDropdownWrapper>
-				<SidebarItem label="Dashboard" href="/" />
-				<SidebarItem label="Spaces" href="/spaces" />
-				<SidebarItem label="Bookmarks" href="/bookmarks" />
-			</SidebarGroup>
-			<SidebarGroup border>
-				<SidebarItem label="Settings" href="/settings" />
-			</SidebarGroup>
+		<SidebarWrapper class="flex h-full flex-col justify-between overflow-y-auto">
+			<nav>
+				<ul class="space-y-0.5 py-2">
+					{#each menuTree as node (node.label)}
+						<TreeItem {node} />
+					{/each}
+				</ul>
+			</nav>
+			<nav class="border-t border-gray-200 dark:border-gray-700">
+				<ul class="space-y-0.5 py-2">
+					{#each bottomTree as node (node.label)}
+						<TreeItem {node} />
+					{/each}
+				</ul>
+			</nav>
 		</SidebarWrapper>
 	</Sidebar>
 
