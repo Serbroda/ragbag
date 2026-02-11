@@ -39,18 +39,28 @@
 			</svg>
 		</button>
 
+		<!-- Icon -->
+		{#if node.icon}
+			{@const Icon = node.icon}
+			<Icon class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+		{/if}
+
 		<!-- Clickable label -->
 		{#if node.href}
 			<a
 				href={node.href}
-				class="flex-1 truncate rounded-md px-2 py-1.5 hover:text-gray-900 dark:hover:text-white"
+				class="flex-1 truncate rounded-md py-1.5 hover:text-gray-900 dark:hover:text-white"
+				class:px-2={!node.icon}
+				class:ps-1.5={!!node.icon}
 			>
 				{node.label}
 			</a>
 		{:else}
 			<button
 				type="button"
-				class="flex-1 truncate rounded-md px-2 py-1.5 text-left hover:text-gray-900 dark:hover:text-white"
+				class="flex-1 truncate rounded-md py-1.5 text-left hover:text-gray-900 dark:hover:text-white"
+				class:px-2={!node.icon}
+				class:ps-1.5={!!node.icon}
 				onclick={() => hasChildren && (expanded = !expanded)}
 			>
 				{node.label}

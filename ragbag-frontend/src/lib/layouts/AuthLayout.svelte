@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import { Navbar, NavBrand, Button, Sidebar, SidebarWrapper } from 'flowbite-svelte';
+	import { HomeSolid, GlobeSolid, StarSolid, TagSolid } from 'flowbite-svelte-icons';
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
@@ -98,10 +99,6 @@
 		},
 	];
 
-	for (let i = 0; i < 30; i++) {
-		menuTree.push({label: `Item ${i + 1}`, href: `/item${i + 1}`});
-	}
-
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 </script>
 
@@ -148,6 +145,14 @@
 		<SidebarWrapper class="flex h-full flex-col overflow-y-auto">
 			<nav>
 				<ul class="space-y-0.5 py-2">
+					<TreeItem node={{ label: 'Dashboard', icon: HomeSolid }} />
+					<TreeItem node={{ label: 'Links', icon: GlobeSolid }} />
+					<TreeItem node={{ label: 'Favorites', icon: StarSolid }} />
+					<TreeItem node={{ label: 'Tags', icon: TagSolid }} />
+				</ul>
+			</nav>
+			<nav>
+				<ul class="space-y-0.5 py-2 border-t border-gray-200 dark:border-gray-700">
 					{#each menuTree as node (node.label)}
 						<TreeItem {node} />
 					{/each}
