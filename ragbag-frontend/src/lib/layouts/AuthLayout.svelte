@@ -50,7 +50,7 @@
 		navigate('/login');
 	}
 
-	const menuTree: TreeNode[] = [
+	let menuTree: TreeNode[] = [
 		{
 			label: 'Dashboard',
 			href: '/',
@@ -82,6 +82,7 @@
 					children: [
 						{ label: 'Flatscreen', href: '/tech/monitors/flatscreen' },
 						{ label: 'LCD', href: '/tech/monitors/lcd' },
+						{ label: 'Another very long technology name', href: '/tech/monitors/lcd' },
 					],
 				},
 				{ label: 'Keyboards', href: '/tech/keyboards' },
@@ -96,6 +97,10 @@
 			href: '/bookmarks',
 		},
 	];
+
+	for (let i = 0; i < 30; i++) {
+		menuTree.push({label: `Item ${i + 1}`, href: `/item${i + 1}`});
+	}
 
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 </script>
@@ -134,14 +139,13 @@
 		isOpen={sidebarOpen}
 		{closeSidebar}
 		breakpoint="md"
-		alwaysOpen
 		position="fixed"
 		class="top-[61px] z-40 h-[calc(100vh-61px)]"
-		backdrop={false}
 		params={{ x: -50, duration: 50 }}
 		style="width: {sidebarWidth}px"
+		divClass="h-full overflow-hidden bg-gray-50 dark:bg-gray-800"
 	>
-		<SidebarWrapper class="flex h-full flex-col justify-between overflow-y-auto">
+		<SidebarWrapper class="flex h-full flex-col overflow-y-auto">
 			<nav>
 				<ul class="space-y-0.5 py-2">
 					{#each menuTree as node (node.label)}
