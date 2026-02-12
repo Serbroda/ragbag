@@ -4,9 +4,9 @@ import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
 import jakarta.transaction.Transactional;
-import java.util.HashSet;
 import java.util.Optional;
 import java.util.Set;
+import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -103,11 +103,11 @@ public class SpaceService {
     }
 
     public Set<Space> getSpacesForUser(String userId) {
-        Set<Space> spaces = new HashSet<>(spaceRepository.findByCreatedBy_Id(userId));
-        spaceMemberRepository.findByUser_Id(userId).forEach(sm -> {
-            spaces.add(sm.getSpace());
-        });
-        return spaces;
+        return spaceMemberRepository.findByUser_Id(userId).stream()
+                .sorted((a, b) ->
+                        Boolean.compare(b.getRole() == SpaceMemberRole.OWNER, a.getRole() == SpaceMemberRole.OWNER))
+                .map(SpaceMember::getSpace)
+                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
     }
 
     public record CreateSpaceCommand(String name) {}
