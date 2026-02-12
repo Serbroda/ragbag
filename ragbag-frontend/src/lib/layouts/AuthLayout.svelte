@@ -7,7 +7,7 @@
 	import { navigate, route } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
-	import { collectionsToTree, flattenTree, type TreeNode } from '../components/tree';
+	import { collectionsToTree, expandToNode, flattenTree, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 
 	let { children }: { children: Snippet } = $props();
@@ -63,6 +63,7 @@
 	let menuTree = $state<TreeNode[]>([]);
 
 	const activeSpaceId = $derived(route.params.spaceId ?? null);
+	const activeCollectionId = $derived(route.params.collectionId ?? null);
 
 	async function loadSpaces() {
 		spaces = await spaceApi.getSpaces();
@@ -70,7 +71,11 @@
 
 	async function loadCollections(spaceId: string) {
 		const collections = await collectionApi.getCollections({ spaceId });
-		menuTree = collectionsToTree(collections, spaceId);
+		const tree = collectionsToTree(collections, spaceId);
+		if (activeCollectionId) {
+			expandToNode(tree, activeCollectionId);
+		}
+		menuTree = tree;
 	}
 
 	function selectSpace(spaceId: string) {

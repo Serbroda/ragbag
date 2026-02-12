@@ -86,6 +86,18 @@ export function collectSubtreeIds(node: TreeNode): Set<string> {
 	return ids;
 }
 
+/** Expand all ancestors of the node with the given ID. Returns true if found. */
+export function expandToNode(nodes: TreeNode[], id: string): boolean {
+	for (const node of nodes) {
+		if (node.id === id) return true;
+		if (node.children && expandToNode(node.children, id)) {
+			node.expanded = true;
+			return true;
+		}
+	}
+	return false;
+}
+
 /** Check if `target` is the same as or a descendant of `ancestor`. */
 export function isDescendantOrSelf(ancestor: TreeNode, target: TreeNode): boolean {
 	if (ancestor === target) return true;
