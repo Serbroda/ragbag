@@ -23,6 +23,20 @@ public class SpaceService {
         return spaceRepository.findById(spaceId);
     }
 
+    public Optional<SpaceWithPermissions> findById(String userId, String spaceId) {
+        return spaceRepository.findById(spaceId)
+                .map(space -> {
+                    SpaceMemberRole role = space.getMembers().stream()
+                            .filter(member -> member.getUser().getId().equals(userId))
+                            .map(SpaceMember::getRole)
+                            .findFirst()
+                            .orElse(SpaceMemberRole.VIEWER);
+                    Set<SpacePermission> permissions = getPermissionsForRole(role);
+                    return new SpaceWithPermissions(space, permissions);
+                });
+    }
+
+
     public Space createSpace(String userId, CreateSpaceCommand cmd) {
         User user = userService
                 .findUserById(userId)
@@ -102,15 +116,58 @@ public class SpaceService {
         spaceRepository.save(space);
     }
 
-    public Set<Space> getSpacesForUser(String userId) {
+    public Set<SpaceWithPermissions> getSpacesForUser(String userId) {
         return spaceMemberRepository.findByUser_Id(userId).stream()
                 .sorted((a, b) ->
                         Boolean.compare(b.getRole() == SpaceMemberRole.OWNER, a.getRole() == SpaceMemberRole.OWNER))
-                .map(SpaceMember::getSpace)
+                .map(member -> {
+                    Space space = member.getSpace();
+                    SpaceMemberRole role = member.getRole();
+                    Set<SpacePermission> permissions = getPermissionsForRole(role);
+                    return new SpaceWithPermissions(space, permissions);
+                })
                 .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+    }
+
+    private Set<SpacePermission> getPermissionsForRole(SpaceMemberRole role) {
+        return switch (role) {
+            case OWNER ->
+                Set.of(
+                        SpacePermission.READ,
+                        SpacePermission.EDIT_SPACE,
+                        SpacePermission.CREATE_COLLECTIONS,
+                        SpacePermission.EDIT_COLLECTIONS,
+                        SpacePermission.DELETE_COLLECTIONS,
+                        SpacePermission.CREATE_BOOKMARKS,
+                        SpacePermission.EDIT_BOOKMARKS,
+                        SpacePermission.DELETE_BOOKMARKS);
+            case ADMIN ->
+                Set.of(
+                        SpacePermission.READ,
+                        SpacePermission.EDIT_SPACE,
+                        SpacePermission.CREATE_COLLECTIONS,
+                        SpacePermission.EDIT_COLLECTIONS,
+                        SpacePermission.DELETE_COLLECTIONS,
+                        SpacePermission.CREATE_BOOKMARKS,
+                        SpacePermission.EDIT_BOOKMARKS,
+                        SpacePermission.DELETE_BOOKMARKS);
+            case CONTRIBUTOR ->
+                Set.of(
+                        SpacePermission.READ,
+                        SpacePermission.EDIT_SPACE,
+                        SpacePermission.CREATE_COLLECTIONS,
+                        SpacePermission.EDIT_COLLECTIONS,
+                        SpacePermission.DELETE_COLLECTIONS,
+                        SpacePermission.CREATE_BOOKMARKS,
+                        SpacePermission.EDIT_BOOKMARKS,
+                        SpacePermission.DELETE_BOOKMARKS);
+            case VIEWER -> Set.of(SpacePermission.READ);
+        };
     }
 
     public record CreateSpaceCommand(String name) {}
 
     public record UpdateSpaceCommand(String name, String description) {}
+
+    public record SpaceWithPermissions(Space space, Set<SpacePermission> permissions) {}
 }

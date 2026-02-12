@@ -8,7 +8,10 @@ import de.serbroda.ragbag.generated.model.SpaceDto;
 import de.serbroda.ragbag.generated.model.UpdateSpaceDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import java.util.List;
+import java.util.Optional;
 import java.util.Set;
+
+import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -21,21 +24,22 @@ import org.springframework.web.bind.annotation.RestController;
 public class SpaceController implements SpaceApi {
 
     private final SpaceService spaceService;
+    private final SpaceMapper mapper;
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<SpaceDto> getSpace(String spaceId) {
-        return spaceService
-                .findById(spaceId)
-                .map(space -> ResponseEntity.ok(new SpaceDto(space.getId(), space.getName(), space.getDescription())))
-                .orElse(ResponseEntity.notFound().build());
+        SpaceService.SpaceWithPermissions space = spaceService.findById(
+                SecurityUtils.currentUserId(),
+                spaceId).orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
+        return ResponseEntity.ok(mapper.map(space));
     }
 
     @Override
     public ResponseEntity<List<SpaceDto>> getSpaces() {
-        Set<Space> spaces = spaceService.getSpacesForUser(SecurityUtils.currentUserId());
+        Set<SpaceService.SpaceWithPermissions> spaces = spaceService.getSpacesForUser(SecurityUtils.currentUserId());
         return ResponseEntity.ok(spaces.stream()
-                .map(s -> new SpaceDto(s.getId(), s.getName(), s.getDescription()))
+                .map(mapper::map)
                 .toList());
     }
 
@@ -45,7 +49,11 @@ public class SpaceController implements SpaceApi {
         Space space = spaceService.updateSpace(
                 spaceId,
                 new SpaceService.UpdateSpaceCommand(updateSpaceDto.getName(), updateSpaceDto.getDescription()));
-        return ResponseEntity.ok(new SpaceDto(space.getId(), space.getName(), space.getDescription()));
+        return ResponseEntity.ok(SpaceDto.builder()
+                .id(space.getId())
+                .name(space.getName())
+                .description(space.getDescription())
+                .build());
     }
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'DELETE')")
