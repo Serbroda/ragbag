@@ -1,13 +1,13 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { SpaceDto } from 'ragbag-frontend-sdk';
-	import { Navbar, NavBrand, Button } from 'flowbite-svelte';
-	import { HomeSolid, GlobeSolid, StarSolid, TagSolid } from 'flowbite-svelte-icons';
+	import { Navbar, NavBrand, Button, Modal, Label, Input, Select } from 'flowbite-svelte';
+	import { HomeSolid, GlobeSolid, StarSolid, TagSolid, CirclePlusSolid } from 'flowbite-svelte-icons';
 	import { apiConfig, logout } from '../api/client';
 	import { navigate, route } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
-	import { collectionsToTree, type TreeNode } from '../components/tree';
+	import { collectionsToTree, flattenTree, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 
 	let { children }: { children: Snippet } = $props();
@@ -84,6 +84,45 @@
 			loadCollections(activeSpaceId);
 		}
 	});
+
+	// --- Add Collection Modal ---
+	let showAddModal = $state(false);
+	let newCollectionName = $state('');
+	let newCollectionParentId = $state('');
+	let createError = $state('');
+	let creating = $state(false);
+
+	const parentOptions = $derived(flattenTree(menuTree));
+
+	function openAddModal() {
+		newCollectionName = '';
+		newCollectionParentId = '';
+		createError = '';
+		creating = false;
+		showAddModal = true;
+	}
+
+	async function handleCreateCollection() {
+		const name = newCollectionName.trim();
+		if (!name || !activeSpaceId) return;
+		createError = '';
+		creating = true;
+		try {
+			await collectionApi.createCollection({
+				spaceId: activeSpaceId,
+				createCollectionDto: {
+					name,
+					parentId: newCollectionParentId || undefined,
+				},
+			});
+			await loadCollections(activeSpaceId);
+			showAddModal = false;
+		} catch {
+			createError = 'Failed to create collection.';
+		} finally {
+			creating = false;
+		}
+	}
 
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 
@@ -201,11 +240,21 @@
 				</ul>
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
-				<h3
-					class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
-				>
-					Collections
-				</h3>
+				<div class="flex items-center justify-between px-3 pt-3 pb-1">
+					<h3
+						class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+					>
+						Collections
+					</h3>
+					<button
+						type="button"
+						title="Add collection"
+						class="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-600 dark:hover:text-gray-300"
+						onclick={openAddModal}
+					>
+						<CirclePlusSolid class="h-3.5 w-3.5" />
+					</button>
+				</div>
 				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} draggable={true} />
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
@@ -239,6 +288,38 @@
 		</div>
 	</div>
 </div>
+
+<!-- Add Collection Modal -->
+<Modal title="New Collection" bind:open={showAddModal} size="sm" autoclose={false}>
+	<form
+		onsubmit={(e) => {
+			e.preventDefault();
+			handleCreateCollection();
+		}}
+		class="flex flex-col gap-4"
+	>
+		<div>
+			<Label for="col-name" class="mb-2">Name</Label>
+			<Input id="col-name" type="text" bind:value={newCollectionName} required placeholder="e.g. Frontend Resources" />
+		</div>
+		<div>
+			<Label for="col-parent" class="mb-2">Parent Collection (optional)</Label>
+			<Select id="col-parent" bind:value={newCollectionParentId}>
+				<option value="">None (top level)</option>
+				{#each parentOptions as opt (opt.id)}
+					<option value={opt.id}>{'─'.repeat(opt.depth)} {opt.label}</option>
+				{/each}
+			</Select>
+		</div>
+		{#if createError}
+			<p class="text-sm text-red-500 dark:text-red-400">{createError}</p>
+		{/if}
+		<div class="flex justify-end gap-2">
+			<Button color="light" onclick={() => (showAddModal = false)}>Cancel</Button>
+			<Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create'}</Button>
+		</div>
+	</form>
+</Modal>
 
 <style>
 	@media (min-width: 768px) {

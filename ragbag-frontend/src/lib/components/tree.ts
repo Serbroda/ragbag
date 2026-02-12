@@ -40,6 +40,26 @@ export function removeNode(nodes: TreeNode[], target: TreeNode): boolean {
 	return false;
 }
 
+/** Flatten a tree into a list of { id, label, depth } for use in select dropdowns. */
+export interface FlatTreeOption {
+	id: string;
+	label: string;
+	depth: number;
+}
+
+export function flattenTree(nodes: TreeNode[], depth = 0): FlatTreeOption[] {
+	const result: FlatTreeOption[] = [];
+	for (const node of nodes) {
+		if (node.id) {
+			result.push({ id: node.id, label: node.label, depth });
+		}
+		if (node.children) {
+			result.push(...flattenTree(node.children, depth + 1));
+		}
+	}
+	return result;
+}
+
 /** Check if `target` is the same as or a descendant of `ancestor`. */
 export function isDescendantOrSelf(ancestor: TreeNode, target: TreeNode): boolean {
 	if (ancestor === target) return true;
