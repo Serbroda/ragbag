@@ -254,9 +254,9 @@
 				>
 			</div>
 		{:else}
-			<div class="space-y-2">
+			<div class="space-y-2 flex flex-row gap-x-4">
 				{#each bookmarks as bookmark (bookmark.id)}
-					<Card class="p-4">
+					<Card class="p-4 h-32 hover:border-gray-400">
 						<div class="flex items-start gap-4">
 							<!-- Favicon -->
 							<img
