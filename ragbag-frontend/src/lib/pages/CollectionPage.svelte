@@ -121,7 +121,7 @@
 	}
 </script>
 
-<main class="mx-auto max-w-4xl p-6">
+<main class="mx-auto p-6">
 	{#if loading}
 		<p class="text-gray-500 dark:text-gray-400">Loading...</p>
 	{:else if error}
