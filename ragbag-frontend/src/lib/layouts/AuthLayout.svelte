@@ -111,7 +111,7 @@
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" class:select-none={isResizing}>
 	<!-- Top Bar -->
-	<Navbar class="border-b border-gray-200 dark:border-gray-800">
+	<Navbar fluid class="border-b border-gray-200 px-3 dark:border-gray-800">
 		<div class="flex items-center gap-2">
 			<button
 				type="button"
