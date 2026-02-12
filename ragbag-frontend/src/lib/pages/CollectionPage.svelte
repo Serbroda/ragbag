@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { BookmarkApi, CollectionApi } from 'ragbag-frontend-sdk';
 	import type { BookmarkDto, CollectionDto } from 'ragbag-frontend-sdk';
+	import { getContext } from 'svelte';
 	import { apiConfig } from '../api/client';
 	import { route, navigate } from '../router';
 	import { Card, Button, Input, Alert, Modal, Label, Select } from 'flowbite-svelte';
@@ -8,6 +9,7 @@
 
 	const bookmarkApi = new BookmarkApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
+	const reloadSidebar = getContext<() => void>('reload-collections');
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
@@ -182,6 +184,7 @@
 
 			showEditCollectionModal = false;
 			await loadData(collectionId);
+			reloadSidebar();
 		} catch {
 			editCollectionError = 'Failed to update collection.';
 		} finally {
@@ -201,6 +204,7 @@
 		try {
 			await collectionApi.deleteCollection({ collectionId });
 			showDeleteCollectionModal = false;
+			reloadSidebar();
 			navigate('/space/:spaceId', { params: { spaceId } });
 		} catch {
 			deleteCollectionError = 'Failed to delete collection.';

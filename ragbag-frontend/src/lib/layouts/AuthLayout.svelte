@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import type { SpaceDto } from 'ragbag-frontend-sdk';
+	import { setContext } from 'svelte';
 	import { Navbar, NavBrand, Button, Modal, Label, Input, Select } from 'flowbite-svelte';
 	import { HomeSolid, GlobeSolid, StarSolid, TagSolid, CirclePlusSolid } from 'flowbite-svelte-icons';
 	import { apiConfig, logout } from '../api/client';
@@ -88,6 +89,10 @@
 		if (activeSpaceId) {
 			loadCollections(activeSpaceId);
 		}
+	});
+
+	setContext('reload-collections', () => {
+		if (activeSpaceId) loadCollections(activeSpaceId);
 	});
 
 	// --- Add Collection Modal ---
