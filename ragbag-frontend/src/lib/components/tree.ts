@@ -60,6 +60,32 @@ export function flattenTree(nodes: TreeNode[], depth = 0): FlatTreeOption[] {
 	return result;
 }
 
+/** Find a node by ID in the tree. */
+export function findNode(nodes: TreeNode[], id: string): TreeNode | null {
+	for (const node of nodes) {
+		if (node.id === id) return node;
+		if (node.children) {
+			const found = findNode(node.children, id);
+			if (found) return found;
+		}
+	}
+	return null;
+}
+
+/** Collect all IDs in a node's subtree (including itself). */
+export function collectSubtreeIds(node: TreeNode): Set<string> {
+	const ids = new Set<string>();
+	if (node.id) ids.add(node.id);
+	if (node.children) {
+		for (const child of node.children) {
+			for (const id of collectSubtreeIds(child)) {
+				ids.add(id);
+			}
+		}
+	}
+	return ids;
+}
+
 /** Check if `target` is the same as or a descendant of `ancestor`. */
 export function isDescendantOrSelf(ancestor: TreeNode, target: TreeNode): boolean {
 	if (ancestor === target) return true;
