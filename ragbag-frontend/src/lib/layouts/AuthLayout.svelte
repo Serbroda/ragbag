@@ -1,19 +1,21 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import { Navbar, NavBrand, Button, Sidebar, SidebarWrapper } from 'flowbite-svelte';
+	import type { SpaceDto } from 'ragbag-frontend-sdk';
+	import { Navbar, NavBrand, Button } from 'flowbite-svelte';
 	import { HomeSolid, GlobeSolid, StarSolid, TagSolid } from 'flowbite-svelte-icons';
-	import {apiConfig, logout} from '../api/client';
-	import { navigate } from '../router';
+	import { apiConfig, logout } from '../api/client';
+	import { navigate, route } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
-	import {collectionsToTree, type TreeNode} from '../components/tree';
-	import {CollectionApi, SpaceApi} from "ragbag-frontend-sdk";
+	import { collectionsToTree, type TreeNode } from '../components/tree';
+	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 
 	let { children }: { children: Snippet } = $props();
 
 	let sidebarOpen = $state(false);
 
 	// --- Resize ---
+	const SPACE_BAR_WIDTH = 64;
 	const MIN_WIDTH = 200;
 	const MAX_WIDTH = 480;
 	const DEFAULT_WIDTH = 256;
@@ -26,7 +28,7 @@
 		isResizing = true;
 
 		const onMouseMove = (e: MouseEvent) => {
-			sidebarWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX));
+			sidebarWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX - SPACE_BAR_WIDTH));
 		};
 
 		const onMouseUp = () => {
@@ -53,18 +55,35 @@
 		navigate('/login');
 	}
 
+	// --- Spaces & Collections ---
 	const spaceApi = new SpaceApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
 
+	let spaces = $state<SpaceDto[]>([]);
 	let menuTree = $state<TreeNode[]>([]);
 
-	async function loadCollections() {
-		const spaces = await spaceApi.getSpaces();
-		const collections = await collectionApi.getCollections({ spaceId: spaces[0].id });
-		menuTree = collectionsToTree(collections);
+	const activeSpaceId = $derived(route.params.spaceId ?? null);
+
+	async function loadSpaces() {
+		spaces = await spaceApi.getSpaces();
 	}
 
-	loadCollections();
+	async function loadCollections(spaceId: string) {
+		const collections = await collectionApi.getCollections({ spaceId });
+		menuTree = collectionsToTree(collections, spaceId);
+	}
+
+	function selectSpace(spaceId: string) {
+		navigate('/space/:spaceId', { params: { spaceId } });
+	}
+
+	loadSpaces();
+
+	$effect(() => {
+		if (activeSpaceId) {
+			loadCollections(activeSpaceId);
+		}
+	});
 
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 
@@ -73,9 +92,20 @@
 			collectionId: movedNode.id!,
 			moveCollectionDto: {
 				parentId: newParent?.id ?? undefined,
-			}
+			},
 		});
-		await loadCollections();
+		if (activeSpaceId) {
+			await loadCollections(activeSpaceId);
+		}
+	}
+
+	function getInitials(name: string): string {
+		return name
+			.split(/\s+/)
+			.map((w) => w[0])
+			.join('')
+			.toUpperCase()
+			.slice(0, 2);
 	}
 </script>
 
@@ -109,18 +139,59 @@
 	</Navbar>
 	<div class="navbar-accent"></div>
 
-	<!-- Sidebar -->
-	<Sidebar
-		isOpen={sidebarOpen}
-		{closeSidebar}
-		breakpoint="md"
-		position="fixed"
-		class="top-[61px] z-40 h-[calc(100vh-61px)]"
-		params={{ x: -50, duration: 50 }}
-		style="width: {sidebarWidth}px"
-		divClass="h-full overflow-hidden bg-gray-50 dark:bg-gray-800"
+	<!-- Mobile Backdrop -->
+	{#if sidebarOpen}
+		<!-- svelte-ignore a11y_no_static_element_interactions -->
+		<div
+			class="fixed inset-0 top-[61px] z-30 bg-gray-900/50 md:hidden"
+			onclick={closeSidebar}
+		></div>
+	{/if}
+
+	<!-- Space Bar (always dark, like Discord) -->
+	<aside
+		class="fixed top-[61px] left-0 z-40 h-[calc(100vh-61px)] w-16 flex-col items-center overflow-y-auto bg-gray-900 py-3 dark:bg-gray-950 {sidebarOpen ? 'flex' : 'hidden'} md:flex"
 	>
-		<SidebarWrapper class="flex h-full flex-col overflow-y-auto">
+		<!-- Home button -->
+		<div class="relative flex w-full items-center justify-center pb-2">
+			<button
+				type="button"
+				title="Home"
+				class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-700 text-primary-400 transition-all duration-200 hover:rounded-xl hover:bg-primary-500 hover:text-white"
+				onclick={() => activeSpaceId && navigate('/space/:spaceId', { params: { spaceId: activeSpaceId } })}
+			>
+				<HomeSolid class="h-5 w-5" />
+			</button>
+		</div>
+		<div class="mx-auto mb-2 h-px w-8 bg-gray-700"></div>
+
+		<!-- Spaces -->
+		{#each spaces as space (space.id)}
+			<div class="relative flex w-full items-center justify-center py-1">
+				<!-- Active indicator pill -->
+				<span
+					class="absolute left-0 w-1 rounded-r-full bg-white transition-all duration-200 {activeSpaceId === space.id ? 'h-5' : 'h-0 opacity-0'}"
+				></span>
+				<button
+					type="button"
+					title={space.name}
+					class="flex h-10 w-10 shrink-0 items-center justify-center text-xs font-bold transition-all duration-200 {activeSpaceId === space.id
+						? 'rounded-xl bg-primary-500 text-white shadow-lg shadow-primary-500/30'
+						: 'rounded-2xl bg-gray-700 text-gray-300 hover:rounded-xl hover:bg-primary-500/80 hover:text-white'}"
+					onclick={() => selectSpace(space.id)}
+				>
+					{getInitials(space.name)}
+				</button>
+			</div>
+		{/each}
+	</aside>
+
+	<!-- Sidebar -->
+	<aside
+		class="fixed top-[61px] left-16 z-40 h-[calc(100vh-61px)] overflow-hidden border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 {sidebarOpen ? 'block' : 'hidden'} md:block"
+		style="width: {sidebarWidth}px"
+	>
+		<div class="flex h-full flex-col overflow-y-auto">
 			<nav>
 				<ul class="space-y-0.5 py-2">
 					<TreeItem node={{ label: 'Dashboard', icon: HomeSolid }} />
@@ -130,12 +201,12 @@
 				</ul>
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
-				<h3 class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">Collections</h3>
-				<DraggableTreeList
-						bind:nodes={menuTree}
-						onmove={handleMove}
-						draggable={true}
-				/>
+				<h3
+					class="px-3 pt-3 pb-1 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+				>
+					Collections
+				</h3>
+				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} draggable={true} />
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
 				<ul class="space-y-0.5 py-2">
@@ -144,15 +215,15 @@
 					{/each}
 				</ul>
 			</nav>
-		</SidebarWrapper>
-	</Sidebar>
+		</div>
+	</aside>
 
 	<!-- Resize Handle (desktop only) -->
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
 		class="fixed top-[61px] z-50 hidden h-[calc(100vh-61px)] w-1.5 cursor-col-resize md:block"
 		class:bg-primary-500={isResizing}
-		style:left="{sidebarWidth - 3}px"
+		style:left="{SPACE_BAR_WIDTH + sidebarWidth - 3}px"
 		onmousedown={startResize}
 	>
 		<div
@@ -162,7 +233,7 @@
 	</div>
 
 	<!-- Main Content -->
-	<div class="p-4" style:margin-left="0" style:--sidebar-w="{sidebarWidth}px">
+	<div class="p-4" style:margin-left="0" style:--sidebar-w="{SPACE_BAR_WIDTH + sidebarWidth}px">
 		<div class="md-sidebar-offset">
 			{@render children()}
 		</div>

@@ -11,20 +11,20 @@ export interface TreeNode {
 }
 
 /** Map a CollectionDto tree to a TreeNode tree. */
-export function collectionToTreeNode(collection: CollectionDto): TreeNode {
+export function collectionToTreeNode(collection: CollectionDto, spaceId: string): TreeNode {
 	return {
 		id: collection.id,
 		label: collection.name,
 		children: collection.children?.length
-			? collection.children.map(collectionToTreeNode)
+			? collection.children.map((c) => collectionToTreeNode(c, spaceId))
 			: undefined,
-		href: `/collections/${collection.id}`,
+		href: `/space/${spaceId}/collections/${collection.id}`,
 	};
 }
 
 /** Map an array of CollectionDto to TreeNode[]. */
-export function collectionsToTree(collections: CollectionDto[]): TreeNode[] {
-	return collections.map(collectionToTreeNode);
+export function collectionsToTree(collections: CollectionDto[], spaceId: string): TreeNode[] {
+	return collections.map((c) => collectionToTreeNode(c, spaceId));
 }
 
 /** Remove a node (by reference) from anywhere in the tree. Returns true if found. */

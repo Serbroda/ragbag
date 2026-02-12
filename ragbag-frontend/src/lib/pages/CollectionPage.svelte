@@ -26,7 +26,9 @@
 	let editTitle = $state('');
 	let editDescription = $state('');
 
-	const collectionId = $derived(route.getParams('/collections/:collectionId').collectionId);
+	const collectionId = $derived(
+		route.getParams('/space/:spaceId/collections/:collectionId').collectionId,
+	);
 
 	$effect(() => {
 		loadData(collectionId);
