@@ -1,0 +1,29 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+		 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+	<changeSet id="2026-02-15: create table bookmark_tags" author="serbroda">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<tableExists tableName="bookmark_tags"/>
+			</not>
+		</preConditions>
+
+		<createTable tableName="bookmark_tags">
+			<column name="bookmark_id" type="varchar(36)">
+				<constraints nullable="false" referencedTableName="bookmarks" referencedColumnNames="id"
+						foreignKeyName="fk_bookmark_tags_bookmark_id"/>
+			</column>
+			<column name="tag" type="varchar(80)">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+
+		<addPrimaryKey tableName="bookmark_tags" columnNames="bookmark_id,tag"
+				constraintName="pk_bookmark_tags"/>
+	</changeSet>
+
+</databaseChangeLog>

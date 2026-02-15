@@ -4,6 +4,8 @@ import de.serbroda.ragbag.collection.Collection;
 import de.serbroda.ragbag.shared.base.AbstractBaseEntity;
 import de.serbroda.ragbag.user.User;
 import jakarta.persistence.*;
+import java.util.LinkedHashSet;
+import java.util.Set;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -25,6 +27,11 @@ public class Bookmark extends AbstractBaseEntity {
 
     @Column(name = "canonical")
     private String canonical;
+
+    @ElementCollection
+    @CollectionTable(name = "bookmark_tags", joinColumns = @JoinColumn(name = "bookmark_id"))
+    @Column(name = "tag")
+    private Set<String> tags = new LinkedHashSet<>();
 
     @ManyToOne
     private Collection collection;

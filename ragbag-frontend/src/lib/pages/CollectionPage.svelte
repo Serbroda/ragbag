@@ -39,6 +39,7 @@
 	let newUrl = $state('');
 	let newTitle = $state('');
 	let newDescription = $state('');
+	let newTags = $state('');
 	let saving = $state(false);
 
 	// Edit bookmark
@@ -46,6 +47,7 @@
 	let editUrl = $state('');
 	let editTitle = $state('');
 	let editDescription = $state('');
+	let editTags = $state('');
 	let openMenuId = $state<string | null>(null);
 	let openHeaderMenu = $state(false);
 
@@ -100,12 +102,14 @@
 					url: newUrl,
 					title: newTitle || undefined,
 					description: newDescription || undefined,
+					tags: parseTags(newTags),
 				},
 			});
 			bookmarks = [...bookmarks, created];
 			newUrl = '';
 			newTitle = '';
 			newDescription = '';
+			newTags = '';
 			showAddModal = false;
 		} catch {
 			error = 'Failed to add bookmark.';
@@ -120,6 +124,7 @@
 		editUrl = bookmark.url;
 		editTitle = bookmark.title ?? '';
 		editDescription = bookmark.description ?? '';
+		editTags = bookmark.tags?.join(', ') ?? '';
 	}
 
 	async function saveEdit() {
@@ -133,6 +138,7 @@
 					url: editUrl,
 					title: editTitle || undefined,
 					description: editDescription || undefined,
+					tags: parseTags(editTags),
 				},
 			});
 			bookmarks = bookmarks.map((b) => (b.id === updated.id ? updated : b));
@@ -247,6 +253,13 @@
 		} catch {
 			return url;
 		}
+	}
+
+	function parseTags(value: string): string[] {
+		return value
+			.split(',')
+			.map((tag) => tag.trim())
+			.filter((tag) => tag.length > 0);
 	}
 
 	function toggleMenu(bookmarkId: string) {
@@ -384,6 +397,18 @@
 									{bookmark.description}
 								</div>
 							{/if}
+
+							{#if bookmark.tags && bookmark.tags.length > 0}
+								<div class="flex flex-wrap gap-1">
+									{#each bookmark.tags as tag}
+										<span
+											class="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
+										>
+											{tag}
+										</span>
+									{/each}
+								</div>
+							{/if}
 						</div>
 
 						{#if canEditBookmarks || canDeleteBookmarks}
@@ -445,6 +470,7 @@
 		<Input type="url" placeholder="https://..." bind:value={newUrl} required />
 		<Input type="text" placeholder="Title (optional)" bind:value={newTitle} />
 		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={newDescription} />
+		<Input type="text" placeholder="Tags (comma separated)" bind:value={newTags} />
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (showAddModal = false)}>Cancel</Button>
 			<Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add'}</Button>
@@ -470,6 +496,7 @@
 		<Input type="url" placeholder="https://..." bind:value={editUrl} required />
 		<Input type="text" placeholder="Title (optional)" bind:value={editTitle} />
 		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={editDescription} />
+		<Input type="text" placeholder="Tags (comma separated)" bind:value={editTags} />
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (editingBookmark = null)}>Cancel</Button>
 			<Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>

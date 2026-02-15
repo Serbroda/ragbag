@@ -46,7 +46,8 @@ public class BookmarkController implements BookmarkApi {
                         collectionId,
                         createBookmarkDto.getUrl(),
                         createBookmarkDto.getTitle(),
-                        createBookmarkDto.getDescription()));
+                        createBookmarkDto.getDescription(),
+                        createBookmarkDto.getTags()));
         return ResponseEntity.ok(toDto(bookmark));
     }
 
@@ -55,7 +56,10 @@ public class BookmarkController implements BookmarkApi {
         Bookmark bookmark = bookmarkService.updateBookmark(
                 bookmarkId,
                 new BookmarkService.UpdateBookmarkCommand(
-                        updateBookmarkDto.getUrl(), updateBookmarkDto.getTitle(), updateBookmarkDto.getDescription()));
+                        updateBookmarkDto.getUrl(),
+                        updateBookmarkDto.getTitle(),
+                        updateBookmarkDto.getDescription(),
+                        updateBookmarkDto.getTags()));
         return ResponseEntity.ok(toDto(bookmark));
     }
 
@@ -75,6 +79,7 @@ public class BookmarkController implements BookmarkApi {
                 .url(bookmark.getUrl())
                 .title(bookmark.getTitle())
                 .description(bookmark.getDescription())
+                .tags(bookmark.getTags() != null ? bookmark.getTags().stream().toList() : null)
                 .ogImage(bookmark.getOgImage())
                 .favicon(bookmark.getFavicon())
                 .canonical(bookmark.getCanonical())

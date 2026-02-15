@@ -6,8 +6,10 @@ import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserRepository;
 import jakarta.transaction.Transactional;
+import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
 
@@ -50,6 +52,7 @@ public class BookmarkService {
         bookmark.setOgImage(metadata.ogImage());
         bookmark.setFavicon(metadata.favicon());
         bookmark.setCanonical(metadata.canonical());
+        bookmark.setTags(normalizeTags(cmd.tags()));
 
         return bookmarkRepository.save(bookmark);
     }
@@ -62,6 +65,9 @@ public class BookmarkService {
         bookmark.setUrl(cmd.url());
         bookmark.setTitle(cmd.title());
         bookmark.setDescription(cmd.description());
+        if (cmd.tags() != null) {
+            bookmark.setTags(normalizeTags(cmd.tags()));
+        }
 
         if (urlChanged) {
             BookmarkMetadataService.BookmarkMetadata metadata = bookmarkMetadataService.fetch(cmd.url());
@@ -79,9 +85,10 @@ public class BookmarkService {
         bookmarkRepository.deleteById(id);
     }
 
-    public record CreateBookmarkCommand(String collectionId, String url, String title, String description) {}
+    public record CreateBookmarkCommand(
+            String collectionId, String url, String title, String description, List<String> tags) {}
 
-    public record UpdateBookmarkCommand(String url, String title, String description) {}
+    public record UpdateBookmarkCommand(String url, String title, String description, List<String> tags) {}
 
     private static String preferNonBlank(String primary, String fallback) {
         if (primary != null && !primary.isBlank()) {
@@ -96,5 +103,22 @@ public class BookmarkService {
             return value;
         }
         return lastResort;
+    }
+
+    private static Set<String> normalizeTags(List<String> tags) {
+        Set<String> normalized = new LinkedHashSet<>();
+        if (tags == null) {
+            return normalized;
+        }
+        for (String tag : tags) {
+            if (tag == null) {
+                continue;
+            }
+            String trimmed = tag.trim();
+            if (!trimmed.isEmpty()) {
+                normalized.add(trimmed);
+            }
+        }
+        return normalized;
     }
 }
