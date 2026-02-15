@@ -46,6 +46,8 @@
 	let editUrl = $state('');
 	let editTitle = $state('');
 	let editDescription = $state('');
+	let openMenuId = $state<string | null>(null);
+	let openHeaderMenu = $state(false);
 
 	// Edit collection
 	let showEditCollectionModal = $state(false);
@@ -246,6 +248,10 @@
 			return url;
 		}
 	}
+
+	function toggleMenu(bookmarkId: string) {
+		openMenuId = openMenuId === bookmarkId ? null : bookmarkId;
+	}
 </script>
 
 <main class="mx-auto p-6">
@@ -262,15 +268,68 @@
 					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{collection.description}</p>
 				{/if}
 			</div>
-			<div class="flex gap-2">
-				{#if canEditCollections}
-					<Button size="sm" color="light" onclick={openEditCollectionModal}>Edit</Button>
-				{/if}
-				{#if canDeleteCollections}
-					<Button size="sm" color="red" outline onclick={openDeleteCollectionModal}>Delete</Button>
-				{/if}
-				{#if canCreateBookmarks}
-					<Button size="sm" onclick={() => (showAddModal = true)}>+ Add Link</Button>
+			<div class="flex items-center gap-2">
+				<div class="hidden gap-2 md:flex">
+					{#if canEditCollections}
+						<Button size="sm" color="light" onclick={openEditCollectionModal}>Edit</Button>
+					{/if}
+					{#if canDeleteCollections}
+						<Button size="sm" color="red" outline onclick={openDeleteCollectionModal}>Delete</Button>
+					{/if}
+					{#if canCreateBookmarks}
+						<Button size="sm" onclick={() => (showAddModal = true)}>+ Add Link</Button>
+					{/if}
+				</div>
+				{#if canEditCollections || canDeleteCollections || canCreateBookmarks}
+					<div class="relative md:hidden">
+						<Button
+							size="sm"
+							color="light"
+							onclick={() => (openHeaderMenu = !openHeaderMenu)}
+							aria-label="Collection actions"
+						>
+							&#x22EE;
+						</Button>
+						{#if openHeaderMenu}
+							<div
+								class="absolute right-0 top-10 z-20 w-40 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
+							>
+								{#if canCreateBookmarks}
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											showAddModal = true;
+											openHeaderMenu = false;
+										}}
+									>
+										Add Link
+									</button>
+								{/if}
+								{#if canEditCollections}
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											openEditCollectionModal();
+											openHeaderMenu = false;
+										}}
+									>
+										Edit
+									</button>
+								{/if}
+								{#if canDeleteCollections}
+									<button
+										class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
+										onclick={() => {
+											openDeleteCollectionModal();
+											openHeaderMenu = false;
+										}}
+									>
+										Delete
+									</button>
+								{/if}
+							</div>
+						{/if}
+					</div>
 				{/if}
 			</div>
 		</div>
@@ -288,54 +347,86 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="space-y-2 flex flex-row gap-x-4">
+			<div class="flex flex-col gap-4 md:flex-row md:flex-wrap">
 				{#each bookmarks as bookmark (bookmark.id)}
-					<Card class="p-4 h-32 hover:border-gray-400">
-						<div class="flex items-start gap-4">
-							<!-- Favicon -->
-							<img
-								src="https://www.google.com/s2/favicons?domain={getDomain(bookmark.url)}&sz=32"
-								alt=""
-								class="mt-1 h-6 w-6 shrink-0 rounded"
-							/>
+					<Card class="relative w-full p-4 pb-12 hover:border-gray-400 md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.75rem)]">
+						<div class="flex flex-col gap-2">
+							<div class="flex items-start gap-4">
+								<!-- Favicon -->
+								<img
+									src="https://www.google.com/s2/favicons?domain={getDomain(bookmark.url)}&sz=32"
+									alt=""
+									class="mt-1 h-6 w-6 shrink-0 rounded"
+								/>
 
-							<!-- Content -->
-							<div class="min-w-0 flex-1">
-								<a
-									href={bookmark.url}
-									target="_blank"
-									rel="noopener noreferrer"
-									class="font-medium text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
-								>
-									{bookmark.title || bookmark.url}
-								</a>
-								<p class="truncate text-xs text-gray-400 dark:text-gray-500">
-									{getDomain(bookmark.url)}
-								</p>
+								<!-- Content -->
+								<div class="min-w-0 flex-1">
+									<a
+										href={bookmark.url}
+										target="_blank"
+										rel="noopener noreferrer"
+										class="block break-words font-medium text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400 line-clamp-2"
+									>
+										{bookmark.title || bookmark.url}
+									</a>
+									<p class="truncate text-xs text-gray-400 dark:text-gray-500">
+										{getDomain(bookmark.url)}
+									</p>
+
+								</div>
+
+
 
 							</div>
 
-
-
-							<!-- Actions -->
-						<div class="flex shrink-0 gap-1">
-							{#if canEditBookmarks}
-								<Button size="xs" color="light" onclick={() => startEdit(bookmark)}>Edit</Button>
-							{/if}
-							{#if canDeleteBookmarks}
-								<Button size="xs" color="red" outline onclick={() => deleteBookmark(bookmark)}
-									>Delete</Button
-								>
+							{#if bookmark.description}
+								<div class="text-sm text-gray-500 dark:text-gray-400 break-words line-clamp-2">
+									{bookmark.description}
+								</div>
 							{/if}
 						</div>
-					</div>
 
-						{#if bookmark.description}
-							<div class="mt-1 text-sm text-gray-500 dark:text-gray-400 text-clip w-full">
-								{bookmark.description}
+						{#if canEditBookmarks || canDeleteBookmarks}
+							<div class="absolute bottom-3 right-3">
+								<Button
+									size="xs"
+									color="light"
+									onclick={() => toggleMenu(bookmark.id)}
+									aria-label="Bookmark actions"
+								>
+									&#x22EE;
+								</Button>
+								{#if openMenuId === bookmark.id}
+									<div
+										class="absolute bottom-9 right-0 z-10 w-32 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
+									>
+										{#if canEditBookmarks}
+											<button
+												class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+												onclick={() => {
+													startEdit(bookmark);
+													openMenuId = null;
+												}}
+											>
+												Edit
+											</button>
+										{/if}
+										{#if canDeleteBookmarks}
+											<button
+												class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
+												onclick={() => {
+													deleteBookmark(bookmark);
+													openMenuId = null;
+												}}
+											>
+												Delete
+											</button>
+										{/if}
+									</div>
+								{/if}
 							</div>
 						{/if}
-				</Card>
+					</Card>
 				{/each}
 			</div>
 		{/if}
