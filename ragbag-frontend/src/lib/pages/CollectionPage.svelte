@@ -64,14 +64,13 @@
 	let deleteCollectionError = $state('');
 	let deleteCollectionSaving = $state(false);
 
-	const collectionId = $derived(
-		route.getParams('/space/:spaceId/collections/:collectionId').collectionId,
-	);
-
-	const spaceId = $derived(route.getParams('/space/:spaceId/collections/:collectionId').spaceId);
+	const collectionId = $derived(route.params.collectionId ?? '');
+	const spaceId = $derived(route.params.spaceId ?? '');
 
 	$effect(() => {
-		loadData(collectionId);
+		if (collectionId) {
+			loadData(collectionId);
+		}
 	});
 
 	async function loadData(id: string) {

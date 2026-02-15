@@ -42,7 +42,14 @@ public class SecurityConfig {
         http.cors(Customizer.withDefaults())
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(sm -> sm.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-                .authorizeHttpRequests(auth -> auth.requestMatchers(
+				.authorizeHttpRequests(auth -> auth.requestMatchers(
+							"/",
+							"/app/**",
+							"/app/assets/**",
+							"/app/favicon.ico",
+                                "/assets/**",
+                                "/favicon.ico",
+                                "/index.html",
                                 "/h2-console/**",
                                 "/api/auth/register",
                                 "/api/auth/login",
