@@ -75,6 +75,9 @@ public class BookmarkController implements BookmarkApi {
                 .url(bookmark.getUrl())
                 .title(bookmark.getTitle())
                 .description(bookmark.getDescription())
+                .ogImage(bookmark.getOgImage())
+                .favicon(bookmark.getFavicon())
+                .canonical(bookmark.getCanonical())
                 .build();
     }
 }

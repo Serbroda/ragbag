@@ -4,12 +4,30 @@
 	import { getContext } from 'svelte';
 	import { apiConfig } from '../api/client';
 	import { route, navigate } from '../router';
-	import { Card, Button, Input, Alert, Modal, Label, Select } from 'flowbite-svelte';
+	import { Card, Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import { collectionsToTree, flattenTree, findNode, collectSubtreeIds } from '../components/tree';
 
 	const bookmarkApi = new BookmarkApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
+	type SpacePermission =
+		| 'READ'
+		| 'EDIT_SPACE'
+		| 'CREATE_COLLECTIONS'
+		| 'EDIT_COLLECTIONS'
+		| 'DELETE_COLLECTIONS'
+		| 'CREATE_BOOKMARKS'
+		| 'EDIT_BOOKMARKS'
+		| 'DELETE_BOOKMARKS';
+
 	const reloadSidebar = getContext<() => void>('reload-collections');
+	const hasSpacePermission = getContext<((permission: SpacePermission) => boolean) | null>(
+		'has-space-permission',
+	);
+	const canCreateBookmarks = $derived(hasSpacePermission?.('CREATE_BOOKMARKS') ?? false);
+	const canEditBookmarks = $derived(hasSpacePermission?.('EDIT_BOOKMARKS') ?? false);
+	const canDeleteBookmarks = $derived(hasSpacePermission?.('DELETE_BOOKMARKS') ?? false);
+	const canEditCollections = $derived(hasSpacePermission?.('EDIT_COLLECTIONS') ?? false);
+	const canDeleteCollections = $derived(hasSpacePermission?.('DELETE_COLLECTIONS') ?? false);
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
@@ -70,6 +88,7 @@
 	}
 
 	async function addBookmark() {
+		if (!canCreateBookmarks) return;
 		if (!newUrl.trim()) return;
 		saving = true;
 		try {
@@ -94,6 +113,7 @@
 	}
 
 	function startEdit(bookmark: BookmarkDto) {
+		if (!canEditBookmarks) return;
 		editingBookmark = bookmark;
 		editUrl = bookmark.url;
 		editTitle = bookmark.title ?? '';
@@ -101,6 +121,7 @@
 	}
 
 	async function saveEdit() {
+		if (!canEditBookmarks) return;
 		if (!editingBookmark || !editUrl.trim()) return;
 		saving = true;
 		try {
@@ -122,6 +143,7 @@
 	}
 
 	async function deleteBookmark(bookmark: BookmarkDto) {
+		if (!canDeleteBookmarks) return;
 		try {
 			await bookmarkApi.deleteBookmark({ bookmarkId: bookmark.id });
 			bookmarks = bookmarks.filter((b) => b.id !== bookmark.id);
@@ -133,6 +155,7 @@
 	// --- Collection Edit/Delete ---
 
 	async function openEditCollectionModal() {
+		if (!canEditCollections) return;
 		if (!collection) return;
 		editCollectionName = collection.name;
 		editCollectionParentId = collection.parentId ?? '';
@@ -156,6 +179,7 @@
 	}
 
 	async function handleEditCollection() {
+		if (!canEditCollections) return;
 		if (!collection) return;
 		const name = editCollectionName.trim();
 		if (!name) return;
@@ -193,12 +217,14 @@
 	}
 
 	function openDeleteCollectionModal() {
+		if (!canDeleteCollections) return;
 		deleteCollectionError = '';
 		deleteCollectionSaving = false;
 		showDeleteCollectionModal = true;
 	}
 
 	async function handleDeleteCollection() {
+		if (!canDeleteCollections) return;
 		deleteCollectionError = '';
 		deleteCollectionSaving = true;
 		try {
@@ -237,9 +263,15 @@
 				{/if}
 			</div>
 			<div class="flex gap-2">
-				<Button size="sm" color="light" onclick={openEditCollectionModal}>Edit</Button>
-				<Button size="sm" color="red" outline onclick={openDeleteCollectionModal}>Delete</Button>
-				<Button size="sm" onclick={() => (showAddModal = true)}>+ Add Link</Button>
+				{#if canEditCollections}
+					<Button size="sm" color="light" onclick={openEditCollectionModal}>Edit</Button>
+				{/if}
+				{#if canDeleteCollections}
+					<Button size="sm" color="red" outline onclick={openDeleteCollectionModal}>Delete</Button>
+				{/if}
+				{#if canCreateBookmarks}
+					<Button size="sm" onclick={() => (showAddModal = true)}>+ Add Link</Button>
+				{/if}
 			</div>
 		</div>
 
@@ -249,9 +281,11 @@
 				class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-12 dark:border-gray-600"
 			>
 				<p class="mb-2 text-gray-500 dark:text-gray-400">No links yet</p>
-				<Button size="sm" color="light" onclick={() => (showAddModal = true)}
-					>Add your first link</Button
-				>
+				{#if canCreateBookmarks}
+					<Button size="sm" color="light" onclick={() => (showAddModal = true)}
+						>Add your first link</Button
+					>
+				{/if}
 			</div>
 		{:else}
 			<div class="space-y-2 flex flex-row gap-x-4">
@@ -278,22 +312,30 @@
 								<p class="truncate text-xs text-gray-400 dark:text-gray-500">
 									{getDomain(bookmark.url)}
 								</p>
-								{#if bookmark.description}
-									<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-										{bookmark.description}
-									</p>
-								{/if}
+
 							</div>
 
+
+
 							<!-- Actions -->
-							<div class="flex shrink-0 gap-1">
+						<div class="flex shrink-0 gap-1">
+							{#if canEditBookmarks}
 								<Button size="xs" color="light" onclick={() => startEdit(bookmark)}>Edit</Button>
+							{/if}
+							{#if canDeleteBookmarks}
 								<Button size="xs" color="red" outline onclick={() => deleteBookmark(bookmark)}
 									>Delete</Button
 								>
-							</div>
+							{/if}
 						</div>
-					</Card>
+					</div>
+
+						{#if bookmark.description}
+							<div class="mt-1 text-sm text-gray-500 dark:text-gray-400 text-clip w-full">
+								{bookmark.description}
+							</div>
+						{/if}
+				</Card>
 				{/each}
 			</div>
 		{/if}
@@ -311,7 +353,7 @@
 	>
 		<Input type="url" placeholder="https://..." bind:value={newUrl} required />
 		<Input type="text" placeholder="Title (optional)" bind:value={newTitle} />
-		<Input type="text" placeholder="Description (optional)" bind:value={newDescription} />
+		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={newDescription} />
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (showAddModal = false)}>Cancel</Button>
 			<Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add'}</Button>
@@ -336,7 +378,7 @@
 	>
 		<Input type="url" placeholder="https://..." bind:value={editUrl} required />
 		<Input type="text" placeholder="Title (optional)" bind:value={editTitle} />
-		<Input type="text" placeholder="Description (optional)" bind:value={editDescription} />
+		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={editDescription} />
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (editingBookmark = null)}>Cancel</Button>
 			<Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>

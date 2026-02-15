@@ -24,18 +24,16 @@ public class SpaceService {
     }
 
     public Optional<SpaceWithPermissions> findById(String userId, String spaceId) {
-        return spaceRepository.findById(spaceId)
-                .map(space -> {
-                    SpaceMemberRole role = space.getMembers().stream()
-                            .filter(member -> member.getUser().getId().equals(userId))
-                            .map(SpaceMember::getRole)
-                            .findFirst()
-                            .orElse(SpaceMemberRole.VIEWER);
-                    Set<SpacePermission> permissions = getPermissionsForRole(role);
-                    return new SpaceWithPermissions(space, permissions);
-                });
+        return spaceRepository.findById(spaceId).map(space -> {
+            SpaceMemberRole role = space.getMembers().stream()
+                    .filter(member -> member.getUser().getId().equals(userId))
+                    .map(SpaceMember::getRole)
+                    .findFirst()
+                    .orElse(SpaceMemberRole.VIEWER);
+            Set<SpacePermission> permissions = getPermissionsForRole(role);
+            return new SpaceWithPermissions(space, permissions);
+        });
     }
-
 
     public Space createSpace(String userId, CreateSpaceCommand cmd) {
         User user = userService

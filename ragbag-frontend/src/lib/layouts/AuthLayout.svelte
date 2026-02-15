@@ -60,14 +60,31 @@
 	const spaceApi = new SpaceApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
 
-	let spaces = $state<SpaceDto[]>([]);
+	type SpacePermission =
+		| 'READ'
+		| 'EDIT_SPACE'
+		| 'CREATE_COLLECTIONS'
+		| 'EDIT_COLLECTIONS'
+		| 'DELETE_COLLECTIONS'
+		| 'CREATE_BOOKMARKS'
+		| 'EDIT_BOOKMARKS'
+		| 'DELETE_BOOKMARKS';
+
+	type SpaceWithPermissions = SpaceDto & { permissions?: SpacePermission[] };
+
+	let spaces = $state<SpaceWithPermissions[]>([]);
 	let menuTree = $state<TreeNode[]>([]);
 
 	const activeSpaceId = $derived(route.params.spaceId ?? null);
 	const activeCollectionId = $derived(route.params.collectionId ?? null);
+	const activeSpace = $derived(spaces.find((space) => space.id === activeSpaceId) ?? null);
+	const activePermissions = $derived(new Set<SpacePermission>(activeSpace?.permissions ?? []));
+	const canCreateCollections = $derived(activePermissions.has('CREATE_COLLECTIONS'));
+	const canEditCollections = $derived(activePermissions.has('EDIT_COLLECTIONS'));
 
 	async function loadSpaces() {
-		spaces = await spaceApi.getSpaces();
+		const response = await spaceApi.getSpacesRaw();
+		spaces = (await response.raw.json()) as SpaceWithPermissions[];
 	}
 
 	async function loadCollections(spaceId: string) {
@@ -95,6 +112,10 @@
 		if (activeSpaceId) loadCollections(activeSpaceId);
 	});
 
+	setContext('has-space-permission', (permission: SpacePermission) =>
+		activePermissions.has(permission),
+	);
+
 	// --- Add Collection Modal ---
 	let showAddModal = $state(false);
 	let newCollectionName = $state('');
@@ -105,6 +126,7 @@
 	const parentOptions = $derived(flattenTree(menuTree));
 
 	function openAddModal() {
+		if (!canCreateCollections) return;
 		newCollectionName = '';
 		newCollectionParentId = '';
 		createError = '';
@@ -113,6 +135,7 @@
 	}
 
 	async function handleCreateCollection() {
+		if (!canCreateCollections) return;
 		const name = newCollectionName.trim();
 		if (!name || !activeSpaceId) return;
 		createError = '';
@@ -137,6 +160,7 @@
 	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
 
 	async function handleMove(movedNode: TreeNode, newParent: TreeNode | null) {
+		if (!canEditCollections) return;
 		await collectionApi.moveCollection({
 			collectionId: movedNode.id!,
 			moveCollectionDto: {
@@ -256,16 +280,17 @@
 					>
 						Collections
 					</h3>
-					<button
-						type="button"
-						title="Add collection"
-						class="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-600 dark:hover:text-gray-300"
-						onclick={openAddModal}
-					>
+						<button
+							type="button"
+							title="Add collection"
+							class="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-gray-600 dark:hover:text-gray-300"
+							disabled={!canCreateCollections}
+							onclick={openAddModal}
+						>
 						<CirclePlusSolid class="h-3.5 w-3.5" />
 					</button>
 				</div>
-				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} draggable={true} />
+				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} draggable={canEditCollections} />
 			</nav>
 			<nav class="border-t border-gray-200 dark:border-gray-700">
 				<ul class="space-y-0.5 py-2">

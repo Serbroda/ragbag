@@ -7,11 +7,9 @@ import de.serbroda.ragbag.generated.api.SpaceApi;
 import de.serbroda.ragbag.generated.model.SpaceDto;
 import de.serbroda.ragbag.generated.model.UpdateSpaceDto;
 import de.serbroda.ragbag.security.SecurityUtils;
-import java.util.List;
-import java.util.Optional;
-import java.util.Set;
-
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
+import java.util.List;
+import java.util.Set;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -29,18 +27,16 @@ public class SpaceController implements SpaceApi {
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<SpaceDto> getSpace(String spaceId) {
-        SpaceService.SpaceWithPermissions space = spaceService.findById(
-                SecurityUtils.currentUserId(),
-                spaceId).orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
+        SpaceService.SpaceWithPermissions space = spaceService
+                .findById(SecurityUtils.currentUserId(), spaceId)
+                .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
         return ResponseEntity.ok(mapper.map(space));
     }
 
     @Override
     public ResponseEntity<List<SpaceDto>> getSpaces() {
         Set<SpaceService.SpaceWithPermissions> spaces = spaceService.getSpacesForUser(SecurityUtils.currentUserId());
-        return ResponseEntity.ok(spaces.stream()
-                .map(mapper::map)
-                .toList());
+        return ResponseEntity.ok(spaces.stream().map(mapper::map).toList());
     }
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'WRITE')")

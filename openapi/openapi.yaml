@@ -811,6 +811,12 @@ components:
           type: string
         description:
           type: string
+        ogImage:
+          type: string
+        favicon:
+          type: string
+        canonical:
+          type: string
       required:
         - id
         - url

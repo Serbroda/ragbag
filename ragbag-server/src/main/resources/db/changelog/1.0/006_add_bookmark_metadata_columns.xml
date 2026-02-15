@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+		 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+	<changeSet id="2026-02-15: add bookmark metadata columns" author="serbroda">
+		<preConditions onFail="MARK_RAN">
+			<not>
+				<columnExists tableName="bookmarks" columnName="og_image"/>
+			</not>
+		</preConditions>
+
+		<addColumn tableName="bookmarks">
+			<column name="og_image" type="varchar(max)"/>
+			<column name="favicon" type="varchar(max)"/>
+			<column name="canonical" type="varchar(max)"/>
+		</addColumn>
+	</changeSet>
+
+</databaseChangeLog>

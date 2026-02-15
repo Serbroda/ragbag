@@ -17,6 +17,15 @@ public class Bookmark extends AbstractBaseEntity {
     private String title;
     private String description;
 
+    @Column(name = "og_image")
+    private String ogImage;
+
+    @Column(name = "favicon")
+    private String favicon;
+
+    @Column(name = "canonical")
+    private String canonical;
+
     @ManyToOne
     private Collection collection;
 
