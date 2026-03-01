@@ -21,6 +21,7 @@ import org.springframework.security.oauth2.jwt.NimbusJwtEncoder;
 
 @Configuration
 public class JwtConfig {
+
     @Value("${security.jwt.secret}")
     private String secret;
 

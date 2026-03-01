@@ -14,6 +14,12 @@ spring:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.xml
 
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+
 springdoc:
   #packages-to-scan: de.serbroda.ragbag.generated
   api-docs:
@@ -28,3 +34,5 @@ security:
     expiration:
       accessToken: 15 # minutes
       refreshToken: 20160 # minutes (14 days)
+  api-keys:
+    - qixG+XyASUrmrSae1vuMbpe4UjfVaYplU2E3LrqML3Q=
