@@ -1,9 +1,18 @@
 <script lang="ts">
 	import { Card, Label, Input, Button, Alert } from 'flowbite-svelte';
-	import { login, register } from '../api/client';
+	import { login, register, fetchFeatureFlags } from '../api/client';
 	import { navigate } from '../router';
 
+	let registrationEnabled = $state(false);
 	let isRegister = $state(false);
+
+	$effect(() => {
+		fetchFeatureFlags().then((flags) => {
+			registrationEnabled = flags['registration_enabled'] === 'true';
+		}).catch(() => {
+			registrationEnabled = false;
+		});
+	});
 	let username = $state('');
 	let email = $state('');
 	let password = $state('');
@@ -104,18 +113,20 @@
 			</Button>
 		</form>
 
-		<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
-			{#if isRegister}
-				Already have an account?
-				<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleMode}>
-					Sign in
-				</button>
-			{:else}
-				Don't have an account?
-				<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleMode}>
-					Register
-				</button>
-			{/if}
-		</div>
+		{#if registrationEnabled}
+			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+				{#if isRegister}
+					Already have an account?
+					<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleMode}>
+						Sign in
+					</button>
+				{:else}
+					Don't have an account?
+					<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleMode}>
+						Register
+					</button>
+				{/if}
+			</div>
+		{/if}
 	</Card>
 </div>

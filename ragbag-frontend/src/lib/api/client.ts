@@ -1,4 +1,4 @@
-import { AuthenticationApi, Configuration } from 'ragbag-frontend-sdk';
+import { AppApi, AuthenticationApi, Configuration } from 'ragbag-frontend-sdk';
 import type { Middleware } from 'ragbag-frontend-sdk';
 
 const STORAGE_KEY = 'access_token';
@@ -102,4 +102,9 @@ export async function refreshAccessToken(): Promise<boolean> {
 
 export function isAuthenticated(): boolean {
 	return accessToken !== null;
+}
+
+export async function fetchFeatureFlags(): Promise<{ [key: string]: string }> {
+	const api = new AppApi(anonConfig());
+	return api.featureFlags();
 }

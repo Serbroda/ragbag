@@ -84,18 +84,6 @@
                         </configuration>
                     </execution>
 
-                    <!-- npm pack -->
-                    <execution>
-                        <id>npm-pack</id>
-                        <phase>package</phase>
-                        <goals>
-                            <goal>npm</goal>
-                        </goals>
-                        <configuration>
-                            <arguments>pack</arguments>
-                            <workingDirectory>${project.build.directory}/generated-sources</workingDirectory>
-                        </configuration>
-                    </execution>
 
                 </executions>
             </plugin>
