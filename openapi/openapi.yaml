@@ -4,6 +4,21 @@ info:
   version: 1.0.0
 
 paths:
+  # App
+  /app/config/features:
+    get:
+      summary: App Feature Flags
+      operationId: featureFlags
+      tags:
+        - App
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlags'
+
   # Authentication
   /auth/register:
     post:
@@ -656,6 +671,11 @@ components:
       properties:
         message:
           type: string
+
+    FeatureFlags:
+      type: object
+      additionalProperties:
+        type: string
 
     LoginRequest:
       type: object

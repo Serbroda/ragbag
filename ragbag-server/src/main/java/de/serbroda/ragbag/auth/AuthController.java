@@ -2,6 +2,7 @@ package de.serbroda.ragbag.auth;
 
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
+import de.serbroda.ragbag.config.properties.AppProperties;
 import de.serbroda.ragbag.generated.api.AuthenticationApi;
 import de.serbroda.ragbag.generated.model.LoginRequest;
 import de.serbroda.ragbag.generated.model.LoginResponse;
@@ -12,6 +13,7 @@ import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
@@ -25,6 +27,7 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.web.bind.annotation.*;
 
+@Slf4j
 @RequiredArgsConstructor
 @RestController
 @RequestMapping(PUBLIC_API_PREFIX)
@@ -35,6 +38,7 @@ public class AuthController implements AuthenticationApi {
     private final JwtDecoder jwtDecoder;
     private final UserService userService;
     private final RegisterService registerService;
+    private final AppProperties appProperties;
 
     @Override
     public ResponseEntity<LoginResponse> login(LoginRequest loginRequest) {
@@ -103,6 +107,11 @@ public class AuthController implements AuthenticationApi {
 
     @Override
     public ResponseEntity<UserDto> register(RegisterRequest registerRequest) {
+        if (!appProperties.features().registrationEnabled()) {
+            log.warn("Registration attempt while registration is disabled");
+            return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
+        }
+
         User user = registerService.register(
                 registerRequest.getUsername(), registerRequest.getEmail(), registerRequest.getPassword());
         return ResponseEntity.ok(new UserDto(user.getId(), user.getUsername(), user.getEmail()));

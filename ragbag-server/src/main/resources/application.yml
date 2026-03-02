@@ -36,3 +36,8 @@ security:
       refreshToken: 20160 # minutes (14 days)
   api-keys:
     - qixG+XyASUrmrSae1vuMbpe4UjfVaYplU2E3LrqML3Q=
+
+app:
+  features:
+    # Enable or disable the registration endpoint
+    registration-enabled: true

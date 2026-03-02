@@ -1,11 +1,12 @@
 package de.serbroda.ragbag;
 
+import de.serbroda.ragbag.config.properties.AppProperties;
 import de.serbroda.ragbag.config.properties.SecurityProperties;
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 import org.springframework.boot.context.properties.EnableConfigurationProperties;
 
-@EnableConfigurationProperties({SecurityProperties.class})
+@EnableConfigurationProperties({SecurityProperties.class, AppProperties.class})
 @SpringBootApplication
 public class RagbagServerApplication {
 
