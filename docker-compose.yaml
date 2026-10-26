@@ -1,0 +1,52 @@
+# Ragbag with PostgreSQL.
+#
+#   cp .env.example .env    # then change the secrets
+#   docker compose up -d --build
+#
+# Open http://localhost:8080 and register the first account.
+# Every value below has a dummy default so the stack starts out of the box. Do not use the
+# defaults for anything reachable from the internet.
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ragbag}
+      POSTGRES_USER: ${DB_USER:-ragbag}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ragbag-dummy-db-password}
+    volumes:
+      # Postgres 18 keeps its data below /var/lib/postgresql/<version>
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: ragbag:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${RAGBAG_PORT:-8080}:8080"
+    environment:
+      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-ragbag}
+      SPRING_DATASOURCE_USERNAME: ${DB_USER:-ragbag}
+      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ragbag-dummy-db-password}
+      # At least 32 characters, e.g. `openssl rand -base64 32`
+      JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
+      # Send the refresh cookie over HTTPS only. Keep false for plain http (localhost, LAN without TLS),
+      # otherwise the browser drops the cookie and you are logged out after 15 minutes.
+      SECURITY_JWT_SECURECOOKIE: ${SECURE_COOKIE:-false}
+      # Comma-separated keys for /actuator (header X-Api-Key); empty disables access
+      ACTUATOR_API_KEYS: ${ACTUATOR_API_KEYS:-}
+      APP_FEATURES_REGISTRATIONENABLED: ${REGISTRATION_ENABLED:-true}
+      # Allow loading link titles from your own network (homelab dashboards)
+      APP_METADATA_ALLOWPRIVATEHOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+
+volumes:
+  db-data:

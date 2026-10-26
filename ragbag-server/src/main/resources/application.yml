@@ -43,3 +43,7 @@ app:
   features:
     # Enable or disable the registration endpoint
     registration-enabled: true
+  metadata:
+    # Allow fetching link titles from private networks (10.x, 192.168.x, ...), e.g. for homelab dashboards.
+    # Loopback and link-local addresses (cloud metadata endpoints) are always refused.
+    allow-private-hosts: false

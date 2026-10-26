@@ -31,6 +31,12 @@ The OpenAPI spec lives at `openapi/openapi.yaml`. Generation outputs:
 - Spring controller interfaces → `ragbag-server-sdk/target/generated-sources` (package `de.serbroda.ragbag.generated.api` / `.model`)
 - TypeScript fetch client → `ragbag-frontend-sdk/target/generated-sources`, consumed by the frontend as the npm package `ragbag-frontend-sdk`
 
+### Docker
+```bash
+docker compose up -d --build   # App + PostgreSQL 18 on http://localhost:8080 (dummy secrets, see .env.example)
+```
+Multi-stage `Dockerfile` (JDK build → JRE Alpine runtime, non-root). Configuration via environment variables in `docker-compose.yaml`.
+
 ### Tests
 ```bash
 ./mvnw -pl ragbag-server test                                    # All server tests
@@ -62,10 +68,11 @@ Controllers implement generated interfaces from the OpenAPI spec. When adding/ch
 ### Feature-Based Package Organization (`de.serbroda.ragbag`)
 Code is organized by domain feature, not by technical layer:
 - `auth/` — Authentication (login, register, JWT token generation)
+- `dashboard/` — Per-user, per-space dashboard layout (sections of type LINKS / FAVORITES / RECENT)
 - `user/` — User entity, repository, service, controller
 - `space/` — Spaces (top-level containers), membership management; roles OWNER > ADMIN > CONTRIBUTOR > VIEWER map to `SpacePermission`s in `SpaceMemberRole` (single source of truth, also sent to the frontend)
 - `collection/` — Hierarchical collections within spaces
-- `bookmark/` — Bookmarks within collections
+- `bookmark/` — Bookmarks within collections, personal favorites, metadata fetching (SSRF-guarded; `app.metadata.allow-private-hosts` opens private networks for homelabs)
 - `invite/` — Invitation system (token-based invites to spaces/collections)
 - `security/` — Permission evaluation, SecurityUtils, UserDetailsService
 - `shared/` — Base entity, exception handling, API constants
@@ -76,7 +83,7 @@ Each feature package contains its own Entity, Repository, Service, and Controlle
 - **Entity base class**: All entities extend `AbstractBaseEntity` (UUID primary key, `@Version` optimistic locking, auto-managed `createdAt`/`updatedAt`)
 - **Constructor injection**: Via Lombok `@RequiredArgsConstructor`
 - **Security**: JWT (HS256) via Spring Security OAuth2 Resource Server. Access tokens carry `type=ACCESS`, refresh tokens (httpOnly cookie) `type=REFRESH`; both carry `token_version`, which `logout/all` increments to invalidate them. Method-level `@PreAuthorize("hasPermission(#id, 'SPACE|COLLECTION|BOOKMARK', '<SpacePermission>')")` with custom `DomainPermissionEvaluator` — every endpoint taking a resource id needs one.
-- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`
+- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`. Must work on H2, PostgreSQL and MariaDB: use portable types (`text`, never `varchar(max)`) and never edit an applied changeset (add a new one instead). Run the server tests against PostgreSQL by setting `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`.
 - **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
 
 ### Frontend Structure (`ragbag-frontend/src/lib`)

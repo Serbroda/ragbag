@@ -2,7 +2,8 @@ import { AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError } 
 import type { BookmarkDto, Middleware } from 'ragbag-frontend-sdk';
 
 const STORAGE_KEY = 'access_token';
-const BASE_PATH = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
+// Production builds are served by the backend itself, so the API lives on the same origin
+const BASE_PATH = import.meta.env.VITE_API_URL || (import.meta.env.DEV ? 'http://localhost:8080/api' : '/api');
 
 let accessToken: string | null = localStorage.getItem(STORAGE_KEY);
 

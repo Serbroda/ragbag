@@ -21,6 +21,8 @@ import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
@@ -33,6 +35,22 @@ public class BookmarkMetadataService {
     private static final int MAX_KEYWORDS = 8;
     private static final int MAX_BYTES = 2 * 1024 * 1024;
     private static final String USER_AGENT = "ragbag/1.0";
+
+    private final boolean allowPrivateHosts;
+
+    /** Defaults to refusing private networks; tests use this constructor. */
+    public BookmarkMetadataService() {
+        this(false);
+    }
+
+    /**
+     * @param allowPrivateHosts lets self-hosters (homelabs) fetch metadata from their own network; loopback
+     *     and cloud metadata addresses stay blocked either way
+     */
+    @Autowired
+    public BookmarkMetadataService(@Value("${app.metadata.allow-private-hosts:false}") boolean allowPrivateHosts) {
+        this.allowPrivateHosts = allowPrivateHosts;
+    }
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(REQUEST_TIMEOUT)
@@ -49,8 +67,8 @@ public class BookmarkMetadataService {
         try {
             HttpResponse<InputStream> response = null;
             for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
-                if (!isPublicHost(uri.getHost())) {
-                    LOGGER.warn("Refusing to fetch metadata from non-public address {}", uri);
+                if (!isAllowedHost(uri.getHost())) {
+                    LOGGER.warn("Refusing to fetch metadata from disallowed address {}", uri);
                     return BookmarkMetadata.empty();
                 }
                 HttpRequest request = HttpRequest.newBuilder(uri)
@@ -184,15 +202,17 @@ public class BookmarkMetadataService {
         }
     }
 
-    private static boolean isPublicHost(String host) {
+    private boolean isAllowedHost(String host) {
         try {
             for (InetAddress address : InetAddress.getAllByName(host)) {
+                // Never reachable: the server itself and link-local (incl. 169.254.169.254 cloud metadata)
                 if (address.isLoopbackAddress()
                         || address.isAnyLocalAddress()
                         || address.isLinkLocalAddress()
-                        || address.isSiteLocalAddress()
-                        || address.isMulticastAddress()
-                        || isUniqueLocalIpv6(address)) {
+                        || address.isMulticastAddress()) {
+                    return false;
+                }
+                if (!allowPrivateHosts && (address.isSiteLocalAddress() || isUniqueLocalIpv6(address))) {
                     return false;
                 }
             }

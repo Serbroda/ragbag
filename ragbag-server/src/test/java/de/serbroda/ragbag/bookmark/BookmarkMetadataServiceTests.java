@@ -28,6 +28,19 @@ class BookmarkMetadataServiceTests {
         assertThat(service.fetch(url)).isEqualTo(BookmarkMetadataService.BookmarkMetadata.empty());
     }
 
+    @ParameterizedTest
+    @ValueSource(
+            strings = {
+                "http://localhost:8080/actuator/health",
+                "http://127.0.0.1/",
+                "http://169.254.169.254/latest/meta-data/",
+                "http://[::1]/"
+            })
+    void fetch_withPrivateHostsAllowed_stillRefusesLoopbackAndLinkLocal(String url) {
+        assertThat(new BookmarkMetadataService(true).fetch(url))
+                .isEqualTo(BookmarkMetadataService.BookmarkMetadata.empty());
+    }
+
     @Test
     void parse_prefersOpenGraph_andResolvesRelativeUrls() {
         String html = """
