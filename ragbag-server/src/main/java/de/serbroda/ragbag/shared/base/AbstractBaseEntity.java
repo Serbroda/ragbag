@@ -1,7 +1,7 @@
 package de.serbroda.ragbag.shared.base;
 
 import jakarta.persistence.*;
-import java.util.Date;
+import java.time.Instant;
 import java.util.Objects;
 import lombok.Getter;
 
@@ -17,24 +17,24 @@ public abstract class AbstractBaseEntity {
     @Version
     protected int version;
 
-    @Temporal(TemporalType.TIMESTAMP)
+    @Getter
     @Column(name = "created_at", updatable = false)
-    protected Date createdAt;
+    protected Instant createdAt;
 
-    @Temporal(TemporalType.TIMESTAMP)
+    @Getter
     @Column(name = "updated_at")
-    protected Date updatedAt;
+    protected Instant updatedAt;
 
     @PrePersist
     protected void setCreatedAndLastModifiedOnCreate() {
-        Date now = new Date();
+        Instant now = Instant.now();
         createdAt = now;
         updatedAt = now;
     }
 
     @PreUpdate
     protected void setLastModifiedOnUpdate() {
-        updatedAt = new Date();
+        updatedAt = Instant.now();
     }
 
     @Override
@@ -42,11 +42,12 @@ public abstract class AbstractBaseEntity {
         if (this == o) return true;
         if (o == null || getClass() != o.getClass()) return false;
         AbstractBaseEntity that = (AbstractBaseEntity) o;
-        return id == that.id;
+        return id != null && Objects.equals(id, that.id);
     }
 
     @Override
     public int hashCode() {
-        return Objects.hash(id);
+        // Constant per class so the hash stays stable when the id is assigned on persist
+        return getClass().hashCode();
     }
 }

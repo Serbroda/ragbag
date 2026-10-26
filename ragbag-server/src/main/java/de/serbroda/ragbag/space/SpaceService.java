@@ -1,14 +1,21 @@
 package de.serbroda.ragbag.space;
 
+import de.serbroda.ragbag.invite.InviteRepository;
+import de.serbroda.ragbag.invite.InviteTargetType;
+import de.serbroda.ragbag.shared.exception.AccessDeniedException;
+import de.serbroda.ragbag.shared.exception.ResourceConflictException;
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
-import jakarta.transaction.Transactional;
+import java.util.Comparator;
+import java.util.LinkedHashSet;
+import java.util.List;
 import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 @RequiredArgsConstructor
@@ -18,21 +25,23 @@ public class SpaceService {
     private final UserService userService;
     private final SpaceRepository spaceRepository;
     private final SpaceMemberRepository spaceMemberRepository;
+    private final InviteRepository inviteRepository;
 
+    @Transactional(readOnly = true)
     public Optional<Space> findById(String spaceId) {
         return spaceRepository.findById(spaceId);
     }
 
+    @Transactional(readOnly = true)
     public Optional<SpaceWithPermissions> findById(String userId, String spaceId) {
-        return spaceRepository.findById(spaceId).map(space -> {
-            SpaceMemberRole role = space.getMembers().stream()
-                    .filter(member -> member.getUser().getId().equals(userId))
-                    .map(SpaceMember::getRole)
-                    .findFirst()
-                    .orElse(SpaceMemberRole.VIEWER);
-            Set<SpacePermission> permissions = getPermissionsForRole(role);
-            return new SpaceWithPermissions(space, permissions);
-        });
+        return spaceMemberRepository
+                .findBySpace_IdAndUser_Id(spaceId, userId)
+                .map(member -> new SpaceWithPermissions(member.getSpace(), member.getRole()));
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<SpaceMemberRole> findRole(String userId, String spaceId) {
+        return spaceMemberRepository.findBySpace_IdAndUser_Id(spaceId, userId).map(SpaceMember::getRole);
     }
 
     public Space createSpace(String userId, CreateSpaceCommand cmd) {
@@ -41,7 +50,8 @@ public class SpaceService {
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
 
         Space space = new Space();
-        space.setName(cmd.name());
+        space.setName(requireName(cmd.name()));
+        space.setDescription(cmd.description());
         space.setCreatedBy(user);
 
         space = spaceRepository.save(space);
@@ -75,14 +85,14 @@ public class SpaceService {
                     sm.setId(new SpaceMemberId(space.getId(), user.getId()));
                     sm.setSpace(space);
                     sm.setUser(user);
+                    sm.setRole(null);
                     return sm;
                 });
 
-        //        if (member.getRole() == role) {
-        //            return; // User already has the same role
-        //        }
-
-        member.setRole(role);
+        // Joining never downgrades an existing membership
+        if (member.getRole() == null || !member.getRole().isAtLeast(role)) {
+            member.setRole(role);
+        }
         space.getMembers().add(member);
         spaceRepository.save(space);
     }
@@ -91,7 +101,7 @@ public class SpaceService {
         Space space = spaceRepository
                 .findById(spaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
-        space.setName(cmd.name());
+        space.setName(requireName(cmd.name()));
         space.setDescription(cmd.description());
         return spaceRepository.save(space);
     }
@@ -100,72 +110,117 @@ public class SpaceService {
         spaceRepository
                 .findById(spaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
+        inviteRepository.deleteByTargetTypeAndTargetId(InviteTargetType.SPACE, spaceId);
         spaceRepository.deleteById(spaceId);
     }
 
     public void leaveSpace(String userId, String spaceId) {
-        User user = userService
-                .findUserById(userId)
-                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
+        SpaceMember member = spaceMemberRepository
+                .findBySpace_IdAndUser_Id(spaceId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Not a member of space: " + spaceId));
+        if (member.getRole() == SpaceMemberRole.OWNER && countOwners(member.getSpace()) <= 1) {
+            throw new ResourceConflictException("The last owner cannot leave the space");
+        }
+        member.getSpace().getMembers().remove(member);
+    }
+
+    @Transactional(readOnly = true)
+    public List<SpaceMember> getMembers(String spaceId) {
         Space space = spaceRepository
                 .findById(spaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
-        space.getMembers().removeIf(member -> member.getUser().getId().equals(user.getId()));
-        spaceRepository.save(space);
+        return space.getMembers().stream()
+                .sorted(Comparator.comparing(SpaceMember::getRole)
+                        .thenComparing(member -> member.getUser().getUsername()))
+                .toList();
     }
 
+    public SpaceMember updateMemberRole(String actorId, String spaceId, String userId, SpaceMemberRole newRole) {
+        SpaceMember actor = requireMember(spaceId, actorId);
+        SpaceMember target = requireMember(spaceId, userId);
+        requireCanManage(actor, target);
+
+        if (!actor.getRole().isAtLeast(newRole)) {
+            throw new AccessDeniedException("You cannot assign a role above your own");
+        }
+        if (target.getRole() == SpaceMemberRole.OWNER
+                && newRole != SpaceMemberRole.OWNER
+                && countOwners(target.getSpace()) <= 1) {
+            throw new ResourceConflictException("A space needs at least one owner");
+        }
+
+        target.setRole(newRole);
+        return target;
+    }
+
+    public void removeMember(String actorId, String spaceId, String userId) {
+        SpaceMember actor = requireMember(spaceId, actorId);
+        SpaceMember target = requireMember(spaceId, userId);
+        requireCanManage(actor, target);
+        target.getSpace().getMembers().remove(target);
+    }
+
+    /**
+     * Owners may manage everybody else; everyone else only members ranked strictly below them. Changing your
+     * own membership goes through {@link #leaveSpace}.
+     */
+    private static void requireCanManage(SpaceMember actor, SpaceMember target) {
+        if (actor.getUser().getId().equals(target.getUser().getId())) {
+            throw new IllegalArgumentException("You cannot change your own membership; leave the space instead");
+        }
+        if (!actor.getRole().has(SpacePermission.MANAGE_MEMBERS)) {
+            throw new AccessDeniedException("Missing permission to manage members");
+        }
+        boolean owner = actor.getRole() == SpaceMemberRole.OWNER;
+        boolean outranks = actor.getRole().ordinal() < target.getRole().ordinal();
+        if (!owner && !outranks) {
+            throw new AccessDeniedException("You can only manage members with a lower role");
+        }
+    }
+
+    private SpaceMember requireMember(String spaceId, String userId) {
+        return spaceMemberRepository
+                .findBySpace_IdAndUser_Id(spaceId, userId)
+                .orElseThrow(() -> new ResourceNotFoundException("Member not found: " + userId));
+    }
+
+    private static long countOwners(Space space) {
+        return space.getMembers().stream()
+                .filter(member -> member.getRole() == SpaceMemberRole.OWNER)
+                .count();
+    }
+
+    private static String requireName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Space name must not be empty");
+        }
+        String trimmed = name.trim();
+        if (trimmed.length() > 80) {
+            throw new IllegalArgumentException("Space name must be at most 80 characters");
+        }
+        return trimmed;
+    }
+
+    @Transactional(readOnly = true)
     public Set<SpaceWithPermissions> getSpacesForUser(String userId) {
         return spaceMemberRepository.findByUser_Id(userId).stream()
-                .sorted((a, b) ->
-                        Boolean.compare(b.getRole() == SpaceMemberRole.OWNER, a.getRole() == SpaceMemberRole.OWNER))
-                .map(member -> {
-                    Space space = member.getSpace();
-                    SpaceMemberRole role = member.getRole();
-                    Set<SpacePermission> permissions = getPermissionsForRole(role);
-                    return new SpaceWithPermissions(space, permissions);
-                })
-                .collect(Collectors.toCollection(java.util.LinkedHashSet::new));
+                .sorted(Comparator.comparing(SpaceMember::getRole)
+                        .thenComparing(member -> member.getSpace().getName(), String.CASE_INSENSITIVE_ORDER))
+                .map(member -> new SpaceWithPermissions(member.getSpace(), member.getRole()))
+                .collect(Collectors.toCollection(LinkedHashSet::new));
     }
 
-    private Set<SpacePermission> getPermissionsForRole(SpaceMemberRole role) {
-        return switch (role) {
-            case OWNER ->
-                Set.of(
-                        SpacePermission.READ,
-                        SpacePermission.EDIT_SPACE,
-                        SpacePermission.CREATE_COLLECTIONS,
-                        SpacePermission.EDIT_COLLECTIONS,
-                        SpacePermission.DELETE_COLLECTIONS,
-                        SpacePermission.CREATE_BOOKMARKS,
-                        SpacePermission.EDIT_BOOKMARKS,
-                        SpacePermission.DELETE_BOOKMARKS);
-            case ADMIN ->
-                Set.of(
-                        SpacePermission.READ,
-                        SpacePermission.EDIT_SPACE,
-                        SpacePermission.CREATE_COLLECTIONS,
-                        SpacePermission.EDIT_COLLECTIONS,
-                        SpacePermission.DELETE_COLLECTIONS,
-                        SpacePermission.CREATE_BOOKMARKS,
-                        SpacePermission.EDIT_BOOKMARKS,
-                        SpacePermission.DELETE_BOOKMARKS);
-            case CONTRIBUTOR ->
-                Set.of(
-                        SpacePermission.READ,
-                        SpacePermission.EDIT_SPACE,
-                        SpacePermission.CREATE_COLLECTIONS,
-                        SpacePermission.EDIT_COLLECTIONS,
-                        SpacePermission.DELETE_COLLECTIONS,
-                        SpacePermission.CREATE_BOOKMARKS,
-                        SpacePermission.EDIT_BOOKMARKS,
-                        SpacePermission.DELETE_BOOKMARKS);
-            case VIEWER -> Set.of(SpacePermission.READ);
-        };
+    public record CreateSpaceCommand(String name, String description) {
+        public CreateSpaceCommand(String name) {
+            this(name, null);
+        }
     }
-
-    public record CreateSpaceCommand(String name) {}
 
     public record UpdateSpaceCommand(String name, String description) {}
 
-    public record SpaceWithPermissions(Space space, Set<SpacePermission> permissions) {}
+    public record SpaceWithPermissions(Space space, SpaceMemberRole role) {
+        public Set<SpacePermission> permissions() {
+            return role.permissions();
+        }
+    }
 }

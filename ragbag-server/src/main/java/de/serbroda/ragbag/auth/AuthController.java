@@ -14,17 +14,18 @@ import de.serbroda.ragbag.user.UserService;
 import java.time.Duration;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.http.HttpHeaders;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseCookie;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
-import org.springframework.security.authentication.BadCredentialsException;
 import org.springframework.security.authentication.DisabledException;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
+import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.*;
 
 @Slf4j
@@ -33,12 +34,18 @@ import org.springframework.web.bind.annotation.*;
 @RequestMapping(PUBLIC_API_PREFIX)
 public class AuthController implements AuthenticationApi {
 
+    private static final String REFRESH_COOKIE = "refresh_token";
+    private static final String REFRESH_COOKIE_PATH = PUBLIC_API_PREFIX + "/auth/refresh";
+
     private final AuthenticationManager authenticationManager;
     private final JwtService jwtService;
     private final JwtDecoder jwtDecoder;
     private final UserService userService;
     private final RegisterService registerService;
     private final AppProperties appProperties;
+
+    @Value("${security.jwt.secure-cookie:false}")
+    private boolean secureCookie;
 
     @Override
     public ResponseEntity<LoginResponse> login(LoginRequest loginRequest) {
@@ -53,14 +60,14 @@ public class AuthController implements AuthenticationApi {
 
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getUsername(), user.getTokenVersion());
 
-        String refreshToken = jwtService.generateRefreshToken(principal.getUserId());
+        String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getTokenVersion());
 
-        ResponseCookie refreshCookie = ResponseCookie.from("refresh_token", refreshToken)
+        ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_COOKIE, refreshToken)
                 .httpOnly(true)
-                .secure(false) // prod: true
-                .sameSite("Lax") // oder Strict
-                .path("/api/auth/refresh")
-                .maxAge(Duration.ofDays(14))
+                .secure(secureCookie)
+                .sameSite("Strict")
+                .path(REFRESH_COOKIE_PATH)
+                .maxAge(Duration.ofMinutes(jwtService.getExpirationRefreshTokenMinutes()))
                 .build();
 
         return ResponseEntity.ok()
@@ -74,15 +81,22 @@ public class AuthController implements AuthenticationApi {
             return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        Jwt jwt = jwtDecoder.decode(refreshToken);
-
-        if (!"REFRESH".equals(jwt.getClaimAsString("type"))) {
-            throw new BadCredentialsException("Invalid refresh token");
+        Jwt jwt;
+        try {
+            jwt = jwtDecoder.decode(refreshToken);
+        } catch (JwtException e) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
         }
 
-        String userId = jwt.getSubject();
+        if (!JwtService.TokenType.REFRESH.name().equals(jwt.getClaimAsString("type"))) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
-        User user = userService.findUserById(userId).orElseThrow(() -> new DisabledException("User blocked"));
+        User user = userService.findUserById(jwt.getSubject()).orElse(null);
+        Number tokenVersion = jwt.getClaim("token_version");
+        if (user == null || tokenVersion == null || tokenVersion.longValue() < user.getTokenVersion()) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();
+        }
 
         String newAccessToken =
                 jwtService.generateAccessToken(user.getId(), user.getUsername(), user.getTokenVersion());
@@ -91,17 +105,28 @@ public class AuthController implements AuthenticationApi {
     }
 
     @Override
+    public ResponseEntity<Void> logout() {
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, deleteRefreshCookie().toString())
+                .build();
+    }
+
+    @Override
     public ResponseEntity<Void> logoutAll() {
         userService.incrementTokenVersion(SecurityUtils.currentUserId());
 
-        ResponseCookie deleteCookie = ResponseCookie.from("refresh_token", "")
-                .path("/api/auth/refresh")
+        return ResponseEntity.noContent()
+                .header(HttpHeaders.SET_COOKIE, deleteRefreshCookie().toString())
+                .build();
+    }
+
+    private ResponseCookie deleteRefreshCookie() {
+        return ResponseCookie.from(REFRESH_COOKIE, "")
+                .path(REFRESH_COOKIE_PATH)
                 .maxAge(0)
                 .httpOnly(true)
-                .build();
-
-        return ResponseEntity.noContent()
-                .header(HttpHeaders.SET_COOKIE, deleteCookie.toString())
+                .secure(secureCookie)
+                .sameSite("Strict")
                 .build();
     }
 

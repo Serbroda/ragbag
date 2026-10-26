@@ -1,6 +1,7 @@
 package de.serbroda.ragbag.security.permission;
 
 import de.serbroda.ragbag.collection.Collection;
+import de.serbroda.ragbag.space.SpacePermission;
 import java.io.Serializable;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.access.PermissionEvaluator;
@@ -13,8 +14,9 @@ import org.springframework.stereotype.Component;
 @RequiredArgsConstructor
 public class DomainPermissionEvaluator implements PermissionEvaluator {
 
-    public static final String DOMAIN_PREFIX_COLELCTION = "COLLECTION";
+    public static final String DOMAIN_PREFIX_COLLECTION = "COLLECTION";
     public static final String DOMAIN_PREFIX_SPACE = "SPACE";
+    public static final String DOMAIN_PREFIX_BOOKMARK = "BOOKMARK";
 
     private final PermissionService permissionService;
 
@@ -32,8 +34,8 @@ public class DomainPermissionEvaluator implements PermissionEvaluator {
         String userId = jwt.getSubject();
 
         if (targetDomainObject instanceof Collection collection) {
-            return permissionService.hasPermission(
-                    userId, collection.getId(), Permission.valueOf(permission.toString()));
+            return permissionService.hasPermissionForCollection(
+                    userId, collection.getId(), SpacePermission.valueOf(permission.toString()));
         }
 
         return false;
@@ -53,14 +55,19 @@ public class DomainPermissionEvaluator implements PermissionEvaluator {
         Jwt jwt = jwtAuth.getToken();
         String userId = jwt.getSubject();
 
-        if (DOMAIN_PREFIX_COLELCTION.equalsIgnoreCase(targetType)) {
-            return permissionService.hasPermission(
-                    userId, targetId.toString(), Permission.valueOf(permission.toString()));
+        if (DOMAIN_PREFIX_COLLECTION.equalsIgnoreCase(targetType)) {
+            return permissionService.hasPermissionForCollection(
+                    userId, targetId.toString(), SpacePermission.valueOf(permission.toString()));
         }
 
         if (DOMAIN_PREFIX_SPACE.equalsIgnoreCase(targetType)) {
             return permissionService.hasPermissionForSpace(
-                    userId, targetId.toString(), Permission.valueOf(permission.toString()));
+                    userId, targetId.toString(), SpacePermission.valueOf(permission.toString()));
+        }
+
+        if (DOMAIN_PREFIX_BOOKMARK.equalsIgnoreCase(targetType)) {
+            return permissionService.hasPermissionForBookmark(
+                    userId, targetId.toString(), SpacePermission.valueOf(permission.toString()));
         }
 
         return false;

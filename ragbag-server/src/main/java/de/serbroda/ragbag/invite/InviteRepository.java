@@ -9,4 +9,8 @@ public interface InviteRepository extends JpaRepository<Invite, String> {
     Optional<Invite> findByToken(String token);
 
     List<Invite> findByCreatedBy_Id(String userId);
+
+    void deleteByTargetTypeAndTargetId(InviteTargetType targetType, String targetId);
+
+    List<Invite> findByTargetTypeAndTargetIdOrderByCreatedAtDesc(InviteTargetType targetType, String targetId);
 }

@@ -4,13 +4,13 @@ import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.space.SpaceMemberRepository;
 import de.serbroda.ragbag.space.SpaceRepository;
 import de.serbroda.ragbag.user.UserService;
-import jakarta.transaction.Transactional;
 import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 @RequiredArgsConstructor
@@ -41,7 +41,7 @@ public class CollectionService {
                 .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + cmd.spaceId()));
 
         Collection collection = new Collection();
-        collection.setName(cmd.name());
+        collection.setName(requireName(cmd.name()));
         collection.setSpace(space);
         collection.setCreatedBy(user);
 
@@ -49,6 +49,7 @@ public class CollectionService {
             Collection parent = collectionRepository
                     .findById(cmd.parentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent collection not found: " + cmd.parentId()));
+            requireSameSpace(parent, space.getId());
             collection.setParent(parent);
         }
 
@@ -59,7 +60,7 @@ public class CollectionService {
         Collection collection = collectionRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Collection not found: " + id));
-        collection.setName(cmd.name());
+        collection.setName(requireName(cmd.name()));
         return collectionRepository.save(collection);
     }
 
@@ -75,12 +76,35 @@ public class CollectionService {
             Collection newParent = collectionRepository
                     .findById(cmd.parentId())
                     .orElseThrow(() -> new ResourceNotFoundException("Parent collection not found: " + cmd.parentId()));
+            requireSameSpace(newParent, collection.getSpace().getId());
+            for (Collection c = newParent; c != null; c = c.getParent()) {
+                if (c.getId().equals(id)) {
+                    throw new IllegalArgumentException("A collection cannot be moved into its own descendant");
+                }
+            }
             collection.setParent(newParent);
         } else {
             collection.setParent(null);
         }
 
         return collectionRepository.save(collection);
+    }
+
+    private static String requireName(String name) {
+        if (name == null || name.isBlank()) {
+            throw new IllegalArgumentException("Collection name must not be empty");
+        }
+        String trimmed = name.trim();
+        if (trimmed.length() > 80) {
+            throw new IllegalArgumentException("Collection name must be at most 80 characters");
+        }
+        return trimmed;
+    }
+
+    private static void requireSameSpace(Collection parent, String spaceId) {
+        if (!parent.getSpace().getId().equals(spaceId)) {
+            throw new IllegalArgumentException("Parent collection belongs to a different space");
+        }
     }
 
     public void deleteCollection(String id) {

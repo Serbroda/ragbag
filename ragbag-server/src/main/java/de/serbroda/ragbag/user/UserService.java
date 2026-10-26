@@ -1,11 +1,11 @@
 package de.serbroda.ragbag.user;
 
 import de.serbroda.ragbag.shared.exception.ResourceAlreadyExistsException;
-import jakarta.transaction.Transactional;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Transactional
 @RequiredArgsConstructor

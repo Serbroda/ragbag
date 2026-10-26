@@ -3,7 +3,7 @@ package de.serbroda.ragbag.invite;
 import de.serbroda.ragbag.shared.base.AbstractBaseEntity;
 import de.serbroda.ragbag.user.User;
 import jakarta.persistence.*;
-import java.util.Date;
+import java.time.Instant;
 import lombok.Getter;
 import lombok.Setter;
 
@@ -27,9 +27,8 @@ public class Invite extends AbstractBaseEntity {
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
 
-    @Temporal(TemporalType.TIMESTAMP)
     @Column(name = "expires_at")
-    protected Date expiresAt;
+    protected Instant expiresAt;
 
     @Column(nullable = false)
     private int maxUses = -1;
@@ -42,7 +41,7 @@ public class Invite extends AbstractBaseEntity {
 
     @Transient
     public boolean isExpired() {
-        if (expiresAt != null && expiresAt.before(new Date())) {
+        if (expiresAt != null && expiresAt.isBefore(Instant.now())) {
             return true;
         }
         if (maxUses > -1 && usedCount >= maxUses) {

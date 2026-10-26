@@ -3,7 +3,8 @@ spring:
     name: ragbag-server
 
   jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+    # Controllers still map lazy associations (e.g. bookmark tags); disable once mapping moves into services
+    open-in-view: true
     hibernate:
       ddl-auto: none
     properties:
@@ -31,11 +32,12 @@ security:
   jwt:
     issuer: ragbag
     secret: "CHANGE_ME_TO_A_VERY_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS" # openssl rand -base64 32
+    secure-cookie: false
     expiration:
       accessToken: 15 # minutes
       refreshToken: 20160 # minutes (14 days)
   api-keys:
-    - qixG+XyASUrmrSae1vuMbpe4UjfVaYplU2E3LrqML3Q=
+    - qixG+XyASUrmrSae1vuMbpe4UjfVaYplU2E3LrqML3Q= # openssl rand -base64 32
 
 app:
   features:

@@ -1,5 +1,6 @@
 package de.serbroda.ragbag.collection;
 
+import de.serbroda.ragbag.bookmark.Bookmark;
 import de.serbroda.ragbag.shared.base.AbstractBaseEntity;
 import de.serbroda.ragbag.space.Space;
 import de.serbroda.ragbag.user.User;
@@ -29,6 +30,9 @@ public class Collection extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "parent", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<Collection> children = new HashSet<>();
+
+    @OneToMany(mappedBy = "collection", cascade = CascadeType.REMOVE)
+    private Set<Bookmark> bookmarks = new HashSet<>();
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)

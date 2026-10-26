@@ -16,7 +16,8 @@ public class FrontendRoutingController {
         return "redirect:/app/";
     }
 
-    @GetMapping("/app/{path:^(?!assets$).*$}/**")
+    // First segment without a dot so files like /app/vite.svg reach the resource handler
+    @GetMapping("/app/{path:^(?!assets$)[^.]*$}/**")
     public String forwardRoutes() {
         return "forward:/index.html";
     }

@@ -8,5 +8,7 @@ public enum SpacePermission {
     DELETE_COLLECTIONS, // Permission to delete collections within the space
     CREATE_BOOKMARKS, // Permission to create bookmarks within the space
     EDIT_BOOKMARKS, // Permission to create and manage bookmarks within the space
-    DELETE_BOOKMARKS // Permission to delete bookmarks within the space
+    DELETE_BOOKMARKS, // Permission to delete bookmarks within the space
+    DELETE_SPACE, // Permission to delete the space
+    MANAGE_MEMBERS // Permission to change member roles, remove members and manage invites
 }

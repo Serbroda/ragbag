@@ -36,6 +36,10 @@ public class JwtService {
         this.expirationRefreshTokenMinutes = expirationRefreshTokenMinutes;
     }
 
+    public int getExpirationRefreshTokenMinutes() {
+        return expirationRefreshTokenMinutes;
+    }
+
     public String generateToken(String subject, Map<String, Object> claims, Instant expiresAt) {
         Instant now = Instant.now();
         final String jti = UUID.randomUUID().toString();
@@ -58,19 +62,19 @@ public class JwtService {
                 userId,
                 Map.of(
                         "username", username,
-                        "type", TokenType.REFRESH.name(),
+                        "type", TokenType.ACCESS.name(),
                         "token_version", tokenVersion,
                         "roles", new String[] {"USER"}
                 ),
                 Instant.now().plus(expirationAccessTokenMinutes, ChronoUnit.MINUTES));
     }
 
-    public String generateRefreshToken(String userId) {
+    public String generateRefreshToken(String userId, long tokenVersion) {
         return generateToken(
                 userId,
                 Map.of(
                         "type", TokenType.REFRESH.name(),
-                        "roles", new String[] {"USER"}
+                        "token_version", tokenVersion
                 ),
                 Instant.now().plus(expirationRefreshTokenMinutes, ChronoUnit.MINUTES));
     }

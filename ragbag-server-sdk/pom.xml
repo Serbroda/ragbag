@@ -71,9 +71,10 @@
 
                             <configOptions>
                                 <library>spring-boot</library>
-                                <useSpringBoot3>true</useSpringBoot3>
+                                <useSpringBoot4>true</useSpringBoot4>
+                                <useJackson3>true</useJackson3>
                                 <interfaceOnly>true</interfaceOnly>
-                                <dateLibrary>java17</dateLibrary>
+                                <dateLibrary>java8</dateLibrary>
                                 <openApiNullable>false</openApiNullable>
                                 <useTags>true</useTags>
 

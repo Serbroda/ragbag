@@ -1,6 +1,6 @@
 package de.serbroda.ragbag.collection;
 
-import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_COLELCTION;
+import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_COLLECTION;
 import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.DOMAIN_PREFIX_SPACE;
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
@@ -26,38 +26,37 @@ public class CollectionController implements CollectionApi {
     private final CollectionService collectionService;
     private final CollectionMapper mapper;
 
-    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'WRITE')")
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'CREATE_COLLECTIONS')")
     @Override
     public ResponseEntity<CollectionDto> createCollection(String spaceId, CreateCollectionDto createCollectionDto) {
         Collection collection = collectionService.createCollection(
                 SecurityUtils.currentUserId(),
-                new CollectionService.CreateCollectionCommand(spaceId, createCollectionDto.getName()));
+                new CollectionService.CreateCollectionCommand(
+                        spaceId, createCollectionDto.getName(), createCollectionDto.getParentId()));
 
         return ResponseEntity.ok(new CollectionDto.Builder()
                 .id(collection.getId())
                 .name(collection.getName())
                 .description(collection.getDescription())
+                .parentId(
+                        collection.getParent() != null ? collection.getParent().getId() : null)
                 .build());
     }
 
-    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'DELETE')")
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'DELETE_COLLECTIONS')")
     @Override
     public ResponseEntity<Void> deleteCollection(String collectionId) {
         collectionService.deleteCollection(collectionId);
         return ResponseEntity.noContent().build();
     }
 
-    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'READ')")
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'READ')")
     @Override
     public ResponseEntity<CollectionDto> getCollection(String collectionId) {
         Collection collection = collectionService
                 .getCollection(collectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Collection not found: " + collectionId));
-        return ResponseEntity.ok(new CollectionDto.Builder()
-                .id(collection.getId())
-                .name(collection.getName())
-                .description(collection.getDescription())
-                .build());
+        return ResponseEntity.ok(toDto(collection));
     }
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
@@ -70,20 +69,16 @@ public class CollectionController implements CollectionApi {
         return ResponseEntity.ok(collections);
     }
 
-    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'EDIT_COLLECTIONS')")
     @Override
     public ResponseEntity<CollectionDto> updateCollection(
             String collectionId, UpdateCollectionDto updateCollectionDto) {
         Collection collection = collectionService.updateCollection(
                 collectionId, new CollectionService.UpdateCollectionCommand(updateCollectionDto.getName()));
-        return ResponseEntity.ok(new CollectionDto.Builder()
-                .id(collection.getId())
-                .name(collection.getName())
-                .description(collection.getDescription())
-                .build());
+        return ResponseEntity.ok(toDto(collection));
     }
 
-    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLELCTION + "', 'WRITE')")
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'EDIT_COLLECTIONS')")
     @Override
     public ResponseEntity<CollectionDto> moveCollection(String collectionId, MoveCollectionDto moveCollectionDto) {
         Collection collection = collectionService.moveCollection(
@@ -95,5 +90,15 @@ public class CollectionController implements CollectionApi {
                 .parentId(
                         collection.getParent() != null ? collection.getParent().getId() : null)
                 .build());
+    }
+
+    private static CollectionDto toDto(Collection collection) {
+        return new CollectionDto.Builder()
+                .id(collection.getId())
+                .name(collection.getName())
+                .description(collection.getDescription())
+                .parentId(
+                        collection.getParent() != null ? collection.getParent().getId() : null)
+                .build();
     }
 }

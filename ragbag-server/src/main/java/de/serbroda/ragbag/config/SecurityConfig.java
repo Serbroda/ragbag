@@ -1,5 +1,6 @@
 package de.serbroda.ragbag.config;
 
+import de.serbroda.ragbag.auth.JwtService;
 import de.serbroda.ragbag.config.properties.SecurityProperties;
 import de.serbroda.ragbag.security.ApiKeyFilter;
 import de.serbroda.ragbag.security.DomainUserDetailsService;
@@ -26,7 +27,7 @@ import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.crypto.bcrypt.BCryptPasswordEncoder;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.security.oauth2.jwt.JwtException;
+import org.springframework.security.oauth2.server.resource.InvalidBearerTokenException;
 import org.springframework.security.oauth2.server.resource.authentication.JwtAuthenticationConverter;
 import org.springframework.security.web.SecurityFilterChain;
 import org.springframework.security.web.authentication.preauth.AbstractPreAuthenticatedProcessingFilter;
@@ -87,6 +88,7 @@ public class SecurityConfig {
                                 "/api/auth/register",
                                 "/api/auth/login",
                                 "/api/auth/refresh",
+                                "/api/auth/logout",
                                 "/api/docs/**",
                                 "/api/app/config/features")
                         .permitAll()
@@ -105,13 +107,19 @@ public class SecurityConfig {
         return new JwtAuthenticationConverter() {
             {
                 setJwtGrantedAuthoritiesConverter(jwt -> {
+                    if (!JwtService.TokenType.ACCESS.name().equals(jwt.getClaimAsString("type"))) {
+                        throw new InvalidBearerTokenException("Not an access token");
+                    }
+
                     String userId = jwt.getClaimAsString("sub");
-                    long tokenVersion = jwt.getClaim("token_version");
+                    Number tokenVersion = jwt.getClaim("token_version");
 
-                    User user = userService.findById(userId).orElseThrow(() -> new JwtException("User blocked"));
+                    User user = userService
+                            .findById(userId)
+                            .orElseThrow(() -> new InvalidBearerTokenException("User blocked"));
 
-                    if (tokenVersion < user.getTokenVersion()) {
-                        throw new JwtException("Token invalidated");
+                    if (tokenVersion == null || tokenVersion.longValue() < user.getTokenVersion()) {
+                        throw new InvalidBearerTokenException("Token invalidated");
                     }
 
                     return jwt.getClaimAsStringList("roles").stream()
@@ -145,8 +153,7 @@ public class SecurityConfig {
     public AuthenticationProvider authenticationProvider(
             DomainUserDetailsService userDetailsService, PasswordEncoder passwordEncoder) {
 
-        DaoAuthenticationProvider provider = new DaoAuthenticationProvider();
-        provider.setUserDetailsService(userDetailsService);
+        DaoAuthenticationProvider provider = new DaoAuthenticationProvider(userDetailsService);
         provider.setPasswordEncoder(passwordEncoder);
         return provider;
     }

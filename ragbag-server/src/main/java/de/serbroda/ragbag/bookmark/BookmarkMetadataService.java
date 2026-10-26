@@ -4,8 +4,11 @@ import java.io.ByteArrayInputStream;
 import java.io.ByteArrayOutputStream;
 import java.io.IOException;
 import java.io.InputStream;
+import java.net.Inet6Address;
+import java.net.InetAddress;
 import java.net.URI;
 import java.net.URISyntaxException;
+import java.net.UnknownHostException;
 import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
@@ -22,13 +25,15 @@ public class BookmarkMetadataService {
 
     private static final Logger LOGGER = LoggerFactory.getLogger(BookmarkMetadataService.class);
 
-    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(30);
+    private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
+    private static final int MAX_REDIRECTS = 5;
     private static final int MAX_BYTES = 2 * 1024 * 1024;
     private static final String USER_AGENT = "ragbag/1.0";
 
     private final HttpClient httpClient = HttpClient.newBuilder()
             .connectTimeout(REQUEST_TIMEOUT)
-            .followRedirects(HttpClient.Redirect.NORMAL)
+            // Redirects are followed manually so every hop passes the address check
+            .followRedirects(HttpClient.Redirect.NEVER)
             .build();
 
     public BookmarkMetadata fetch(String url) {
@@ -37,15 +42,35 @@ public class BookmarkMetadataService {
             return BookmarkMetadata.empty();
         }
 
-        HttpRequest request = HttpRequest.newBuilder(uri)
-                .timeout(REQUEST_TIMEOUT)
-                .header("User-Agent", USER_AGENT)
-                .GET()
-                .build();
-
         try {
-            HttpResponse<InputStream> response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
-            if (response.statusCode() < 200 || response.statusCode() >= 300) {
+            HttpResponse<InputStream> response = null;
+            for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
+                if (!isPublicHost(uri.getHost())) {
+                    LOGGER.warn("Refusing to fetch metadata from non-public address {}", uri);
+                    return BookmarkMetadata.empty();
+                }
+                HttpRequest request = HttpRequest.newBuilder(uri)
+                        .timeout(REQUEST_TIMEOUT)
+                        .header("User-Agent", USER_AGENT)
+                        .GET()
+                        .build();
+                response = httpClient.send(request, HttpResponse.BodyHandlers.ofInputStream());
+                int status = response.statusCode();
+                if (status < 300 || status >= 400) {
+                    break;
+                }
+                response.body().close();
+                URI current = uri;
+                URI next = response.headers()
+                        .firstValue("Location")
+                        .map(location -> toHttpUri(resolveUrl(current, location)))
+                        .orElse(null);
+                if (next == null) {
+                    return BookmarkMetadata.empty();
+                }
+                uri = next;
+            }
+            if (response == null || response.statusCode() < 200 || response.statusCode() >= 300) {
                 return BookmarkMetadata.empty();
             }
 
@@ -130,7 +155,33 @@ public class BookmarkMetadataService {
         }
     }
 
+    private static boolean isPublicHost(String host) {
+        try {
+            for (InetAddress address : InetAddress.getAllByName(host)) {
+                if (address.isLoopbackAddress()
+                        || address.isAnyLocalAddress()
+                        || address.isLinkLocalAddress()
+                        || address.isSiteLocalAddress()
+                        || address.isMulticastAddress()
+                        || isUniqueLocalIpv6(address)) {
+                    return false;
+                }
+            }
+            return true;
+        } catch (UnknownHostException e) {
+            return false;
+        }
+    }
+
+    private static boolean isUniqueLocalIpv6(InetAddress address) {
+        // fc00::/7 is not covered by isSiteLocalAddress()
+        return address instanceof Inet6Address && (address.getAddress()[0] & 0xfe) == 0xfc;
+    }
+
     private static URI toHttpUri(String url) {
+        if (url == null) {
+            return null;
+        }
         try {
             URI uri = new URI(url);
             String scheme = uri.getScheme();

@@ -5,6 +5,7 @@ import io.swagger.v3.oas.models.Components;
 import io.swagger.v3.oas.models.OpenAPI;
 import io.swagger.v3.oas.models.security.SecurityRequirement;
 import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springframework.beans.factory.ObjectProvider;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
@@ -13,8 +14,8 @@ import org.springframework.context.annotation.Configuration;
 public class AppConfig {
 
     @Autowired
-    void init(DataInitializer initializer) {
-        initializer.initializeData();
+    void init(ObjectProvider<DataInitializer> initializer) {
+        initializer.ifAvailable(DataInitializer::initializeData);
     }
 
     @Bean

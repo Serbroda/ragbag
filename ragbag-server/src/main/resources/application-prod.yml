@@ -2,8 +2,9 @@ spring:
   application:
     name: ragbag-server
 
-  jpa:
-    database-platform: org.hibernate.dialect.H2Dialect
+  h2:
+    console:
+      enabled: false
 
 springdoc:
   api-docs:
@@ -14,3 +15,6 @@ springdoc:
 security:
   jwt:
     secret: ${JWT_SECRET}
+    secure-cookie: true
+  # Comma-separated list, e.g. ACTUATOR_API_KEYS=$(openssl rand -base64 32)
+  api-keys: ${ACTUATOR_API_KEYS:}

@@ -10,6 +10,8 @@ public class FrontendResourceConfig implements WebMvcConfigurer {
     @Override
     public void addResourceHandlers(ResourceHandlerRegistry registry) {
         registry.addResourceHandler("/app/assets/**").addResourceLocations("classpath:/static/assets/");
-        registry.addResourceHandler("/app/favicon.ico").addResourceLocations("classpath:/static/favicon.ico");
+        // Top-level files from the Vite public/ directory (favicon, icons)
+        registry.addResourceHandler("/app/*.ico", "/app/*.svg", "/app/*.png")
+                .addResourceLocations("classpath:/static/");
     }
 }

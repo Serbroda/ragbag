@@ -1,5 +1,6 @@
 package de.serbroda.ragbag.space;
 
+import de.serbroda.ragbag.collection.Collection;
 import de.serbroda.ragbag.shared.base.AbstractBaseEntity;
 import de.serbroda.ragbag.user.User;
 import jakarta.persistence.*;
@@ -25,4 +26,7 @@ public class Space extends AbstractBaseEntity {
 
     @OneToMany(mappedBy = "space", cascade = CascadeType.ALL, orphanRemoval = true)
     private Set<SpaceMember> members = new HashSet<>();
+
+    @OneToMany(mappedBy = "space", cascade = CascadeType.REMOVE)
+    private Set<Collection> collections = new HashSet<>();
 }
