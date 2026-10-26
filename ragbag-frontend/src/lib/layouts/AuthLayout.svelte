@@ -13,6 +13,7 @@
 		HomeSolid,
 		PlusOutline,
 		SearchOutline,
+		StarSolid,
 		UserAddSolid,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
@@ -306,12 +307,18 @@
 		const path = route.pathname;
 		if (path.endsWith('/settings')) return { label: 'Space settings', icon: CogSolid };
 		if (path.endsWith('/search')) return { label: 'Search', icon: SearchOutline };
+		if (path.endsWith('/favorites')) return { label: 'Favorites', icon: StarSolid };
 		if (activeCollectionId) return { label: findLabel(menuTree, activeCollectionId) ?? 'Collection', icon: FolderOutline };
 		return { label: activeSpace ? 'Dashboard' : '', icon: activeSpace ? HomeSolid : undefined };
 	});
 
 	const navTree = $derived<TreeNode[]>(
-		activeSpaceId ? [{ label: 'Dashboard', icon: HomeSolid, href: `/space/${activeSpaceId}` }] : [],
+		activeSpaceId
+			? [
+					{ label: 'Dashboard', icon: HomeSolid, href: `/space/${activeSpaceId}` },
+					{ label: 'Favorites', icon: StarSolid, href: `/space/${activeSpaceId}/favorites` },
+				]
+			: [],
 	);
 
 	async function handleMove(movedNode: TreeNode, newParent: TreeNode | null) {

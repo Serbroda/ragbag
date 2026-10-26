@@ -12,5 +12,7 @@
 	<include file="/db/changelog/1.0/005_create_table_invites.xml"/>
 	<include file="/db/changelog/1.0/006_add_bookmark_metadata_columns.xml"/>
 	<include file="/db/changelog/1.0/007_create_table_bookmark_tags.xml"/>
+	<include file="/db/changelog/1.0/008_create_table_bookmark_favorites.xml"/>
+	<include file="/db/changelog/1.0/009_create_tables_dashboard.xml"/>
 
 </databaseChangeLog>

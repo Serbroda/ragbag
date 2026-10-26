@@ -12,7 +12,6 @@ import de.serbroda.ragbag.generated.model.CreateBookmarkDto;
 import de.serbroda.ragbag.generated.model.FetchMetadataRequest;
 import de.serbroda.ragbag.generated.model.UpdateBookmarkDto;
 import de.serbroda.ragbag.security.SecurityUtils;
-import java.time.ZoneOffset;
 import java.util.List;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
@@ -26,22 +25,20 @@ import org.springframework.web.bind.annotation.RestController;
 public class BookmarkController implements BookmarkApi {
 
     private final BookmarkService bookmarkService;
+    private final BookmarkMapper mapper;
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<List<BookmarkDto>> searchBookmarks(String spaceId, String q) {
-        List<BookmarkDto> bookmarks = bookmarkService.searchInSpace(spaceId, q).stream()
-                .map(this::toDto)
-                .toList();
-        return ResponseEntity.ok(bookmarks);
+        return ResponseEntity.ok(
+                mapper.toDtos(bookmarkService.searchInSpace(spaceId, q), SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<List<BookmarkDto>> getRecentBookmarks(String spaceId, Integer limit) {
-        return ResponseEntity.ok(bookmarkService.getRecentInSpace(spaceId, limit != null ? limit : 20).stream()
-                .map(this::toDto)
-                .toList());
+        return ResponseEntity.ok(mapper.toDtos(
+                bookmarkService.getRecentInSpace(spaceId, limit != null ? limit : 20), SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'CREATE_BOOKMARKS')"
@@ -66,17 +63,15 @@ public class BookmarkController implements BookmarkApi {
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'READ')")
     @Override
     public ResponseEntity<List<BookmarkDto>> getBookmarks(String collectionId) {
-        List<BookmarkDto> bookmarks = bookmarkService.getBookmarksByCollection(collectionId).stream()
-                .map(this::toDto)
-                .toList();
-        return ResponseEntity.ok(bookmarks);
+        return ResponseEntity.ok(
+                mapper.toDtos(bookmarkService.getBookmarksByCollection(collectionId), SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#bookmarkId, '" + DOMAIN_PREFIX_BOOKMARK + "', 'READ')")
     @Override
     public ResponseEntity<BookmarkDto> getBookmark(String bookmarkId) {
         Bookmark bookmark = bookmarkService.getBookmark(bookmarkId);
-        return ResponseEntity.ok(toDto(bookmark));
+        return ResponseEntity.ok(mapper.toDto(bookmark, SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'CREATE_BOOKMARKS')")
@@ -90,7 +85,7 @@ public class BookmarkController implements BookmarkApi {
                         createBookmarkDto.getTitle(),
                         createBookmarkDto.getDescription(),
                         createBookmarkDto.getTags()));
-        return ResponseEntity.ok(toDto(bookmark));
+        return ResponseEntity.ok(mapper.toDto(bookmark, SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#bookmarkId, '" + DOMAIN_PREFIX_BOOKMARK + "', 'EDIT_BOOKMARKS')")
@@ -103,7 +98,31 @@ public class BookmarkController implements BookmarkApi {
                         updateBookmarkDto.getTitle(),
                         updateBookmarkDto.getDescription(),
                         updateBookmarkDto.getTags()));
-        return ResponseEntity.ok(toDto(bookmark));
+        return ResponseEntity.ok(mapper.toDto(bookmark, SecurityUtils.currentUserId()));
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
+    @Override
+    public ResponseEntity<List<BookmarkDto>> getFavorites(String spaceId) {
+        String userId = SecurityUtils.currentUserId();
+        return ResponseEntity.ok(bookmarkService.getFavoritesInSpace(userId, spaceId).stream()
+                .map(bookmark -> mapper.toDto(bookmark, true))
+                .toList());
+    }
+
+    // Anyone who can see a bookmark may star it; favorites are personal
+    @PreAuthorize("hasPermission(#bookmarkId, '" + DOMAIN_PREFIX_BOOKMARK + "', 'READ')")
+    @Override
+    public ResponseEntity<Void> addFavorite(String bookmarkId) {
+        bookmarkService.addFavorite(SecurityUtils.currentUserId(), bookmarkId);
+        return ResponseEntity.noContent().build();
+    }
+
+    @PreAuthorize("hasPermission(#bookmarkId, '" + DOMAIN_PREFIX_BOOKMARK + "', 'READ')")
+    @Override
+    public ResponseEntity<Void> removeFavorite(String bookmarkId) {
+        bookmarkService.removeFavorite(SecurityUtils.currentUserId(), bookmarkId);
+        return ResponseEntity.noContent().build();
     }
 
     @PreAuthorize("hasPermission(#bookmarkId, '" + DOMAIN_PREFIX_BOOKMARK + "', 'DELETE_BOOKMARKS')")
@@ -111,36 +130,5 @@ public class BookmarkController implements BookmarkApi {
     public ResponseEntity<Void> deleteBookmark(String bookmarkId) {
         bookmarkService.deleteBookmark(bookmarkId);
         return ResponseEntity.noContent().build();
-    }
-
-    private BookmarkDto toDto(Bookmark bookmark) {
-        return new BookmarkDto.Builder()
-                .id(bookmark.getId())
-                .collectionId(
-                        bookmark.getCollection() != null
-                                ? bookmark.getCollection().getId()
-                                : null)
-                .url(bookmark.getUrl())
-                .title(bookmark.getTitle())
-                .description(bookmark.getDescription())
-                .tags(
-                        bookmark.getTags() != null
-                                // Stored in an unordered set, so sort for a stable display order
-                                ? bookmark.getTags().stream()
-                                        .sorted(String.CASE_INSENSITIVE_ORDER)
-                                        .toList()
-                                : null)
-                .ogImage(bookmark.getOgImage())
-                .favicon(bookmark.getFavicon())
-                .canonical(bookmark.getCanonical())
-                .createdAt(
-                        bookmark.getCreatedAt() != null
-                                ? bookmark.getCreatedAt().atOffset(ZoneOffset.UTC)
-                                : null)
-                .createdBy(
-                        bookmark.getCreatedBy() != null
-                                ? bookmark.getCreatedBy().getUsername()
-                                : null)
-                .build();
     }
 }

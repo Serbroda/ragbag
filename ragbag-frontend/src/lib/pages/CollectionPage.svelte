@@ -5,6 +5,7 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
+	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
 	import { DotsVerticalOutline } from 'flowbite-svelte-icons';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
@@ -32,6 +33,7 @@
 	let actionError = $state('');
 	let modalError = $state('');
 	let bookmarkToDelete = $state<BookmarkDto | null>(null);
+	let bookmarkToPin = $state<BookmarkDto | null>(null);
 
 	// Add bookmark form
 	let showAddModal = $state(false);
@@ -368,44 +370,51 @@
 				{#each bookmarks as bookmark (bookmark.id)}
 					<BookmarkCard {bookmark}>
 						{#snippet actions()}
-							{#if canEditBookmarks || canDeleteBookmarks}
-								<button
-									type="button"
-									class="rounded-md p-1 text-gray-400 opacity-60 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100 dark:hover:bg-gray-800 dark:hover:text-gray-200"
-									onclick={(e: MouseEvent) => toggleMenu(bookmark.id, e)}
-									aria-label="Link actions"
+							<button
+								type="button"
+								class="rounded-md p-1 text-gray-400 opacity-60 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100 dark:hover:bg-gray-800 dark:hover:text-gray-200"
+								onclick={(e: MouseEvent) => toggleMenu(bookmark.id, e)}
+								aria-label="Link actions"
+							>
+								<DotsVerticalOutline class="h-4 w-4" />
+							</button>
+							{#if openMenuId === bookmark.id}
+								<div
+									class="absolute bottom-9 right-0 z-10 w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
 								>
-									<DotsVerticalOutline class="h-4 w-4" />
-								</button>
-								{#if openMenuId === bookmark.id}
-									<div
-										class="absolute bottom-9 right-0 z-10 w-32 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											bookmarkToPin = bookmark;
+											openMenuId = null;
+										}}
 									>
-										{#if canEditBookmarks}
-											<button
-												class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-												onclick={() => {
-													startEdit(bookmark);
-													openMenuId = null;
-												}}
-											>
-												Edit
-											</button>
-										{/if}
-										{#if canDeleteBookmarks}
-											<button
-												class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
-												title="Shift-click to delete without confirmation"
-												onclick={(e: MouseEvent) => {
-													requestDelete(bookmark, e);
-													openMenuId = null;
-												}}
-											>
-												Delete
-											</button>
-										{/if}
-									</div>
-								{/if}
+										Add to dashboard
+									</button>
+									{#if canEditBookmarks}
+										<button
+											class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+											onclick={() => {
+												startEdit(bookmark);
+												openMenuId = null;
+											}}
+										>
+											Edit
+										</button>
+									{/if}
+									{#if canDeleteBookmarks}
+										<button
+											class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
+											title="Shift-click to delete without confirmation"
+											onclick={(e: MouseEvent) => {
+												requestDelete(bookmark, e);
+												openMenuId = null;
+											}}
+										>
+											Delete
+										</button>
+									{/if}
+								</div>
 							{/if}
 						{/snippet}
 					</BookmarkCard>
@@ -525,6 +534,8 @@
 		</Button>
 	</div>
 </Modal>
+
+<PinToDashboardModal bind:bookmark={bookmarkToPin} {spaceId} />
 
 <!-- Delete Bookmark Modal -->
 <Modal title="Delete link" open={bookmarkToDelete !== null} size="sm" onclose={() => (bookmarkToDelete = null)}>

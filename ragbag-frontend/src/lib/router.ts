@@ -28,6 +28,10 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/SearchPage.svelte'),
 		layout: () => import('./layouts/AuthLayout.svelte'),
 	},
+	'/space/:spaceId/favorites': {
+		'/': () => import('./pages/FavoritesPage.svelte'),
+		layout: () => import('./layouts/AuthLayout.svelte'),
+	},
 	'/space/:spaceId/settings': {
 		'/': () => import('./pages/SpaceSettingsPage.svelte'),
 		layout: () => import('./layouts/AuthLayout.svelte'),

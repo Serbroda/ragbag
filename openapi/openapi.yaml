@@ -751,6 +751,140 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /v1/spaces/{spaceId}/favorites:
+    get:
+      summary: Favorites of the current user in a space
+      operationId: getFavorites
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/bookmarks/{bookmarkId}/favorite:
+    put:
+      summary: Mark a bookmark as favorite for the current user
+      operationId: addFavorite
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      summary: Remove a bookmark from the current user's favorites
+      operationId: removeFavorite
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/spaces/{spaceId}/dashboard:
+    get:
+      summary: The current user's dashboard for a space (a default layout until customized)
+      operationId: getDashboard
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      summary: Replace the current user's dashboard layout for a space
+      operationId: updateDashboard
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDashboardDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      summary: Reset the current user's dashboard to the default layout
+      operationId: resetDashboard
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /v1/bookmarks/{bookmarkId}:
     get:
       summary: Get a bookmark
@@ -1208,9 +1342,77 @@ components:
         createdBy:
           type: string
           description: Username of the member who added the bookmark
+        favorite:
+          type: boolean
+          description: Whether the current user marked this bookmark as favorite
       required:
         - id
         - url
+
+    DashboardSectionTypeEnum:
+      type: string
+      description: >
+        LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+      enum:
+        - LINKS
+        - FAVORITES
+        - RECENT
+
+    DashboardDto:
+      properties:
+        customized:
+          type: boolean
+          description: False while the user still sees the default layout
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardSectionDto'
+      required:
+        - customized
+        - sections
+
+    DashboardSectionDto:
+      properties:
+        id:
+          type: string
+          description: Empty for sections of the default layout
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/DashboardSectionTypeEnum'
+        bookmarks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookmarkDto'
+      required:
+        - title
+        - type
+        - bookmarks
+
+    UpdateDashboardDto:
+      properties:
+        sections:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/UpdateDashboardSectionDto'
+      required:
+        - sections
+
+    UpdateDashboardSectionDto:
+      properties:
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/DashboardSectionTypeEnum'
+        bookmarkIds:
+          type: array
+          description: Only used for LINKS sections, in display order
+          items:
+            $ref: '#/components/schemas/ID'
+      required:
+        - title
+        - type
 
     FetchMetadataRequest:
       properties:

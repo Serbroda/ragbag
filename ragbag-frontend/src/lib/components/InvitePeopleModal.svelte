@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { InviteApi } from 'ragbag-frontend-sdk';
 	import type { InviteRoleEnum, SpaceMemberRoleEnum } from 'ragbag-frontend-sdk';
+	import { untrack } from 'svelte';
 	import { Button, Input, Label, Modal, Select } from 'flowbite-svelte';
 	import { apiConfig, appBase, errorMessage } from '../api/client';
 
@@ -24,12 +25,14 @@
 	let copied = $state(false);
 
 	$effect(() => {
-		if (open) {
+		if (!open) return;
+		// Only opening the dialog may trigger this; generate() reads role and days
+		untrack(() => {
 			role = 'VIEWER';
 			days = '7';
 			copied = false;
 			generate();
-		}
+		});
 	});
 
 	async function generate() {

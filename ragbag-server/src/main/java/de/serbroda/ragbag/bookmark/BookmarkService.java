@@ -28,6 +28,7 @@ public class BookmarkService {
     private final CollectionRepository collectionRepository;
     private final UserRepository userRepository;
     private final BookmarkMetadataService bookmarkMetadataService;
+    private final BookmarkFavoriteRepository favoriteRepository;
 
     public List<Bookmark> getBookmarksByCollection(String collectionId) {
         return bookmarkRepository.findByCollection_IdOrderByCreatedAtDesc(collectionId);
@@ -40,6 +41,24 @@ public class BookmarkService {
         // Treat LIKE wildcards in user input literally
         String escaped = query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
         return bookmarkRepository.searchInSpace(spaceId, escaped);
+    }
+
+    /** Favorites are capped so a dashboard section stays fast even for heavy users. */
+    public static final int MAX_FAVORITES_LISTED = 200;
+
+    public List<Bookmark> getFavoritesInSpace(String userId, String spaceId) {
+        return favoriteRepository.findFavoritesInSpace(userId, spaceId, Limit.of(MAX_FAVORITES_LISTED));
+    }
+
+    public void addFavorite(String userId, String bookmarkId) {
+        BookmarkFavorite.Id id = new BookmarkFavorite.Id(userId, bookmarkId);
+        if (!favoriteRepository.existsById(id)) {
+            favoriteRepository.save(new BookmarkFavorite(userId, bookmarkId));
+        }
+    }
+
+    public void removeFavorite(String userId, String bookmarkId) {
+        favoriteRepository.deleteById(new BookmarkFavorite.Id(userId, bookmarkId));
     }
 
     public List<Bookmark> getRecentInSpace(String spaceId, int limit) {

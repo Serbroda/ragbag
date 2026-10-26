@@ -3,19 +3,27 @@
 	import type { Snippet } from 'svelte';
 	import { FolderOutline, LinkOutline } from 'flowbite-svelte-icons';
 	import { getDomain, safeUrl, timeAgo } from '../utils/format';
+	import FavoriteButton from './FavoriteButton.svelte';
 
 	let {
 		bookmark,
 		collectionName,
 		collectionHref,
 		actions,
+		onfavoritechange,
 	}: {
 		bookmark: BookmarkDto;
 		/** Shown in the footer when the card is listed outside its collection. */
 		collectionName?: string;
 		collectionHref?: string;
 		actions?: Snippet;
+		onfavoritechange?: (favorite: boolean) => void;
 	} = $props();
+
+	let favorite = $state(false);
+	$effect(() => {
+		favorite = bookmark.favorite ?? false;
+	});
 
 	const href = $derived(safeUrl(bookmark.url));
 	let faviconFailed = $state(false);
@@ -27,6 +35,14 @@
 <article
 	class="group relative flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
 >
+	<div
+		class="absolute right-2 top-2 z-10 rounded-md bg-white/85 shadow-sm backdrop-blur transition dark:bg-gray-900/85 {favorite
+			? ''
+			: 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'}"
+	>
+		<FavoriteButton bookmarkId={bookmark.id} bind:favorite onchange={onfavoritechange} />
+	</div>
+
 	{#if image}
 		<img
 			src={image}

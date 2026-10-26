@@ -14,6 +14,7 @@ import java.util.Optional;
 import java.util.Set;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
+import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -26,6 +27,7 @@ public class SpaceService {
     private final SpaceRepository spaceRepository;
     private final SpaceMemberRepository spaceMemberRepository;
     private final InviteRepository inviteRepository;
+    private final ApplicationEventPublisher events;
 
     @Transactional(readOnly = true)
     public Optional<Space> findById(String spaceId) {
@@ -122,6 +124,7 @@ public class SpaceService {
             throw new ResourceConflictException("The last owner cannot leave the space");
         }
         member.getSpace().getMembers().remove(member);
+        events.publishEvent(new SpaceMembershipEndedEvent(userId, spaceId));
     }
 
     @Transactional(readOnly = true)
@@ -158,6 +161,7 @@ public class SpaceService {
         SpaceMember target = requireMember(spaceId, userId);
         requireCanManage(actor, target);
         target.getSpace().getMembers().remove(target);
+        events.publishEvent(new SpaceMembershipEndedEvent(userId, spaceId));
     }
 
     /**
