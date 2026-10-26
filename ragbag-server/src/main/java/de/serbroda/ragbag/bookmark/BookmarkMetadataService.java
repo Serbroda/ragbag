@@ -13,6 +13,9 @@ import java.net.http.HttpClient;
 import java.net.http.HttpRequest;
 import java.net.http.HttpResponse;
 import java.time.Duration;
+import java.util.Arrays;
+import java.util.List;
+import java.util.Locale;
 import org.jsoup.Jsoup;
 import org.jsoup.nodes.Document;
 import org.jsoup.nodes.Element;
@@ -27,6 +30,7 @@ public class BookmarkMetadataService {
 
     private static final Duration REQUEST_TIMEOUT = Duration.ofSeconds(10);
     private static final int MAX_REDIRECTS = 5;
+    private static final int MAX_KEYWORDS = 8;
     private static final int MAX_BYTES = 2 * 1024 * 1024;
     private static final String USER_AGENT = "ragbag/1.0";
 
@@ -88,21 +92,7 @@ public class BookmarkMetadataService {
                     .orElse(null);
             Document document = Jsoup.parse(new ByteArrayInputStream(body), charset, uri.toString());
 
-            String title = normalize(document.title());
-            String description = normalize(metaContent(document, "name", "description"));
-            String ogImage = normalize(metaContent(document, "property", "og:image"));
-            String canonical = normalize(linkHref(document, "canonical"));
-            String favicon = normalize(faviconHref(document));
-
-            ogImage = resolveUrl(uri, ogImage);
-            canonical = resolveUrl(uri, canonical);
-            favicon = resolveUrl(uri, favicon);
-
-            if (favicon == null) {
-                favicon = resolveUrl(uri, "/favicon.ico");
-            }
-
-            return new BookmarkMetadata(title, description, ogImage, favicon, canonical);
+            return parse(document, uri);
         } catch (IOException e) {
             LOGGER.warn("Failed to fetch metadata for {}", url, e);
             return BookmarkMetadata.empty();
@@ -113,8 +103,47 @@ public class BookmarkMetadataService {
         }
     }
 
+    /** Extracts metadata from a parsed page; relative URLs are resolved against {@code baseUri}. */
+    static BookmarkMetadata parse(Document document, URI baseUri) {
+        // Open Graph values are usually cleaner than <title> (no " | Site name" suffix)
+        String title = firstNonBlank(metaContent(document, "property", "og:title"), document.title());
+        String description = firstNonBlank(
+                metaContent(document, "name", "description"), metaContent(document, "property", "og:description"));
+        String ogImage = resolveUrl(baseUri, normalize(metaContent(document, "property", "og:image")));
+        String canonical = resolveUrl(baseUri, normalize(linkHref(document, "canonical")));
+        String favicon = resolveUrl(baseUri, normalize(faviconHref(document)));
+        if (favicon == null) {
+            favicon = resolveUrl(baseUri, "/favicon.ico");
+        }
+        return new BookmarkMetadata(title, description, ogImage, favicon, canonical, keywords(document));
+    }
+
+    private static List<String> keywords(Document document) {
+        String content = metaContent(document, "name", "keywords");
+        if (content == null) {
+            return List.of();
+        }
+        return Arrays.stream(content.split(","))
+                .map(String::trim)
+                .filter(keyword -> !keyword.isEmpty() && keyword.length() <= 40)
+                .map(keyword -> keyword.toLowerCase(Locale.ROOT))
+                .distinct()
+                .limit(MAX_KEYWORDS)
+                .toList();
+    }
+
+    private static String firstNonBlank(String... values) {
+        for (String value : values) {
+            String normalized = normalize(value);
+            if (normalized != null) {
+                return normalized;
+            }
+        }
+        return null;
+    }
+
     private static String metaContent(Document document, String attribute, String value) {
-        Element element = document.selectFirst("meta[" + attribute + "=" + value + "]");
+        Element element = document.selectFirst("meta[" + attribute + "=\"" + value + "\"]");
         if (element == null) {
             return null;
         }
@@ -238,9 +267,10 @@ public class BookmarkMetadataService {
         return null;
     }
 
-    public record BookmarkMetadata(String title, String description, String ogImage, String favicon, String canonical) {
+    public record BookmarkMetadata(
+            String title, String description, String ogImage, String favicon, String canonical, List<String> keywords) {
         public static BookmarkMetadata empty() {
-            return new BookmarkMetadata(null, null, null, null, null);
+            return new BookmarkMetadata(null, null, null, null, null, List.of());
         }
     }
 }

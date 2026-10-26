@@ -7,7 +7,9 @@ import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.BookmarkApi;
 import de.serbroda.ragbag.generated.model.BookmarkDto;
+import de.serbroda.ragbag.generated.model.BookmarkMetadataDto;
 import de.serbroda.ragbag.generated.model.CreateBookmarkDto;
+import de.serbroda.ragbag.generated.model.FetchMetadataRequest;
 import de.serbroda.ragbag.generated.model.UpdateBookmarkDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import java.time.ZoneOffset;
@@ -40,6 +42,25 @@ public class BookmarkController implements BookmarkApi {
         return ResponseEntity.ok(bookmarkService.getRecentInSpace(spaceId, limit != null ? limit : 20).stream()
                 .map(this::toDto)
                 .toList());
+    }
+
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'CREATE_BOOKMARKS')"
+            + " or hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'EDIT_BOOKMARKS')")
+    @Override
+    public ResponseEntity<BookmarkMetadataDto> fetchBookmarkMetadata(
+            String collectionId, FetchMetadataRequest fetchMetadataRequest) {
+        BookmarkService.FetchedMetadata fetched = bookmarkService.fetchMetadata(fetchMetadataRequest.getUrl());
+        BookmarkMetadataService.BookmarkMetadata metadata = fetched.metadata();
+        return ResponseEntity.ok(new BookmarkMetadataDto.Builder()
+                .url(fetched.url())
+                .found(metadata.title() != null || metadata.description() != null)
+                .title(metadata.title())
+                .description(metadata.description())
+                .ogImage(metadata.ogImage())
+                .favicon(metadata.favicon())
+                .canonical(metadata.canonical())
+                .keywords(metadata.keywords())
+                .build());
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'READ')")
@@ -102,7 +123,13 @@ public class BookmarkController implements BookmarkApi {
                 .url(bookmark.getUrl())
                 .title(bookmark.getTitle())
                 .description(bookmark.getDescription())
-                .tags(bookmark.getTags() != null ? bookmark.getTags().stream().toList() : null)
+                .tags(
+                        bookmark.getTags() != null
+                                // Stored in an unordered set, so sort for a stable display order
+                                ? bookmark.getTags().stream()
+                                        .sorted(String.CASE_INSENSITIVE_ORDER)
+                                        .toList()
+                                : null)
                 .ogImage(bookmark.getOgImage())
                 .favicon(bookmark.getFavicon())
                 .canonical(bookmark.getCanonical())

@@ -4,6 +4,7 @@
 	import { getContext } from 'svelte';
 	import { apiConfig, errorMessage } from '../api/client';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
+	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import { collectionsToTree, flattenTree, findNode, collectSubtreeIds } from '../components/tree';
@@ -422,10 +423,14 @@
 		}}
 		class="flex flex-col gap-4"
 	>
-		<Input type="text" inputmode="url" placeholder="https://..." bind:value={newUrl} required />
-		<Input type="text" placeholder="Title (optional)" bind:value={newTitle} />
-		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={newDescription} />
-		<Input type="text" placeholder="Tags (comma separated)" bind:value={newTags} />
+		<LinkFormFields
+			{collectionId}
+			idPrefix="add-link"
+			bind:url={newUrl}
+			bind:title={newTitle}
+			bind:description={newDescription}
+			bind:tags={newTags}
+		/>
 		{#if modalError}
 			<p class="text-sm text-red-500 dark:text-red-400">{modalError}</p>
 		{/if}
@@ -451,10 +456,14 @@
 		}}
 		class="flex flex-col gap-4"
 	>
-		<Input type="text" inputmode="url" placeholder="https://..." bind:value={editUrl} required />
-		<Input type="text" placeholder="Title (optional)" bind:value={editTitle} />
-		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={editDescription} />
-		<Input type="text" placeholder="Tags (comma separated)" bind:value={editTags} />
+		<LinkFormFields
+			{collectionId}
+			idPrefix="edit-link"
+			bind:url={editUrl}
+			bind:title={editTitle}
+			bind:description={editDescription}
+			bind:tags={editTags}
+		/>
 		{#if modalError}
 			<p class="text-sm text-red-500 dark:text-red-400">{modalError}</p>
 		{/if}

@@ -106,6 +106,41 @@ class BookmarkApiTests extends AbstractApiTest {
     }
 
     @Test
+    void fetchMetadata_normalizesUrl_withoutSaving() throws Exception {
+        // Loopback is refused by the SSRF guard, so this only checks normalization and the empty result
+        mockMvc.perform(post("/api/v1/collections/{id}/bookmarks/metadata", collectionId)
+                        .header("Authorization", bearer(user.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\" 127.0.0.1/page \"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.url").value("https://127.0.0.1/page"))
+                .andExpect(jsonPath("$.found").value(false));
+        mockMvc.perform(get("/api/v1/collections/{id}/bookmarks", collectionId)
+                        .header("Authorization", bearer(user.accessToken())))
+                .andExpect(jsonPath("$.length()").value(0));
+    }
+
+    @Test
+    void fetchMetadata_rejectsJavascriptUrl() throws Exception {
+        mockMvc.perform(post("/api/v1/collections/{id}/bookmarks/metadata", collectionId)
+                        .header("Authorization", bearer(user.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\"javascript:alert(1)\"}"))
+                .andExpect(status().isBadRequest());
+    }
+
+    @Test
+    void fetchMetadata_requiresWriteAccess() throws Exception {
+        Session viewer = registerAndLogin();
+        join(viewer, spaceId, "VIEWER", user);
+        mockMvc.perform(post("/api/v1/collections/{id}/bookmarks/metadata", collectionId)
+                        .header("Authorization", bearer(viewer.accessToken()))
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"url\":\"https://example.com\"}"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
     void logout_clearsRefreshCookie_withoutToken() throws Exception {
         mockMvc.perform(post("/api/auth/logout"))
                 .andExpect(status().isNoContent())

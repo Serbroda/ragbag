@@ -719,6 +719,38 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/collections/{collectionId}/bookmarks/metadata:
+    post:
+      summary: Fetch title, description and other metadata of a URL without saving anything
+      operationId: fetchBookmarkMetadata
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FetchMetadataRequest'
+      responses:
+        '200':
+          description: Metadata; fields are empty if the page could not be loaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkMetadataDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /v1/bookmarks/{bookmarkId}:
     get:
       summary: Get a bookmark
@@ -1179,6 +1211,39 @@ components:
       required:
         - id
         - url
+
+    FetchMetadataRequest:
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    BookmarkMetadataDto:
+      properties:
+        url:
+          type: string
+          description: The normalized URL (e.g. with https:// added)
+        found:
+          type: boolean
+          description: False if the page could not be loaded or had no usable metadata
+        title:
+          type: string
+        description:
+          type: string
+        ogImage:
+          type: string
+        favicon:
+          type: string
+        canonical:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+      required:
+        - url
+        - found
 
     BookmarkDtoList:
       type: array

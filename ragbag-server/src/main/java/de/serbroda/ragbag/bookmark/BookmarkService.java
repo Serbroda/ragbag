@@ -47,6 +47,14 @@ public class BookmarkService {
                 spaceId, Limit.of(Math.clamp(limit, 1, 100)));
     }
 
+    /** Normalizes the URL and loads its metadata without persisting anything. */
+    public FetchedMetadata fetchMetadata(String url) {
+        String normalized = requireHttpUrl(url);
+        return new FetchedMetadata(normalized, bookmarkMetadataService.fetch(normalized));
+    }
+
+    public record FetchedMetadata(String url, BookmarkMetadataService.BookmarkMetadata metadata) {}
+
     public Bookmark getBookmark(String id) {
         return bookmarkRepository
                 .findById(id)

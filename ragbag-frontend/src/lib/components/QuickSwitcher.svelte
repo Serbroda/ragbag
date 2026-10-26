@@ -68,6 +68,7 @@
 		<div
 			class="w-full max-w-lg overflow-hidden rounded-lg bg-white shadow-2xl dark:bg-gray-800"
 			role="dialog"
+			tabindex="-1"
 			aria-modal="true"
 			aria-label="Quick switcher"
 			onclick={(e) => e.stopPropagation()}
