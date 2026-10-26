@@ -16,6 +16,12 @@ services:
     restart: unless-stopped
     ports:
       - "${RAGBAG_PORT:-8080}:8080"
+    # "Fetch details" and avatar URLs need DNS inside the container. If the log says "Cannot resolve host",
+    # the host firewall probably blocks the container network's DNS (Podman + UFW: allow 10.88.0.0/15),
+    # or bypass it with public resolvers:
+    # dns:
+    #   - 192.168.2.1
+    #   - 9.9.9.9
     volumes:
       - ragbag-data:/data
       # Or keep the database next to this file; the container fixes the permissions on startup.

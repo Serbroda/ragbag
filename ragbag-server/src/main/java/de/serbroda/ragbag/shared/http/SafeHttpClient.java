@@ -62,8 +62,22 @@ public class SafeHttpClient {
         try {
             HttpResponse<InputStream> response = null;
             for (int hop = 0; hop <= MAX_REDIRECTS; hop++) {
-                if (!isAllowedHost(uri.getHost())) {
-                    LOGGER.warn("Refusing to fetch disallowed address {}", uri);
+                HostCheck check = checkHost(uri.getHost());
+                if (check == HostCheck.UNRESOLVABLE) {
+                    // Most often DNS inside the container is broken (e.g. a host firewall blocking the
+                    // container network's DNS server), not a typo in the link
+                    LOGGER.warn("Cannot resolve host of {}; check DNS resolution of the server/container", uri);
+                    return Optional.empty();
+                }
+                if (check == HostCheck.PRIVATE) {
+                    LOGGER.warn(
+                            "Refusing to fetch private address {}; set app.metadata.allow-private-hosts=true"
+                                    + " (ALLOW_PRIVATE_HOSTS) to allow your own network",
+                            uri);
+                    return Optional.empty();
+                }
+                if (check == HostCheck.FORBIDDEN) {
+                    LOGGER.warn("Refusing to fetch loopback/link-local address {}", uri);
                     return Optional.empty();
                 }
                 HttpRequest request = HttpRequest.newBuilder(uri)
@@ -158,24 +172,33 @@ public class SafeHttpClient {
         }
     }
 
-    private boolean isAllowedHost(String host) {
+    private HostCheck checkHost(String host) {
+        InetAddress[] addresses;
         try {
-            for (InetAddress address : InetAddress.getAllByName(host)) {
-                // Never reachable: the server itself and link-local (incl. 169.254.169.254 cloud metadata)
-                if (address.isLoopbackAddress()
-                        || address.isAnyLocalAddress()
-                        || address.isLinkLocalAddress()
-                        || address.isMulticastAddress()) {
-                    return false;
-                }
-                if (!allowPrivateHosts && (address.isSiteLocalAddress() || isUniqueLocalIpv6(address))) {
-                    return false;
-                }
-            }
-            return true;
+            addresses = InetAddress.getAllByName(host);
         } catch (UnknownHostException e) {
-            return false;
+            return HostCheck.UNRESOLVABLE;
         }
+        for (InetAddress address : addresses) {
+            // Never reachable: the server itself and link-local (incl. 169.254.169.254 cloud metadata)
+            if (address.isLoopbackAddress()
+                    || address.isAnyLocalAddress()
+                    || address.isLinkLocalAddress()
+                    || address.isMulticastAddress()) {
+                return HostCheck.FORBIDDEN;
+            }
+            if (!allowPrivateHosts && (address.isSiteLocalAddress() || isUniqueLocalIpv6(address))) {
+                return HostCheck.PRIVATE;
+            }
+        }
+        return HostCheck.ALLOWED;
+    }
+
+    private enum HostCheck {
+        ALLOWED,
+        UNRESOLVABLE,
+        PRIVATE,
+        FORBIDDEN
     }
 
     private static boolean isUniqueLocalIpv6(InetAddress address) {
