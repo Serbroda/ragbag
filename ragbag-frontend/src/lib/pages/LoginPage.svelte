@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { Card, Label, Input, Button, Alert } from 'flowbite-svelte';
-	import { login, register, fetchFeatureFlags } from '../api/client';
+	import { login, register, fetchFeatureFlags, takePendingInvite } from '../api/client';
 	import { navigate } from '../router';
+	import { resetSession } from '../stores/spaces.svelte';
 
 	let registrationEnabled = $state(false);
 	let isRegister = $state(false);
@@ -57,7 +58,13 @@
 				confirmPassword = '';
 			} else {
 				await login(username, password);
-				navigate('/');
+				resetSession();
+				const pendingInvite = takePendingInvite();
+				if (pendingInvite) {
+					navigate('/invite/:token', { params: { token: pendingInvite } });
+				} else {
+					navigate('/');
+				}
 			}
 		} catch (err) {
 			error = isRegister

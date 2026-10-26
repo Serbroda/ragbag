@@ -1,5 +1,5 @@
-import { AppApi, AuthenticationApi, Configuration } from 'ragbag-frontend-sdk';
-import type { Middleware } from 'ragbag-frontend-sdk';
+import { AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError } from 'ragbag-frontend-sdk';
+import type { BookmarkDto, Middleware } from 'ragbag-frontend-sdk';
 
 const STORAGE_KEY = 'access_token';
 const BASE_PATH = import.meta.env.VITE_API_URL || 'http://localhost:8080/api';
@@ -36,7 +36,7 @@ const authMiddleware: Middleware = {
 		const success = await refreshPromise;
 		if (!success) {
 			setAccessToken(null);
-			window.location.href = '/login';
+			window.location.href = `${appBase()}/login`;
 			return;
 		}
 
@@ -82,10 +82,22 @@ export async function login(username: string, password: string): Promise<void> {
 	setAccessToken(response.accessToken);
 }
 
+/** Signs out on this device only. */
 export async function logout(): Promise<void> {
-	const api = new AuthenticationApi(apiConfig());
-	await api.logoutAll();
-	setAccessToken(null);
+	try {
+		await new AuthenticationApi(anonConfig()).logout();
+	} finally {
+		setAccessToken(null);
+	}
+}
+
+/** Invalidates all sessions of the user on every device. */
+export async function logoutEverywhere(): Promise<void> {
+	try {
+		await new AuthenticationApi(apiConfig()).logoutAll();
+	} finally {
+		setAccessToken(null);
+	}
 }
 
 export async function refreshAccessToken(): Promise<boolean> {
@@ -107,4 +119,42 @@ export function isAuthenticated(): boolean {
 export async function fetchFeatureFlags(): Promise<{ [key: string]: string }> {
 	const api = new AppApi(anonConfig());
 	return api.featureFlags();
+}
+
+export async function searchBookmarks(spaceId: string, query: string): Promise<BookmarkDto[]> {
+	const api = new BookmarkApi(apiConfig());
+	return api.searchBookmarks({ spaceId, q: query });
+}
+
+/** Path prefix of the SPA: `/app` when served by the Spring Boot backend, empty in the Vite dev server. */
+export function appBase(): string {
+	return window.location.pathname.startsWith('/app') ? '/app' : '';
+}
+
+/** Extracts the `detail` of a ProblemDetail error response, falling back to the given message. */
+export async function errorMessage(err: unknown, fallback: string): Promise<string> {
+	if (err instanceof ResponseError) {
+		try {
+			const body = await err.response.json();
+			if (typeof body?.detail === 'string' && body.detail) return body.detail;
+		} catch {
+			// Body was empty or not JSON
+		}
+	}
+	return fallback;
+}
+
+// --- Pending invite (survives the login redirect) ---
+
+const PENDING_INVITE_KEY = 'pending_invite';
+
+export function rememberPendingInvite(pathname: string) {
+	const match = pathname.match(/\/invite\/([^/]+)/);
+	if (match) sessionStorage.setItem(PENDING_INVITE_KEY, match[1]);
+}
+
+export function takePendingInvite(): string | null {
+	const token = sessionStorage.getItem(PENDING_INVITE_KEY);
+	sessionStorage.removeItem(PENDING_INVITE_KEY);
+	return token;
 }

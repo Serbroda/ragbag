@@ -1,25 +1,152 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
-	import type { SpaceDto } from 'ragbag-frontend-sdk';
+	import type { SpacePermissionEnum } from 'ragbag-frontend-sdk';
 	import { setContext } from 'svelte';
 	import { Navbar, NavBrand, Button, Modal, Label, Input, Select } from 'flowbite-svelte';
-	import { HomeSolid, GlobeSolid, StarSolid, TagSolid, CirclePlusSolid } from 'flowbite-svelte-icons';
-	import { apiConfig, logout } from '../api/client';
+	import {
+		ArrowRightToBracketOutline,
+		ChevronDownOutline,
+		CirclePlusSolid,
+		CogSolid,
+		FolderPlusSolid,
+		HomeSolid,
+		PlusOutline,
+		SearchOutline,
+		UserAddSolid,
+		UsersGroupSolid,
+	} from 'flowbite-svelte-icons';
+	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
 	import { navigate, route } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
+	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
+	import InvitePeopleModal from '../components/InvitePeopleModal.svelte';
+	import MemberList from '../components/MemberList.svelte';
+	import QuickSwitcher, { type SwitcherItem } from '../components/QuickSwitcher.svelte';
 	import { collectionsToTree, expandToNode, flattenTree, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
+	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
+	import { colorFor, initials } from '../utils/format';
 
 	let { children }: { children: Snippet } = $props();
 
 	let sidebarOpen = $state(false);
 
+	// --- Spaces & Collections ---
+	const spaceApi = new SpaceApi(apiConfig());
+	const collectionApi = new CollectionApi(apiConfig());
+
+	let menuTree = $state<TreeNode[]>([]);
+
+	const activeSpaceId = $derived(route.params.spaceId ?? null);
+	const activeCollectionId = $derived(route.params.collectionId ?? null);
+	const activeSpace = $derived(session.spaces.find((space) => space.id === activeSpaceId) ?? null);
+	const activePermissions = $derived(new Set<SpacePermissionEnum>(activeSpace?.permissions ?? []));
+	const canCreateCollections = $derived(activePermissions.has('CREATE_COLLECTIONS'));
+	const canEditCollections = $derived(activePermissions.has('EDIT_COLLECTIONS'));
+	const canManageMembers = $derived(activePermissions.has('MANAGE_MEMBERS'));
+
+	async function loadCollections(spaceId: string) {
+		try {
+			const collections = await collectionApi.getCollections({ spaceId });
+			if (spaceId !== activeSpaceId) return;
+			const tree = collectionsToTree(collections, spaceId);
+			if (activeCollectionId) {
+				expandToNode(tree, activeCollectionId);
+			}
+			menuTree = tree;
+		} catch {
+			// Access was revoked or the space was deleted meanwhile
+			menuTree = [];
+			await loadSpaces();
+		}
+	}
+
+	function selectSpace(spaceId: string) {
+		closeMenus();
+		navigate('/space/:spaceId', { params: { spaceId } });
+	}
+
+	// The membership check below only trusts a list loaded by this layout, not a stale one from before
+	let spacesReady = $state(false);
+	loadSpaces()
+		.then(() => (spacesReady = true))
+		.catch(() => {});
+	loadMe().catch(() => {});
+
+	$effect(() => {
+		if (activeSpaceId) {
+			loadCollections(activeSpaceId);
+		}
+	});
+
+	// Leave spaces the user is no longer a member of (removed, deleted, bad link)
+	$effect(() => {
+		if (!spacesReady || !activeSpaceId) return;
+		if (activeSpace) {
+			rememberSpace(activeSpace.id);
+		} else {
+			navigate('/');
+		}
+	});
+
+	setContext('reload-collections', () => {
+		if (activeSpaceId) loadCollections(activeSpaceId);
+	});
+
+	setContext('has-space-permission', (permission: SpacePermissionEnum) => activePermissions.has(permission));
+
+	setContext('reload-spaces', loadSpaces);
+
+	setContext('open-invite', () => (showInvite = true));
+
+	const isMac = /mac/i.test(navigator.platform || navigator.userAgent);
+
+	setContext('collection-name', (collectionId: string) => findLabel(menuTree, collectionId));
+
+	function findLabel(nodes: TreeNode[], id: string): string | undefined {
+		for (const node of nodes) {
+			if (node.id === id) return node.label;
+			const found = node.children && findLabel(node.children, id);
+			if (found) return found;
+		}
+		return undefined;
+	}
+
+	// --- Search ---
+	let searchQuery = $state('');
+	let searchTimeout: ReturnType<typeof setTimeout> | undefined;
+
+	// Reset the search box when switching spaces; prefill it on the search page
+	$effect(() => {
+		activeSpaceId;
+		const q = route.search.q;
+		searchQuery = route.pathname.endsWith('/search') && typeof q === 'string' ? q : '';
+	});
+
+	function doSearch(value: string) {
+		if (!activeSpaceId || !value.trim()) return;
+		navigate('/space/:spaceId/search', { params: { spaceId: activeSpaceId }, search: { q: value.trim() } });
+	}
+
+	function handleSearchInput() {
+		clearTimeout(searchTimeout);
+		searchTimeout = setTimeout(() => doSearch(searchQuery), 300);
+	}
+
+	function handleSearchKeydown(e: KeyboardEvent) {
+		if (e.key === 'Enter') {
+			clearTimeout(searchTimeout);
+			doSearch(searchQuery);
+		}
+	}
+
 	// --- Resize ---
-	const SPACE_BAR_WIDTH = 64;
+	const SPACE_BAR_WIDTH = 72;
 	const MIN_WIDTH = 200;
 	const MAX_WIDTH = 480;
 	const DEFAULT_WIDTH = 256;
+	const MEMBER_PANEL_WIDTH = 240;
 
 	let sidebarWidth = $state(DEFAULT_WIDTH);
 	let isResizing = $state(false);
@@ -42,79 +169,97 @@
 		document.addEventListener('mouseup', onMouseUp);
 	}
 
-	// --- Navigation ---
-	function toggleSidebar() {
-		sidebarOpen = !sidebarOpen;
+	// --- Menus & panels ---
+	let spaceMenuOpen = $state(false);
+	let userMenuOpen = $state(false);
+	let membersOpen = $state(readFlag('members_panel', true));
+	let switcherOpen = $state(false);
+	let showCreateOrJoin = $state(false);
+	let showInvite = $state(false);
+
+	function readFlag(key: string, fallback: boolean): boolean {
+		const value = localStorage.getItem(key);
+		return value === null ? fallback : value === 'true';
 	}
 
-	function closeSidebar() {
-		sidebarOpen = false;
+	function toggleMembers() {
+		membersOpen = !membersOpen;
+		localStorage.setItem('members_panel', String(membersOpen));
 	}
 
-	async function handleLogout() {
-		await logout();
+	function closeMenus() {
+		spaceMenuOpen = false;
+		userMenuOpen = false;
+	}
+
+	function onWindowKeydown(e: KeyboardEvent) {
+		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+			e.preventDefault();
+			switcherOpen = !switcherOpen;
+		} else if (e.key === 'Escape') {
+			closeMenus();
+		}
+	}
+
+	const switcherItems = $derived<SwitcherItem[]>([
+		...session.spaces.map((space) => ({
+			id: space.id,
+			label: space.name,
+			hint: 'Space',
+			kind: 'space' as const,
+			go: () => selectSpace(space.id),
+		})),
+		...(activeSpaceId
+			? flattenTree(menuTree).map((node) => ({
+					id: node.id,
+					label: node.label,
+					hint: activeSpace?.name ?? '',
+					kind: 'collection' as const,
+					go: () =>
+						navigate('/space/:spaceId/collections/:collectionId', {
+							params: { spaceId: activeSpaceId, collectionId: node.id },
+						}),
+				}))
+			: []),
+	]);
+
+	async function handleSpaceDone(spaceId: string) {
+		await loadSpaces();
+		selectSpace(spaceId);
+	}
+
+	let showLeaveModal = $state(false);
+	let leaveError = $state('');
+	let leaving = $state(false);
+
+	function openLeaveModal() {
+		closeMenus();
+		leaveError = '';
+		showLeaveModal = true;
+	}
+
+	async function handleLeaveSpace() {
+		if (!activeSpaceId) return;
+		leaving = true;
+		leaveError = '';
+		try {
+			await spaceApi.leaveSpace({ spaceId: activeSpaceId });
+			showLeaveModal = false;
+			await loadSpaces();
+			navigate('/');
+		} catch (err) {
+			leaveError = await errorMessage(err, 'Failed to leave space.');
+		} finally {
+			leaving = false;
+		}
+	}
+
+	async function handleLogout(everywhere = false) {
+		closeMenus();
+		await (everywhere ? logoutEverywhere() : logout()).catch(() => {});
+		resetSession();
 		navigate('/login');
 	}
-
-	// --- Spaces & Collections ---
-	const spaceApi = new SpaceApi(apiConfig());
-	const collectionApi = new CollectionApi(apiConfig());
-
-	type SpacePermission =
-		| 'READ'
-		| 'EDIT_SPACE'
-		| 'CREATE_COLLECTIONS'
-		| 'EDIT_COLLECTIONS'
-		| 'DELETE_COLLECTIONS'
-		| 'CREATE_BOOKMARKS'
-		| 'EDIT_BOOKMARKS'
-		| 'DELETE_BOOKMARKS';
-
-	type SpaceWithPermissions = SpaceDto & { permissions?: SpacePermission[] };
-
-	let spaces = $state<SpaceWithPermissions[]>([]);
-	let menuTree = $state<TreeNode[]>([]);
-
-	const activeSpaceId = $derived(route.params.spaceId ?? null);
-	const activeCollectionId = $derived(route.params.collectionId ?? null);
-	const activeSpace = $derived(spaces.find((space) => space.id === activeSpaceId) ?? null);
-	const activePermissions = $derived(new Set<SpacePermission>(activeSpace?.permissions ?? []));
-	const canCreateCollections = $derived(activePermissions.has('CREATE_COLLECTIONS'));
-	const canEditCollections = $derived(activePermissions.has('EDIT_COLLECTIONS'));
-
-	async function loadSpaces() {
-		const response = await spaceApi.getSpacesRaw();
-		spaces = (await response.raw.json()) as SpaceWithPermissions[];
-	}
-
-	async function loadCollections(spaceId: string) {
-		const collections = await collectionApi.getCollections({ spaceId });
-		const tree = collectionsToTree(collections, spaceId);
-		if (activeCollectionId) {
-			expandToNode(tree, activeCollectionId);
-		}
-		menuTree = tree;
-	}
-
-	function selectSpace(spaceId: string) {
-		navigate('/space/:spaceId', { params: { spaceId } });
-	}
-
-	loadSpaces();
-
-	$effect(() => {
-		if (activeSpaceId) {
-			loadCollections(activeSpaceId);
-		}
-	});
-
-	setContext('reload-collections', () => {
-		if (activeSpaceId) loadCollections(activeSpaceId);
-	});
-
-	setContext('has-space-permission', (permission: SpacePermission) =>
-		activePermissions.has(permission),
-	);
 
 	// --- Add Collection Modal ---
 	let showAddModal = $state(false);
@@ -127,8 +272,10 @@
 
 	function openAddModal() {
 		if (!canCreateCollections) return;
+		closeMenus();
 		newCollectionName = '';
-		newCollectionParentId = '';
+		// Default to the collection the user is currently looking at
+		newCollectionParentId = activeCollectionId ?? '';
 		createError = '';
 		creating = false;
 		showAddModal = true;
@@ -141,23 +288,28 @@
 		createError = '';
 		creating = true;
 		try {
-			await collectionApi.createCollection({
+			const created = await collectionApi.createCollection({
 				spaceId: activeSpaceId,
 				createCollectionDto: {
 					name,
 					parentId: newCollectionParentId || undefined,
 				},
 			});
-			await loadCollections(activeSpaceId);
 			showAddModal = false;
-		} catch {
-			createError = 'Failed to create collection.';
+			await loadCollections(activeSpaceId);
+			navigate('/space/:spaceId/collections/:collectionId', {
+				params: { spaceId: activeSpaceId, collectionId: created.id },
+			});
+		} catch (err) {
+			createError = await errorMessage(err, 'Failed to create collection.');
 		} finally {
 			creating = false;
 		}
 	}
 
-	const bottomTree: TreeNode[] = [{ label: 'Settings', href: '/settings' }];
+	const navTree = $derived<TreeNode[]>(
+		activeSpaceId ? [{ label: 'Dashboard', icon: HomeSolid, href: `/space/${activeSpaceId}` }] : [],
+	);
 
 	async function handleMove(movedNode: TreeNode, newParent: TreeNode | null) {
 		if (!canEditCollections) return;
@@ -171,16 +323,9 @@
 			await loadCollections(activeSpaceId);
 		}
 	}
-
-	function getInitials(name: string): string {
-		return name
-			.split(/\s+/)
-			.map((w) => w[0])
-			.join('')
-			.toUpperCase()
-			.slice(0, 2);
-	}
 </script>
+
+<svelte:window onkeydown={onWindowKeydown} onclick={closeMenus} />
 
 <div class="min-h-screen bg-gray-50 dark:bg-gray-900" class:select-none={isResizing}>
 	<!-- Top Bar -->
@@ -190,7 +335,7 @@
 				type="button"
 				aria-label="Toggle sidebar"
 				class="inline-flex items-center rounded-lg p-2 text-sm text-gray-500 hover:bg-gray-100 focus:outline-none focus:ring-2 focus:ring-gray-200 md:hidden dark:text-gray-400 dark:hover:bg-gray-700 dark:focus:ring-gray-600"
-				onclick={toggleSidebar}
+				onclick={() => (sidebarOpen = !sidebarOpen)}
 			>
 				<svg class="h-6 w-6" fill="currentColor" viewBox="0 0 20 20">
 					<path
@@ -201,104 +346,267 @@
 				</svg>
 			</button>
 			<NavBrand>
-				<span class="brand-glow self-center whitespace-nowrap text-xl font-bold tracking-tight"
-					>Ragbag</span
-				>
+				<span class="brand-glow self-center whitespace-nowrap text-xl font-bold tracking-tight">Ragbag</span>
 			</NavBrand>
 		</div>
-		<div class="flex items-center">
-			<Button size="sm" color="light" onclick={handleLogout}>Logout</Button>
+		<div class="flex flex-1 items-center justify-center px-4">
+			{#if activeSpaceId}
+				<div class="relative w-full max-w-md">
+					<input
+						type="text"
+						placeholder="Search {activeSpace?.name ?? 'bookmarks'}..."
+						class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-1.5 pl-9 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white dark:placeholder-gray-400 dark:focus:border-primary-500 dark:focus:ring-primary-500"
+						bind:value={searchQuery}
+						oninput={handleSearchInput}
+						onkeydown={handleSearchKeydown}
+					/>
+					<SearchOutline class="absolute left-2.5 top-2 h-4 w-4 text-gray-400" />
+				</div>
+			{/if}
+		</div>
+		<div class="flex items-center gap-1">
+			<button
+				type="button"
+				class="hidden items-center gap-2 rounded-lg border border-gray-200 px-2.5 py-1 text-xs text-gray-500 hover:bg-gray-100 sm:flex dark:border-gray-700 dark:text-gray-400 dark:hover:bg-gray-700"
+				onclick={() => (switcherOpen = true)}
+				title="Quick switcher"
+			>
+				Jump to… <kbd class="rounded bg-gray-100 px-1 font-sans dark:bg-gray-800">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
+			</button>
+			{#if activeSpaceId}
+				<button
+					type="button"
+					class="hidden rounded-lg p-2 lg:block {membersOpen
+						? 'text-gray-900 dark:text-white'
+						: 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}"
+					title={membersOpen ? 'Hide member list' : 'Show member list'}
+					aria-pressed={membersOpen}
+					onclick={toggleMembers}
+				>
+					<UsersGroupSolid class="h-5 w-5" />
+				</button>
+			{/if}
 		</div>
 	</Navbar>
 	<div class="navbar-accent"></div>
 
 	<!-- Mobile Backdrop -->
 	{#if sidebarOpen}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<div
-			class="fixed inset-0 top-[61px] z-30 bg-gray-900/50 md:hidden"
-			onclick={closeSidebar}
-		></div>
+		<!-- svelte-ignore a11y_no_static_element_interactions, a11y_click_events_have_key_events -->
+		<div class="fixed inset-0 top-[61px] z-30 bg-gray-900/50 md:hidden" onclick={() => (sidebarOpen = false)}></div>
 	{/if}
 
 	<!-- Space Bar (always dark, like Discord) -->
 	<aside
-		class="fixed top-[61px] left-0 z-40 h-[calc(100vh-61px)] w-16 flex-col items-center overflow-y-auto bg-gray-900 py-3 dark:bg-gray-950 {sidebarOpen ? 'flex' : 'hidden'} md:flex"
+		class="fixed top-[61px] left-0 z-40 h-[calc(100vh-61px)] w-[72px] flex-col items-center overflow-y-auto bg-gray-900 py-3 dark:bg-gray-950 {sidebarOpen
+			? 'flex'
+			: 'hidden'} md:flex"
+		aria-label="Spaces"
 	>
-		<!-- Home button -->
-		<div class="relative flex w-full items-center justify-center pb-2">
-			<button
-				type="button"
-				title="Home"
-				class="flex h-10 w-10 items-center justify-center rounded-2xl bg-gray-700 text-primary-400 transition-all duration-200 hover:rounded-xl hover:bg-primary-500 hover:text-white"
-				onclick={() => activeSpaceId && navigate('/space/:spaceId', { params: { spaceId: activeSpaceId } })}
-			>
-				<HomeSolid class="h-5 w-5" />
-			</button>
-		</div>
-		<div class="mx-auto mb-2 h-px w-8 bg-gray-700"></div>
-
-		<!-- Spaces -->
-		{#each spaces as space (space.id)}
-			<div class="relative flex w-full items-center justify-center py-1">
-				<!-- Active indicator pill -->
+		{#each session.spaces as space (space.id)}
+			{@const active = activeSpaceId === space.id}
+			<div class="group relative flex w-full items-center justify-center py-1">
 				<span
-					class="absolute left-0 w-1 rounded-r-full bg-white transition-all duration-200 {activeSpaceId === space.id ? 'h-5' : 'h-0 opacity-0'}"
+					class="absolute left-0 w-1 rounded-r-full bg-white transition-all duration-200 {active
+						? 'h-10'
+						: 'h-0 group-hover:h-5'}"
 				></span>
 				<button
 					type="button"
 					title={space.name}
-					class="flex h-10 w-10 shrink-0 items-center justify-center text-xs font-bold transition-all duration-200 {activeSpaceId === space.id
-						? 'rounded-xl bg-primary-500 text-white shadow-lg shadow-primary-500/30'
-						: 'rounded-2xl bg-gray-700 text-gray-300 hover:rounded-xl hover:bg-primary-500/80 hover:text-white'}"
+					aria-label={space.name}
+					aria-current={active ? 'page' : undefined}
+					class="flex h-12 w-12 shrink-0 items-center justify-center text-sm font-bold text-white transition-all duration-200 {active
+						? `rounded-2xl ${colorFor(space.name)}`
+						: 'rounded-3xl bg-gray-700 text-gray-200 hover:rounded-2xl hover:bg-primary-500'}"
 					onclick={() => selectSpace(space.id)}
 				>
-					{getInitials(space.name)}
+					{initials(space.name)}
 				</button>
+				<!-- Tooltip -->
+				<span
+					class="pointer-events-none fixed left-[80px] z-50 hidden whitespace-nowrap rounded-md bg-gray-950 px-3 py-1.5 text-sm font-semibold text-white shadow-lg group-hover:md:block"
+				>
+					{space.name}
+				</span>
 			</div>
 		{/each}
+
+		<div class="mx-auto my-1 h-0.5 w-8 rounded bg-gray-700"></div>
+
+		<div class="group relative flex w-full items-center justify-center py-1">
+			<button
+				type="button"
+				title="Create or join a space"
+				aria-label="Create or join a space"
+				class="flex h-12 w-12 items-center justify-center rounded-3xl bg-gray-700 text-green-400 transition-all duration-200 hover:rounded-2xl hover:bg-green-500 hover:text-white"
+				onclick={() => (showCreateOrJoin = true)}
+			>
+				<PlusOutline class="h-6 w-6" />
+			</button>
+		</div>
 	</aside>
 
 	<!-- Sidebar -->
 	<aside
-		class="fixed top-[61px] left-16 z-40 h-[calc(100vh-61px)] overflow-hidden border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 {sidebarOpen ? 'block' : 'hidden'} md:block"
+		class="fixed top-[61px] left-[72px] z-40 h-[calc(100vh-61px)] border-r border-gray-200 bg-gray-50 dark:border-gray-700 dark:bg-gray-800 {sidebarOpen
+			? 'block'
+			: 'hidden'} md:block"
 		style="width: {sidebarWidth}px"
 	>
-		<div class="flex h-full flex-col overflow-y-auto">
-			<nav>
-				<ul class="space-y-0.5 py-2">
-					<TreeItem node={{ label: 'Dashboard', icon: HomeSolid }} />
-					<TreeItem node={{ label: 'Links', icon: GlobeSolid }} />
-					<TreeItem node={{ label: 'Favorites', icon: StarSolid }} />
-					<TreeItem node={{ label: 'Tags', icon: TagSolid }} />
-				</ul>
-			</nav>
-			<nav class="border-t border-gray-200 dark:border-gray-700">
-				<div class="flex items-center justify-between px-3 pt-3 pb-1">
-					<h3
-						class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400"
+		<div class="flex h-full flex-col">
+			<!-- Space header with menu -->
+			{#if activeSpace}
+				<div class="relative border-b border-gray-200 dark:border-gray-700">
+					<button
+						type="button"
+						class="flex h-12 w-full items-center justify-between px-4 text-left font-semibold text-gray-900 hover:bg-gray-100 dark:text-white dark:hover:bg-gray-700"
+						aria-haspopup="menu"
+						aria-expanded={spaceMenuOpen}
+						onclick={(e) => {
+							e.stopPropagation();
+							userMenuOpen = false;
+							spaceMenuOpen = !spaceMenuOpen;
+						}}
 					>
-						Collections
-					</h3>
-						<button
-							type="button"
-							title="Add collection"
-							class="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 disabled:cursor-not-allowed disabled:opacity-40 dark:hover:bg-gray-600 dark:hover:text-gray-300"
-							disabled={!canCreateCollections}
-							onclick={openAddModal}
-						>
-						<CirclePlusSolid class="h-3.5 w-3.5" />
+						<span class="truncate">{activeSpace.name}</span>
+						<ChevronDownOutline class="h-4 w-4 shrink-0 transition-transform {spaceMenuOpen ? 'rotate-180' : ''}" />
 					</button>
+					{#if spaceMenuOpen}
+						<div
+							role="menu"
+							class="absolute left-2 right-2 top-12 z-50 rounded-md bg-gray-950 p-1.5 text-sm text-gray-200 shadow-xl"
+						>
+							{#if canManageMembers}
+								<button
+									role="menuitem"
+									class="flex w-full items-center justify-between rounded px-2 py-1.5 text-primary-400 hover:bg-primary-500 hover:text-white"
+									onclick={() => ((showInvite = true), closeMenus())}
+								>
+									Invite people <UserAddSolid class="h-4 w-4" />
+								</button>
+							{/if}
+							<button
+								role="menuitem"
+								class="flex w-full items-center justify-between rounded px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+								onclick={() => (closeMenus(), navigate('/space/:spaceId/settings', { params: { spaceId: activeSpace.id } }))}
+							>
+								Space settings <CogSolid class="h-4 w-4" />
+							</button>
+							{#if canCreateCollections}
+								<button
+									role="menuitem"
+									class="flex w-full items-center justify-between rounded px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+									onclick={openAddModal}
+								>
+									Create collection <FolderPlusSolid class="h-4 w-4" />
+								</button>
+							{/if}
+							<div class="my-1 h-px bg-gray-800"></div>
+							<button
+								role="menuitem"
+								class="flex w-full items-center justify-between rounded px-2 py-1.5 text-red-400 hover:bg-red-500 hover:text-white"
+								onclick={openLeaveModal}
+							>
+								Leave space <ArrowRightToBracketOutline class="h-4 w-4" />
+							</button>
+						</div>
+					{/if}
 				</div>
-				<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} draggable={canEditCollections} />
-			</nav>
-			<nav class="border-t border-gray-200 dark:border-gray-700">
-				<ul class="space-y-0.5 py-2">
-					{#each bottomTree as node (node.label)}
-						<TreeItem {node} />
-					{/each}
-				</ul>
-			</nav>
+			{/if}
+
+			<div class="flex-1 overflow-y-auto">
+				<nav>
+					<ul class="space-y-0.5 py-2">
+						{#each navTree as node (node.label)}
+							<TreeItem {node} />
+						{/each}
+					</ul>
+				</nav>
+				<nav class="border-t border-gray-200 dark:border-gray-700">
+					<div class="flex items-center justify-between px-3 pt-3 pb-1">
+						<h3 class="text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+							Collections
+						</h3>
+						{#if canCreateCollections}
+							<button
+								type="button"
+								title="Create collection"
+								aria-label="Create collection"
+								class="rounded p-0.5 text-gray-400 hover:bg-gray-200 hover:text-gray-600 dark:hover:bg-gray-600 dark:hover:text-gray-300"
+								onclick={(e) => (e.stopPropagation(), openAddModal())}
+							>
+								<CirclePlusSolid class="h-3.5 w-3.5" />
+							</button>
+						{/if}
+					</div>
+					{#if menuTree.length === 0 && activeSpace}
+						<p class="px-4 py-2 text-xs text-gray-400 dark:text-gray-500">
+							{canCreateCollections ? 'No collections yet. Create one with +.' : 'No collections yet.'}
+						</p>
+					{/if}
+					<DraggableTreeList bind:nodes={menuTree} onmove={handleMove} draggable={canEditCollections} />
+				</nav>
+			</div>
+
+			<!-- User panel -->
+			<div class="relative flex h-14 shrink-0 items-center gap-2 border-t border-gray-200 bg-gray-100 px-2 dark:border-gray-700 dark:bg-gray-900/60">
+				{#if session.me}
+					<span
+						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white {colorFor(
+							session.me.username,
+						)}"
+					>
+						{initials(session.me.username)}
+					</span>
+					<div class="min-w-0 flex-1 leading-tight">
+						<p class="truncate text-sm font-semibold text-gray-900 dark:text-white">{session.me.username}</p>
+						{#if activeSpace?.role}
+							<p class="truncate text-xs capitalize text-gray-500 dark:text-gray-400">
+								{activeSpace.role.toLowerCase()}
+							</p>
+						{/if}
+					</div>
+				{:else}
+					<div class="flex-1"></div>
+				{/if}
+				<button
+					type="button"
+					title="Account"
+					aria-label="Account menu"
+					aria-haspopup="menu"
+					aria-expanded={userMenuOpen}
+					class="rounded p-1.5 text-gray-500 hover:bg-gray-200 hover:text-gray-700 dark:text-gray-400 dark:hover:bg-gray-700 dark:hover:text-gray-200"
+					onclick={(e) => {
+						e.stopPropagation();
+						spaceMenuOpen = false;
+						userMenuOpen = !userMenuOpen;
+					}}
+				>
+					<CogSolid class="h-5 w-5" />
+				</button>
+				{#if userMenuOpen}
+					<div
+						role="menu"
+						class="absolute bottom-14 left-2 right-2 z-50 rounded-md bg-gray-950 p-1.5 text-sm text-gray-200 shadow-xl"
+					>
+						<button
+							role="menuitem"
+							class="flex w-full items-center justify-between rounded px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+							onclick={() => handleLogout(false)}
+						>
+							Log out <ArrowRightToBracketOutline class="h-4 w-4" />
+						</button>
+						<button
+							role="menuitem"
+							class="flex w-full items-center justify-between rounded px-2 py-1.5 text-red-400 hover:bg-red-500 hover:text-white"
+							onclick={() => handleLogout(true)}
+						>
+							Log out on all devices
+						</button>
+					</div>
+				{/if}
+			</div>
 		</div>
 	</aside>
 
@@ -310,14 +618,26 @@
 		style:left="{SPACE_BAR_WIDTH + sidebarWidth - 3}px"
 		onmousedown={startResize}
 	>
-		<div
-			class="h-full w-full hover:bg-gray-300 dark:hover:bg-gray-600"
-			class:!bg-primary-500={isResizing}
-		></div>
+		<div class="h-full w-full hover:bg-gray-300 dark:hover:bg-gray-600" class:!bg-primary-500={isResizing}></div>
 	</div>
 
+	<!-- Member list (Discord's right panel) -->
+	{#if activeSpaceId && membersOpen}
+		<aside
+			class="fixed top-[61px] right-0 z-30 hidden h-[calc(100vh-61px)] border-l border-gray-200 bg-gray-50 lg:block dark:border-gray-700 dark:bg-gray-800"
+			style:width="{MEMBER_PANEL_WIDTH}px"
+			aria-label="Members"
+		>
+			<MemberList spaceId={activeSpaceId} currentUserId={session.me?.id} />
+		</aside>
+	{/if}
+
 	<!-- Main Content -->
-	<div class="p-4" style:margin-left="0" style:--sidebar-w="{SPACE_BAR_WIDTH + sidebarWidth}px">
+	<div
+		class="p-4"
+		style:--sidebar-w="{SPACE_BAR_WIDTH + sidebarWidth}px"
+		style:--members-w="{activeSpaceId && membersOpen ? MEMBER_PANEL_WIDTH : 0}px"
+	>
 		<div class="md-sidebar-offset">
 			{@render children()}
 		</div>
@@ -335,11 +655,18 @@
 	>
 		<div>
 			<Label for="col-name" class="mb-2">Name</Label>
-			<Input id="col-name" type="text" bind:value={newCollectionName} required placeholder="e.g. Frontend Resources" />
+			<Input
+				id="col-name"
+				type="text"
+				bind:value={newCollectionName}
+				required
+				maxlength={80}
+				placeholder="e.g. Frontend Resources"
+			/>
 		</div>
 		<div>
 			<Label for="col-parent" class="mb-2">Parent Collection (optional)</Label>
-			<Select id="col-parent" bind:value={newCollectionParentId}>
+			<Select id="col-parent" placeholder="" bind:value={newCollectionParentId}>
 				<option value="">None (top level)</option>
 				{#each parentOptions as opt (opt.id)}
 					<option value={opt.id}>{'─'.repeat(opt.depth)} {opt.label}</option>
@@ -351,15 +678,47 @@
 		{/if}
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (showAddModal = false)}>Cancel</Button>
-			<Button type="submit" disabled={creating}>{creating ? 'Creating...' : 'Create'}</Button>
+			<Button type="submit" disabled={creating || !newCollectionName.trim()}>{creating ? 'Creating...' : 'Create'}</Button>
 		</div>
 	</form>
 </Modal>
+
+<Modal title="Leave '{activeSpace?.name}'" bind:open={showLeaveModal} size="sm" autoclose={false}>
+	<p class="text-gray-700 dark:text-gray-300">
+		Are you sure you want to leave <strong>{activeSpace?.name}</strong>? You won't be able to rejoin unless you are
+		invited again.
+	</p>
+	{#if leaveError}
+		<p class="text-sm text-red-500 dark:text-red-400">{leaveError}</p>
+	{/if}
+	<div class="flex justify-end gap-2">
+		<Button color="light" onclick={() => (showLeaveModal = false)}>Cancel</Button>
+		<Button color="red" disabled={leaving} onclick={handleLeaveSpace}>Leave space</Button>
+	</div>
+</Modal>
+
+<CreateOrJoinSpaceModal bind:open={showCreateOrJoin} ondone={handleSpaceDone} />
+
+{#if activeSpace}
+	<InvitePeopleModal
+		bind:open={showInvite}
+		spaceId={activeSpace.id}
+		spaceName={activeSpace.name}
+		myRole={activeSpace.role ?? 'VIEWER'}
+	/>
+{/if}
+
+<QuickSwitcher bind:open={switcherOpen} items={switcherItems} />
 
 <style>
 	@media (min-width: 768px) {
 		.md-sidebar-offset {
 			margin-left: var(--sidebar-w);
+		}
+	}
+	@media (min-width: 1024px) {
+		.md-sidebar-offset {
+			margin-right: var(--members-w);
 		}
 	}
 </style>

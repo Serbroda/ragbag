@@ -1,23 +1,16 @@
 <script lang="ts">
 	import { BookmarkApi, CollectionApi } from 'ragbag-frontend-sdk';
-	import type { BookmarkDto, CollectionDto } from 'ragbag-frontend-sdk';
+	import type { BookmarkDto, CollectionDto, SpacePermissionEnum } from 'ragbag-frontend-sdk';
 	import { getContext } from 'svelte';
-	import { apiConfig } from '../api/client';
+	import { apiConfig, errorMessage } from '../api/client';
+	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import { route, navigate } from '../router';
-	import { Card, Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
+	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import { collectionsToTree, flattenTree, findNode, collectSubtreeIds } from '../components/tree';
 
 	const bookmarkApi = new BookmarkApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
-	type SpacePermission =
-		| 'READ'
-		| 'EDIT_SPACE'
-		| 'CREATE_COLLECTIONS'
-		| 'EDIT_COLLECTIONS'
-		| 'DELETE_COLLECTIONS'
-		| 'CREATE_BOOKMARKS'
-		| 'EDIT_BOOKMARKS'
-		| 'DELETE_BOOKMARKS';
+	type SpacePermission = SpacePermissionEnum;
 
 	const reloadSidebar = getContext<() => void>('reload-collections');
 	const hasSpacePermission = getContext<((permission: SpacePermission) => boolean) | null>(
@@ -33,6 +26,10 @@
 	let bookmarks = $state<BookmarkDto[]>([]);
 	let loading = $state(true);
 	let error = $state('');
+	/** Errors of individual actions; unlike `error` they don't replace the page. */
+	let actionError = $state('');
+	let modalError = $state('');
+	let bookmarkToDelete = $state<BookmarkDto | null>(null);
 
 	// Add bookmark form
 	let showAddModal = $state(false);
@@ -94,6 +91,7 @@
 		if (!canCreateBookmarks) return;
 		if (!newUrl.trim()) return;
 		saving = true;
+		modalError = '';
 		try {
 			const created = await bookmarkApi.createBookmark({
 				collectionId,
@@ -104,14 +102,14 @@
 					tags: parseTags(newTags),
 				},
 			});
-			bookmarks = [...bookmarks, created];
+			bookmarks = [created, ...bookmarks];
 			newUrl = '';
 			newTitle = '';
 			newDescription = '';
 			newTags = '';
 			showAddModal = false;
-		} catch {
-			error = 'Failed to add bookmark.';
+		} catch (err) {
+			modalError = await errorMessage(err, 'Failed to add link.');
 		} finally {
 			saving = false;
 		}
@@ -124,12 +122,14 @@
 		editTitle = bookmark.title ?? '';
 		editDescription = bookmark.description ?? '';
 		editTags = bookmark.tags?.join(', ') ?? '';
+		modalError = '';
 	}
 
 	async function saveEdit() {
 		if (!canEditBookmarks) return;
 		if (!editingBookmark || !editUrl.trim()) return;
 		saving = true;
+		modalError = '';
 		try {
 			const updated = await bookmarkApi.updateBookmark({
 				bookmarkId: editingBookmark.id,
@@ -142,8 +142,8 @@
 			});
 			bookmarks = bookmarks.map((b) => (b.id === updated.id ? updated : b));
 			editingBookmark = null;
-		} catch {
-			error = 'Failed to update bookmark.';
+		} catch (err) {
+			modalError = await errorMessage(err, 'Failed to update link.');
 		} finally {
 			saving = false;
 		}
@@ -151,12 +151,30 @@
 
 	async function deleteBookmark(bookmark: BookmarkDto) {
 		if (!canDeleteBookmarks) return;
+		actionError = '';
 		try {
 			await bookmarkApi.deleteBookmark({ bookmarkId: bookmark.id });
 			bookmarks = bookmarks.filter((b) => b.id !== bookmark.id);
-		} catch {
-			error = 'Failed to delete bookmark.';
+		} catch (err) {
+			actionError = await errorMessage(err, 'Failed to delete link.');
+		} finally {
+			bookmarkToDelete = null;
 		}
+	}
+
+	/** Shift-click deletes without confirmation, like deleting messages in Discord. */
+	function requestDelete(bookmark: BookmarkDto, event: MouseEvent) {
+		if (event.shiftKey) deleteBookmark(bookmark);
+		else bookmarkToDelete = bookmark;
+	}
+
+	function openAddModal() {
+		newUrl = '';
+		newTitle = '';
+		newDescription = '';
+		newTags = '';
+		modalError = '';
+		showAddModal = true;
 	}
 
 	// --- Collection Edit/Delete ---
@@ -216,8 +234,8 @@
 			showEditCollectionModal = false;
 			await loadData(collectionId);
 			reloadSidebar();
-		} catch {
-			editCollectionError = 'Failed to update collection.';
+		} catch (err) {
+			editCollectionError = await errorMessage(err, 'Failed to update collection.');
 		} finally {
 			editCollectionSaving = false;
 		}
@@ -239,18 +257,10 @@
 			showDeleteCollectionModal = false;
 			reloadSidebar();
 			navigate('/space/:spaceId', { params: { spaceId } });
-		} catch {
-			deleteCollectionError = 'Failed to delete collection.';
+		} catch (err) {
+			deleteCollectionError = await errorMessage(err, 'Failed to delete collection.');
 		} finally {
 			deleteCollectionSaving = false;
-		}
-	}
-
-	function getDomain(url: string): string {
-		try {
-			return new URL(url).hostname;
-		} catch {
-			return url;
 		}
 	}
 
@@ -261,10 +271,14 @@
 			.filter((tag) => tag.length > 0);
 	}
 
-	function toggleMenu(bookmarkId: string) {
+	function toggleMenu(bookmarkId: string, event: MouseEvent) {
+		event.stopPropagation();
+		openHeaderMenu = false;
 		openMenuId = openMenuId === bookmarkId ? null : bookmarkId;
 	}
 </script>
+
+<svelte:window onclick={() => ((openMenuId = null), (openHeaderMenu = false))} />
 
 <main class="mx-auto p-6">
 	{#if loading}
@@ -273,31 +287,27 @@
 		<Alert color="red" class="mb-4">{error}</Alert>
 	{:else if collection}
 		<!-- Header -->
-		<div class="mb-6 flex items-center justify-between">
-			<div>
-				<h1 class="text-2xl font-bold text-gray-900 dark:text-white">{collection.name}</h1>
+		<div class="mb-6 flex items-center justify-between gap-3">
+			<div class="min-w-0">
+				<h1 class="truncate text-2xl font-bold text-gray-900 dark:text-white">{collection.name}</h1>
 				{#if collection.description}
 					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{collection.description}</p>
 				{/if}
 			</div>
-			<div class="flex items-center gap-2">
-				<div class="hidden gap-2 md:flex">
-					{#if canEditCollections}
-						<Button size="sm" color="light" onclick={openEditCollectionModal}>Edit</Button>
-					{/if}
-					{#if canDeleteCollections}
-						<Button size="sm" color="red" outline onclick={openDeleteCollectionModal}>Delete</Button>
-					{/if}
-					{#if canCreateBookmarks}
-						<Button size="sm" onclick={() => (showAddModal = true)}>+ Add Link</Button>
-					{/if}
-				</div>
-				{#if canEditCollections || canDeleteCollections || canCreateBookmarks}
-					<div class="relative md:hidden">
+			<div class="flex shrink-0 items-center gap-2">
+				{#if canCreateBookmarks}
+					<Button size="sm" onclick={openAddModal}>+ Add Link</Button>
+				{/if}
+				{#if canEditCollections || canDeleteCollections}
+					<div class="relative">
 						<Button
 							size="sm"
 							color="light"
-							onclick={() => (openHeaderMenu = !openHeaderMenu)}
+							onclick={(e: MouseEvent) => {
+								e.stopPropagation();
+								openMenuId = null;
+								openHeaderMenu = !openHeaderMenu;
+							}}
 							aria-label="Collection actions"
 						>
 							&#x22EE;
@@ -306,17 +316,6 @@
 							<div
 								class="absolute right-0 top-10 z-20 w-40 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
 							>
-								{#if canCreateBookmarks}
-									<button
-										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-										onclick={() => {
-											showAddModal = true;
-											openHeaderMenu = false;
-										}}
-									>
-										Add Link
-									</button>
-								{/if}
 								{#if canEditCollections}
 									<button
 										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -325,7 +324,7 @@
 											openHeaderMenu = false;
 										}}
 									>
-										Edit
+										Edit Collection
 									</button>
 								{/if}
 								{#if canDeleteCollections}
@@ -336,7 +335,7 @@
 											openHeaderMenu = false;
 										}}
 									>
-										Delete
+										Delete Collection
 									</button>
 								{/if}
 							</div>
@@ -346,6 +345,10 @@
 			</div>
 		</div>
 
+		{#if actionError}
+			<Alert color="red" dismissable class="mb-4" onclose={() => (actionError = '')}>{actionError}</Alert>
+		{/if}
+
 		<!-- Bookmark list -->
 		{#if bookmarks.length === 0}
 			<div
@@ -353,7 +356,7 @@
 			>
 				<p class="mb-2 text-gray-500 dark:text-gray-400">No links yet</p>
 				{#if canCreateBookmarks}
-					<Button size="sm" color="light" onclick={() => (showAddModal = true)}
+					<Button size="sm" color="light" onclick={openAddModal}
 						>Add your first link</Button
 					>
 				{/if}
@@ -361,62 +364,14 @@
 		{:else}
 			<div class="flex flex-col gap-4 md:flex-row md:flex-wrap">
 				{#each bookmarks as bookmark (bookmark.id)}
-					<Card class="relative w-full p-4 pb-12 hover:border-gray-400 md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.75rem)]">
-						<div class="flex flex-col gap-2">
-							<div class="flex items-start gap-4">
-								<!-- Favicon -->
-								<img
-									src="https://www.google.com/s2/favicons?domain={getDomain(bookmark.url)}&sz=32"
-									alt=""
-									class="mt-1 h-6 w-6 shrink-0 rounded"
-								/>
-
-								<!-- Content -->
-								<div class="min-w-0 flex-1">
-									<a
-										href={bookmark.url}
-										target="_blank"
-										rel="noopener noreferrer"
-										class="block break-words font-medium text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400 line-clamp-2"
-									>
-										{bookmark.title || bookmark.url}
-									</a>
-									<p class="truncate text-xs text-gray-400 dark:text-gray-500">
-										{getDomain(bookmark.url)}
-									</p>
-
-								</div>
-
-
-
-							</div>
-
-							{#if bookmark.description}
-								<div class="text-sm text-gray-500 dark:text-gray-400 break-words line-clamp-2">
-									{bookmark.description}
-								</div>
-							{/if}
-
-							{#if bookmark.tags && bookmark.tags.length > 0}
-								<div class="flex flex-wrap gap-1">
-									{#each bookmark.tags as tag}
-										<span
-											class="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
-										>
-											{tag}
-										</span>
-									{/each}
-								</div>
-							{/if}
-						</div>
-
-						{#if canEditBookmarks || canDeleteBookmarks}
-							<div class="absolute bottom-3 right-3">
+					<BookmarkCard {bookmark}>
+						{#snippet actions()}
+							{#if canEditBookmarks || canDeleteBookmarks}
 								<Button
 									size="xs"
 									color="light"
-									onclick={() => toggleMenu(bookmark.id)}
-									aria-label="Bookmark actions"
+									onclick={(e: MouseEvent) => toggleMenu(bookmark.id, e)}
+									aria-label="Link actions"
 								>
 									&#x22EE;
 								</Button>
@@ -438,8 +393,9 @@
 										{#if canDeleteBookmarks}
 											<button
 												class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
-												onclick={() => {
-													deleteBookmark(bookmark);
+												title="Shift-click to delete without confirmation"
+												onclick={(e: MouseEvent) => {
+													requestDelete(bookmark, e);
 													openMenuId = null;
 												}}
 											>
@@ -448,9 +404,9 @@
 										{/if}
 									</div>
 								{/if}
-							</div>
-						{/if}
-					</Card>
+							{/if}
+						{/snippet}
+					</BookmarkCard>
 				{/each}
 			</div>
 		{/if}
@@ -466,10 +422,13 @@
 		}}
 		class="flex flex-col gap-4"
 	>
-		<Input type="url" placeholder="https://..." bind:value={newUrl} required />
+		<Input type="text" inputmode="url" placeholder="https://..." bind:value={newUrl} required />
 		<Input type="text" placeholder="Title (optional)" bind:value={newTitle} />
 		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={newDescription} />
 		<Input type="text" placeholder="Tags (comma separated)" bind:value={newTags} />
+		{#if modalError}
+			<p class="text-sm text-red-500 dark:text-red-400">{modalError}</p>
+		{/if}
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (showAddModal = false)}>Cancel</Button>
 			<Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Add'}</Button>
@@ -492,10 +451,13 @@
 		}}
 		class="flex flex-col gap-4"
 	>
-		<Input type="url" placeholder="https://..." bind:value={editUrl} required />
+		<Input type="text" inputmode="url" placeholder="https://..." bind:value={editUrl} required />
 		<Input type="text" placeholder="Title (optional)" bind:value={editTitle} />
 		<Textarea placeholder="Description (optional)" rows={4} class="w-full" bind:value={editDescription} />
 		<Input type="text" placeholder="Tags (comma separated)" bind:value={editTags} />
+		{#if modalError}
+			<p class="text-sm text-red-500 dark:text-red-400">{modalError}</p>
+		{/if}
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (editingBookmark = null)}>Cancel</Button>
 			<Button type="submit" disabled={saving}>{saving ? 'Saving...' : 'Save'}</Button>
@@ -514,11 +476,11 @@
 	>
 		<div>
 			<Label for="edit-col-name" class="mb-2">Name</Label>
-			<Input id="edit-col-name" type="text" bind:value={editCollectionName} required />
+			<Input id="edit-col-name" type="text" bind:value={editCollectionName} required maxlength={80} />
 		</div>
 		<div>
 			<Label for="edit-col-parent" class="mb-2">Parent Collection</Label>
-			<Select id="edit-col-parent" bind:value={editCollectionParentId}>
+			<Select id="edit-col-parent" placeholder="" bind:value={editCollectionParentId}>
 				<option value="">None (top level)</option>
 				{#each allCollectionOptions as opt (opt.id)}
 					<option value={opt.id}>{'─'.repeat(opt.depth)} {opt.label}</option>
@@ -551,5 +513,17 @@
 		<Button color="red" onclick={handleDeleteCollection} disabled={deleteCollectionSaving}>
 			{deleteCollectionSaving ? 'Deleting...' : 'Delete'}
 		</Button>
+	</div>
+</Modal>
+
+<!-- Delete Bookmark Modal -->
+<Modal title="Delete link" open={bookmarkToDelete !== null} size="sm" onclose={() => (bookmarkToDelete = null)}>
+	<p class="text-gray-600 dark:text-gray-400">
+		Delete <strong>{bookmarkToDelete?.title || bookmarkToDelete?.url}</strong>?
+	</p>
+	<p class="text-xs text-gray-500 dark:text-gray-400">Tip: hold Shift while clicking Delete to skip this dialog.</p>
+	<div class="flex justify-end gap-2">
+		<Button color="light" onclick={() => (bookmarkToDelete = null)}>Cancel</Button>
+		<Button color="red" onclick={() => bookmarkToDelete && deleteBookmark(bookmarkToDelete)}>Delete</Button>
 	</div>
 </Modal>

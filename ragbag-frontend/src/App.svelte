@@ -4,9 +4,11 @@
 	import './lib/router';
 
 	let ready = $state(false);
+	// sv-router strips the base from the path before matching, so a base of '/' would turn
+	// '/login' into 'login' and match nothing. Only pass a real prefix like '/app'.
+	const configuredBase = import.meta.env.VITE_APP_BASE?.replace(/\/+$/, '');
 	const routerBase =
-		import.meta.env.VITE_APP_BASE ||
-		(globalThis.location?.pathname?.startsWith('/app') ? '/app' : '/');
+		configuredBase || (globalThis.location?.pathname?.startsWith('/app') ? '/app' : undefined);
 
 	async function init() {
 		if (isAuthenticated()) {

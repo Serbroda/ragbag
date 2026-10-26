@@ -1,0 +1,73 @@
+<script lang="ts">
+	import type { BookmarkDto } from 'ragbag-frontend-sdk';
+	import { getContext } from 'svelte';
+	import { Alert } from 'flowbite-svelte';
+	import { errorMessage, searchBookmarks } from '../api/client';
+	import { route } from '../router';
+	import BookmarkCard from '../components/BookmarkCard.svelte';
+
+	const collectionName = getContext<((id: string) => string | undefined) | undefined>('collection-name');
+
+	let bookmarks = $state<BookmarkDto[]>([]);
+	let loading = $state(false);
+	let error = $state('');
+
+	const spaceId = $derived(route.params.spaceId ?? '');
+	const query = $derived(typeof route.search.q === 'string' ? route.search.q : String(route.search.q ?? ''));
+
+	$effect(() => {
+		if (spaceId && query.trim()) {
+			doSearch(spaceId, query);
+		} else {
+			bookmarks = [];
+			loading = false;
+		}
+	});
+
+	async function doSearch(sid: string, q: string) {
+		loading = true;
+		error = '';
+		try {
+			const result = await searchBookmarks(sid, q);
+			// Ignore responses for queries the user has already typed past
+			if (q === query && sid === spaceId) bookmarks = result;
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to search bookmarks.');
+		} finally {
+			loading = false;
+		}
+	}
+</script>
+
+<main class="mx-auto p-6">
+	<div class="mb-6">
+		<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Search results for "{query}"</h1>
+		{#if !loading}
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				{bookmarks.length} result{bookmarks.length !== 1 ? 's' : ''} found
+			</p>
+		{/if}
+	</div>
+
+	{#if loading}
+		<p class="text-gray-500 dark:text-gray-400">Searching...</p>
+	{:else if error}
+		<Alert color="red" class="mb-4">{error}</Alert>
+	{:else if bookmarks.length === 0}
+		<div
+			class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-12 dark:border-gray-600"
+		>
+			<p class="text-gray-500 dark:text-gray-400">No bookmarks found matching your search.</p>
+		</div>
+	{:else}
+		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap">
+			{#each bookmarks as bookmark (bookmark.id)}
+				<BookmarkCard
+					{bookmark}
+					collectionName={bookmark.collectionId ? collectionName?.(bookmark.collectionId) : undefined}
+					collectionHref={bookmark.collectionId ? `/space/${spaceId}/collections/${bookmark.collectionId}` : undefined}
+				/>
+			{/each}
+		</div>
+	{/if}
+</main>
