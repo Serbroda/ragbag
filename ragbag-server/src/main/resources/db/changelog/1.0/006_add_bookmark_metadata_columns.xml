@@ -6,6 +6,9 @@
 		 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
 
 	<changeSet id="2026-02-15: add bookmark metadata columns" author="serbroda">
+		<!-- Was varchar(max), which only SQL Server understands. Databases that already ran the
+		     old version (H2 dev databases) keep working; new ones get the portable type. -->
+		<validCheckSum>ANY</validCheckSum>
 		<preConditions onFail="MARK_RAN">
 			<not>
 				<columnExists tableName="bookmarks" columnName="og_image"/>
@@ -13,9 +16,9 @@
 		</preConditions>
 
 		<addColumn tableName="bookmarks">
-			<column name="og_image" type="varchar(max)"/>
-			<column name="favicon" type="varchar(max)"/>
-			<column name="canonical" type="varchar(max)"/>
+			<column name="og_image" type="text"/>
+			<column name="favicon" type="text"/>
+			<column name="canonical" type="text"/>
 		</addColumn>
 	</changeSet>
 
