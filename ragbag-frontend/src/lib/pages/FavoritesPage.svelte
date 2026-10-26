@@ -5,7 +5,7 @@
 	import { Alert } from 'flowbite-svelte';
 	import { StarOutline } from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage } from '../api/client';
-	import { route } from '../router';
+	import { p, route } from '../router';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 
 	const collectionName = getContext<((id: string) => string | undefined) | undefined>('collection-name');
@@ -60,7 +60,11 @@
 				<BookmarkCard
 					{bookmark}
 					collectionName={bookmark.collectionId ? collectionName?.(bookmark.collectionId) : undefined}
-					collectionHref={bookmark.collectionId ? `/space/${spaceId}/collections/${bookmark.collectionId}` : undefined}
+					collectionHref={bookmark.collectionId
+						? p('/space/:spaceId/collections/:collectionId', {
+								params: { spaceId, collectionId: bookmark.collectionId },
+							})
+						: undefined}
 					onfavoritechange={(favorite) => {
 						if (!favorite) favorites = favorites.filter((b) => b.id !== bookmark.id);
 					}}

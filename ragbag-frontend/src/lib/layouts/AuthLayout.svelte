@@ -7,6 +7,7 @@
 		ArrowRightToBracketOutline,
 		BarsOutline,
 		ChevronDownOutline,
+		ChevronRightOutline,
 		CogSolid,
 		FolderOutline,
 		FolderPlusSolid,
@@ -17,14 +18,14 @@
 		UserAddSolid,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
-	import { navigate, route } from '../router';
+	import { navigate, p, route } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
 	import InvitePeopleModal from '../components/InvitePeopleModal.svelte';
 	import QuickSwitcher, { type SwitcherItem } from '../components/QuickSwitcher.svelte';
 	import Logo from '../components/Logo.svelte';
-	import { collectionsToTree, expandToNode, flattenTree, type TreeNode } from '../components/tree';
+	import { collectionsToTree, expandToNode, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
 	import { colorFor, initials } from '../utils/format';
@@ -302,21 +303,47 @@
 		}
 	}
 
-	/** Context shown in the main header, like the channel name in Discord. */
-	const pageTitle = $derived.by((): { label: string; icon?: typeof HomeSolid } => {
+	type Crumb = { label: string; href?: string; icon?: typeof HomeSolid };
+
+	/** Header breadcrumbs: space › collection ancestors › current page. */
+	const breadcrumbs = $derived.by((): Crumb[] => {
+		if (!activeSpace) return [];
+		const spaceHref = p('/space/:spaceId', { params: { spaceId: activeSpace.id } });
 		const path = route.pathname;
-		if (path.endsWith('/settings')) return { label: 'Space settings', icon: CogSolid };
-		if (path.endsWith('/search')) return { label: 'Search', icon: SearchOutline };
-		if (path.endsWith('/favorites')) return { label: 'Favorites', icon: StarSolid };
-		if (activeCollectionId) return { label: findLabel(menuTree, activeCollectionId) ?? 'Collection', icon: FolderOutline };
-		return { label: activeSpace ? 'Dashboard' : '', icon: activeSpace ? HomeSolid : undefined };
+		const space: Crumb = { label: activeSpace.name, href: spaceHref, icon: HomeSolid };
+		if (path.endsWith('/settings')) return [space, { label: 'Settings', icon: CogSolid }];
+		if (path.endsWith('/search')) return [space, { label: 'Search', icon: SearchOutline }];
+		if (path.endsWith('/favorites')) return [space, { label: 'Favorites', icon: StarSolid }];
+		if (activeCollectionId) {
+			const trail = pathToNode(menuTree, activeCollectionId);
+			if (trail.length === 0) return [space, { label: 'Collection', icon: FolderOutline }];
+			return [
+				space,
+				...trail.map((node, i) => ({
+					label: node.label,
+					href: i < trail.length - 1 ? node.href : undefined,
+					icon: i === trail.length - 1 ? FolderOutline : undefined,
+				})),
+			];
+		}
+		return [{ ...space, href: undefined }, { label: 'Dashboard' }];
 	});
 
 	const navTree = $derived<TreeNode[]>(
 		activeSpaceId
 			? [
-					{ label: 'Dashboard', icon: HomeSolid, href: `/space/${activeSpaceId}` },
-					{ label: 'Favorites', icon: StarSolid, href: `/space/${activeSpaceId}/favorites` },
+					{
+						label: 'Dashboard',
+						icon: HomeSolid,
+						path: `/space/${activeSpaceId}`,
+						href: p('/space/:spaceId', { params: { spaceId: activeSpaceId } }),
+					},
+					{
+						label: 'Favorites',
+						icon: StarSolid,
+						path: `/space/${activeSpaceId}/favorites`,
+						href: p('/space/:spaceId/favorites', { params: { spaceId: activeSpaceId } }),
+					},
 				]
 			: [],
 	);
@@ -589,13 +616,42 @@
 			>
 				<BarsOutline class="h-5 w-5" />
 			</button>
-			<div class="flex min-w-0 items-center gap-2 text-sm">
-				{#if pageTitle.icon}
-					{@const Icon = pageTitle.icon}
-					<Icon class="h-5 w-5 shrink-0 text-gray-400" />
-				{/if}
-				<span class="truncate font-semibold">{pageTitle.label}</span>
-			</div>
+			<nav aria-label="Breadcrumb" class="min-w-0">
+				<ol class="flex min-w-0 items-center gap-1 text-sm">
+					{#each breadcrumbs as crumb, i (i)}
+						{@const last = i === breadcrumbs.length - 1}
+						<!-- On small screens only the current page is shown -->
+						<li class="items-center gap-1 {last ? 'flex min-w-0' : 'hidden shrink-0 sm:flex'}">
+							{#if i > 0}
+								<ChevronRightOutline class="h-3.5 w-3.5 shrink-0 text-gray-400" />
+							{/if}
+							{#if crumb.href && !last}
+								<a
+									href={crumb.href}
+									class="flex max-w-48 items-center gap-1.5 truncate rounded px-1 py-0.5 text-gray-500 transition-colors hover:bg-gray-100 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-100"
+								>
+									{#if crumb.icon}
+										<crumb.icon class="h-4 w-4 shrink-0" />
+									{/if}
+									<span class="truncate">{crumb.label}</span>
+								</a>
+							{:else}
+								<span
+									class="flex min-w-0 items-center gap-1.5 px-1 py-0.5 {last
+										? 'font-semibold'
+										: 'text-gray-500 dark:text-gray-400'}"
+									aria-current={last ? 'page' : undefined}
+								>
+									{#if crumb.icon}
+										<crumb.icon class="h-4 w-4 shrink-0 {last ? 'text-gray-400' : ''}" />
+									{/if}
+									<span class="truncate">{crumb.label}</span>
+								</span>
+							{/if}
+						</li>
+					{/each}
+				</ol>
+			</nav>
 			<div class="ms-auto flex items-center gap-2">
 				{#if activeSpaceId}
 					<div class="relative hidden sm:block">

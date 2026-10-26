@@ -1,11 +1,15 @@
 import type { Component } from 'svelte';
 import type { CollectionDto } from 'ragbag-frontend-sdk';
 import { FolderOutline } from 'flowbite-svelte-icons';
+import { p } from '../router';
 
 export interface TreeNode {
 	id?: string;
 	label: string;
+	/** Link target including the router base (e.g. /app); build it with p() */
 	href?: string;
+	/** Route path without the base, used to detect the active item */
+	path?: string;
 	expanded?: boolean;
 	icon?: Component<{ class?: string }>;
 	children?: TreeNode[];
@@ -20,7 +24,8 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 		children: collection.children?.length
 			? collection.children.map((c) => collectionToTreeNode(c, spaceId))
 			: undefined,
-		href: `/space/${spaceId}/collections/${collection.id}`,
+		path: `/space/${spaceId}/collections/${collection.id}`,
+		href: p('/space/:spaceId/collections/:collectionId', { params: { spaceId, collectionId: collection.id } }),
 	};
 }
 
@@ -105,4 +110,16 @@ export function isDescendantOrSelf(ancestor: TreeNode, target: TreeNode): boolea
 	if (ancestor === target) return true;
 	if (!ancestor.children) return false;
 	return ancestor.children.some((child) => isDescendantOrSelf(child, target));
+}
+
+/** Nodes from the root down to the node with the given id (inclusive), or [] if it is not in the tree. */
+export function pathToNode(nodes: TreeNode[], id: string): TreeNode[] {
+	for (const node of nodes) {
+		if (node.id === id) return [node];
+		if (node.children) {
+			const path = pathToNode(node.children, id);
+			if (path.length > 0) return [node, ...path];
+		}
+	}
+	return [];
 }

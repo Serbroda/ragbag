@@ -59,7 +59,7 @@
 	}
 
 	const isDragged = $derived(dragCtx?.draggedNode === node);
-	const isActive = $derived(!!node.href && route.pathname === node.href);
+	const isActive = $derived(!!node.path && route.pathname === node.path);
 </script>
 
 <li>
