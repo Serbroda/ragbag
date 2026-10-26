@@ -83,6 +83,14 @@ export async function login(username: string, password: string): Promise<void> {
 	setAccessToken(response.accessToken);
 }
 
+/** Changes the password; the server signs out all other devices and hands this one new tokens. */
+export async function changePassword(currentPassword: string, newPassword: string): Promise<void> {
+	const response = await new AuthenticationApi(apiConfig()).changePassword({
+		changePasswordRequest: { currentPassword, newPassword },
+	});
+	setAccessToken(response.accessToken);
+}
+
 /** Signs out on this device only. */
 export async function logout(): Promise<void> {
 	try {

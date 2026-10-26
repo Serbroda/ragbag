@@ -117,6 +117,32 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/password:
+    post:
+      summary: Change the own password; signs out all other devices and returns new tokens for this one
+      operationId: changePassword
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: OK, a new refresh token cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   # Users
   /v1/users/me:
     get:
@@ -1375,6 +1401,18 @@ components:
           $ref: '#/components/schemas/JWT'
       required:
         - access_token
+
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - currentPassword
+        - newPassword
 
     RegisterRequest:
       type: object

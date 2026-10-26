@@ -4,6 +4,7 @@ import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.config.properties.AppProperties;
 import de.serbroda.ragbag.generated.api.AuthenticationApi;
+import de.serbroda.ragbag.generated.model.ChangePasswordRequest;
 import de.serbroda.ragbag.generated.model.LoginRequest;
 import de.serbroda.ragbag.generated.model.LoginResponse;
 import de.serbroda.ragbag.generated.model.RegisterRequest;
@@ -60,6 +61,20 @@ public class AuthController implements AuthenticationApi {
                 .findUserById(principal.getUserId())
                 .orElseThrow(() -> new DisabledException("User blocked"));
 
+        return issueTokens(user);
+    }
+
+    @Override
+    public ResponseEntity<LoginResponse> changePassword(ChangePasswordRequest changePasswordRequest) {
+        User user = userService.changePassword(
+                SecurityUtils.currentUserId(),
+                changePasswordRequest.getCurrentPassword(),
+                changePasswordRequest.getNewPassword());
+        // The old tokens of this device are invalid now as well, so it gets fresh ones
+        return issueTokens(user);
+    }
+
+    private ResponseEntity<LoginResponse> issueTokens(User user) {
         String accessToken = jwtService.generateAccessToken(user.getId(), user.getUsername(), user.getTokenVersion());
 
         String refreshToken = jwtService.generateRefreshToken(user.getId(), user.getTokenVersion());
@@ -146,6 +161,8 @@ public class AuthController implements AuthenticationApi {
             return ResponseEntity.status(HttpStatus.FORBIDDEN).build();
         }
 
+        // Checked here rather than in RegisterService, which also creates the dev demo user (admin/test123)
+        UserService.requireValidPassword(registerRequest.getPassword());
         User user = registerService.register(
                 registerRequest.getUsername(), registerRequest.getEmail(), registerRequest.getPassword());
         return ResponseEntity.ok(new UserDto(user.getId(), user.getUsername(), user.getEmail()));

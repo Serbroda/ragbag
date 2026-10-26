@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Label, Input, Button, Alert } from 'flowbite-svelte';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
-	import { login, register, fetchFeatureFlags, takePendingInvite } from '../api/client';
+	import { errorMessage, login, register, fetchFeatureFlags, takePendingInvite } from '../api/client';
 	import { navigate } from '../router';
 	import { resetSession } from '../stores/spaces.svelte';
 
@@ -69,7 +69,7 @@
 			}
 		} catch (err) {
 			error = isRegister
-				? 'Registration failed. Please try again.'
+				? await errorMessage(err, 'Registration failed. Please try again.')
 				: 'Login failed. Please check your credentials.';
 		} finally {
 			loading = false;
@@ -103,6 +103,8 @@
 					id="password"
 					type="password"
 					autocomplete={isRegister ? 'new-password' : 'current-password'}
+					minlength={isRegister ? 8 : undefined}
+					placeholder={isRegister ? 'At least 8 characters' : undefined}
 					bind:value={password}
 					required
 				/>
