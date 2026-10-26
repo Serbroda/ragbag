@@ -4,11 +4,11 @@ This file provides guidance to Claude Code (claude.ai/code) when working with co
 
 ## Build & Development Commands
 
-This is a Maven multi-module project (Java 25, Spring Boot 3.5.10). Use the Maven wrapper (`./mvnw`).
+This is a Maven multi-module project (Java 25, Spring Boot 4.1). Use the Maven wrapper (`./mvnw`); `JAVA_HOME` must point to a JDK 25.
 
 ### Full Build
 ```bash
-./mvnw clean package        # Builds all modules (api → frontend → server)
+./mvnw clean package        # Builds all modules (server-sdk → frontend-sdk → frontend → server)
 ```
 
 ### Backend Only
@@ -25,11 +25,11 @@ cd ragbag-frontend && npm run check     # Type checking (svelte-check + tsc)
 
 ### Code Generation (from OpenAPI spec)
 ```bash
-./mvnw -pl ragbag-api generate-sources  # Generates Spring interfaces + TypeScript fetch client
+./mvnw -pl ragbag-server-sdk,ragbag-frontend-sdk install  # Regenerates Spring interfaces + TypeScript fetch client
 ```
-The OpenAPI spec lives at `ragbag-api/openapi.yaml`. Generation outputs:
-- Spring controller interfaces → `ragbag-server/target/generated-sources` (package `de.serbroda.ragbag.generated.api` / `.model`)
-- TypeScript fetch client → `ragbag-frontend/src/lib/api/gen/`
+The OpenAPI spec lives at `openapi/openapi.yaml`. Generation outputs:
+- Spring controller interfaces → `ragbag-server-sdk/target/generated-sources` (package `de.serbroda.ragbag.generated.api` / `.model`)
+- TypeScript fetch client → `ragbag-frontend-sdk/target/generated-sources`, consumed by the frontend as the npm package `ragbag-frontend-sdk`
 
 ### Tests
 ```bash
@@ -47,21 +47,23 @@ Spotless enforces Palantir Java Format with tab indentation (4 spaces per tab).
 ## Architecture
 
 ### Module Structure
-- **ragbag-api** — OpenAPI spec + code generation (both Spring server interfaces and TypeScript fetch client)
-- **ragbag-frontend** — Svelte 5 + TypeScript SPA (Vite). Built by Maven via frontend-maven-plugin and copied into server's static resources.
-- **ragbag-server** — Spring Boot backend. Depends on ragbag-api for generated interfaces.
+- **openapi/** — the OpenAPI spec (single source of truth for the REST API)
+- **ragbag-server-sdk** — generates Spring server interfaces + models from the spec
+- **ragbag-frontend-sdk** — generates the TypeScript fetch client from the spec
+- **ragbag-frontend** — Svelte 5 + TypeScript SPA (Vite). Built by Maven via frontend-maven-plugin and copied into server's static resources (served under `/app`).
+- **ragbag-server** — Spring Boot backend. Depends on ragbag-server-sdk for generated interfaces.
 
 ### API-First Design
 Controllers implement generated interfaces from the OpenAPI spec. When adding/changing endpoints:
-1. Edit `ragbag-api/openapi.yaml`
-2. Run code generation (`./mvnw -pl ragbag-api generate-sources`)
+1. Edit `openapi/openapi.yaml`
+2. Run code generation (see above)
 3. Implement the generated interface in the server controller
 
 ### Feature-Based Package Organization (`de.serbroda.ragbag`)
 Code is organized by domain feature, not by technical layer:
 - `auth/` — Authentication (login, register, JWT token generation)
 - `user/` — User entity, repository, service, controller
-- `space/` — Spaces (top-level containers) with member roles (OWNER, ADMIN, VIEWER)
+- `space/` — Spaces (top-level containers), membership management; roles OWNER > ADMIN > CONTRIBUTOR > VIEWER map to `SpacePermission`s in `SpaceMemberRole` (single source of truth, also sent to the frontend)
 - `collection/` — Hierarchical collections within spaces
 - `bookmark/` — Bookmarks within collections
 - `invite/` — Invitation system (token-based invites to spaces/collections)
@@ -73,9 +75,16 @@ Each feature package contains its own Entity, Repository, Service, and Controlle
 ### Key Patterns
 - **Entity base class**: All entities extend `AbstractBaseEntity` (UUID primary key, `@Version` optimistic locking, auto-managed `createdAt`/`updatedAt`)
 - **Constructor injection**: Via Lombok `@RequiredArgsConstructor`
-- **Security**: JWT (HS256) via Spring Security OAuth2 Resource Server. Token versioning for invalidation on logout. Method-level `@PreAuthorize` with custom `DomainPermissionEvaluator`.
+- **Security**: JWT (HS256) via Spring Security OAuth2 Resource Server. Access tokens carry `type=ACCESS`, refresh tokens (httpOnly cookie) `type=REFRESH`; both carry `token_version`, which `logout/all` increments to invalidate them. Method-level `@PreAuthorize("hasPermission(#id, 'SPACE|COLLECTION|BOOKMARK', '<SpacePermission>')")` with custom `DomainPermissionEvaluator` — every endpoint taking a resource id needs one.
 - **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`
-- **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `prod` (env-var-driven PostgreSQL/MariaDB)
+- **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
+
+### Frontend Structure (`ragbag-frontend/src/lib`)
+- `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, member panel, quick switcher)
+- `components/` — shared UI (`BookmarkCard`, modals, `MemberList`, `QuickSwitcher`, collection tree)
+- `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user, last visited space)
+- `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`
+- `api/client.ts` — auth handling, `errorMessage()` to surface ProblemDetail `detail` texts
 
 ### API Prefix
 All REST endpoints are under `/api`. Constant defined in `shared/ApiConstants.java`.
