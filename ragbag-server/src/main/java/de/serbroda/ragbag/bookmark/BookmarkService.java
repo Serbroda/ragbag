@@ -1,12 +1,12 @@
 package de.serbroda.ragbag.bookmark;
 
 import de.serbroda.ragbag.collection.Collection;
+import de.serbroda.ragbag.collection.CollectionAccessService;
 import de.serbroda.ragbag.collection.CollectionRepository;
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
+import de.serbroda.ragbag.shared.http.SafeHttpClient;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserRepository;
-import java.net.URI;
-import java.net.URISyntaxException;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Objects;
@@ -29,25 +29,27 @@ public class BookmarkService {
     private final UserRepository userRepository;
     private final BookmarkMetadataService bookmarkMetadataService;
     private final BookmarkFavoriteRepository favoriteRepository;
+    private final CollectionAccessService collectionAccessService;
 
     public List<Bookmark> getBookmarksByCollection(String collectionId) {
         return bookmarkRepository.findByCollection_IdOrderByCreatedAtDesc(collectionId);
     }
 
-    public List<Bookmark> searchInSpace(String spaceId, String query) {
+    public List<Bookmark> searchInSpace(String spaceId, String userId, String query) {
         if (query == null || query.isBlank()) {
             return List.of();
         }
         // Treat LIKE wildcards in user input literally
         String escaped = query.trim().replace("\\", "\\\\").replace("%", "\\%").replace("_", "\\_");
-        return bookmarkRepository.searchInSpace(spaceId, escaped);
+        return bookmarkRepository.searchInSpace(spaceId, escaped, hiddenCollections(spaceId, userId));
     }
 
     /** Favorites are capped so a dashboard section stays fast even for heavy users. */
     public static final int MAX_FAVORITES_LISTED = 200;
 
     public List<Bookmark> getFavoritesInSpace(String userId, String spaceId) {
-        return favoriteRepository.findFavoritesInSpace(userId, spaceId, Limit.of(MAX_FAVORITES_LISTED));
+        return favoriteRepository.findFavoritesInSpace(
+                userId, spaceId, hiddenCollections(spaceId, userId), Limit.of(MAX_FAVORITES_LISTED));
     }
 
     public void addFavorite(String userId, String bookmarkId) {
@@ -61,14 +63,20 @@ public class BookmarkService {
         favoriteRepository.deleteById(new BookmarkFavorite.Id(userId, bookmarkId));
     }
 
-    public List<Bookmark> getRecentInSpace(String spaceId, int limit) {
-        return bookmarkRepository.findByCollection_Space_IdOrderByCreatedAtDesc(
-                spaceId, Limit.of(Math.clamp(limit, 1, 100)));
+    public List<Bookmark> getRecentInSpace(String spaceId, String userId, int limit) {
+        return bookmarkRepository.findByCollection_Space_IdAndCollection_IdNotInOrderByCreatedAtDesc(
+                spaceId, hiddenCollections(spaceId, userId), Limit.of(Math.clamp(limit, 1, 100)));
+    }
+
+    /** Private collections the user cannot see; never empty, as an empty NOT IN list is not portable SQL. */
+    private java.util.Collection<String> hiddenCollections(String spaceId, String userId) {
+        Set<String> hidden = collectionAccessService.hiddenCollectionIds(spaceId, userId);
+        return hidden.isEmpty() ? List.of("") : hidden;
     }
 
     /** Normalizes the URL and loads its metadata without persisting anything. */
     public FetchedMetadata fetchMetadata(String url) {
-        String normalized = requireHttpUrl(url);
+        String normalized = SafeHttpClient.requireHttpUrl(url);
         return new FetchedMetadata(normalized, bookmarkMetadataService.fetch(normalized));
     }
 
@@ -88,7 +96,7 @@ public class BookmarkService {
                 .findById(userId)
                 .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
 
-        String url = requireHttpUrl(cmd.url());
+        String url = SafeHttpClient.requireHttpUrl(cmd.url());
         BookmarkMetadataService.BookmarkMetadata metadata = bookmarkMetadataService.fetch(url);
 
         Bookmark bookmark = new Bookmark();
@@ -109,7 +117,7 @@ public class BookmarkService {
         Bookmark bookmark = bookmarkRepository
                 .findById(id)
                 .orElseThrow(() -> new ResourceNotFoundException("Bookmark not found: " + id));
-        String url = requireHttpUrl(cmd.url());
+        String url = SafeHttpClient.requireHttpUrl(cmd.url());
         boolean urlChanged = !Objects.equals(url, bookmark.getUrl());
         bookmark.setUrl(url);
         bookmark.setTitle(truncate(preferNonBlank(cmd.title(), bookmark.getTitle()), MAX_TITLE_LENGTH));
@@ -152,32 +160,6 @@ public class BookmarkService {
             return value;
         }
         return lastResort;
-    }
-
-    /**
-     * Only absolute http(s) URLs are stored: anything else (e.g. {@code javascript:}) would be rendered as a
-     * clickable link for every member of the space.
-     */
-    static String requireHttpUrl(String value) {
-        if (value == null || value.isBlank()) {
-            throw new IllegalArgumentException("URL must not be empty");
-        }
-        String trimmed = value.trim();
-        if (!trimmed.contains("://")) {
-            trimmed = "https://" + trimmed;
-        }
-        try {
-            URI uri = new URI(trimmed);
-            String scheme = uri.getScheme();
-            if (scheme == null
-                    || !(scheme.equalsIgnoreCase("http") || scheme.equalsIgnoreCase("https"))
-                    || uri.getHost() == null) {
-                throw new IllegalArgumentException("Only http and https URLs are supported");
-            }
-            return trimmed;
-        } catch (URISyntaxException e) {
-            throw new IllegalArgumentException("Invalid URL: " + value);
-        }
     }
 
     private static String truncate(String value, int maxLength) {

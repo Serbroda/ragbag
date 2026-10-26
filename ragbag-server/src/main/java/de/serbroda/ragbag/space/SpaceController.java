@@ -18,6 +18,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RequiredArgsConstructor
 @RestController
@@ -54,6 +55,20 @@ public class SpaceController implements SpaceApi {
         spaceService.updateSpace(
                 spaceId,
                 new SpaceService.UpdateSpaceCommand(updateSpaceDto.getName(), updateSpaceDto.getDescription()));
+        return ResponseEntity.ok(currentUserView(spaceId));
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'EDIT_SPACE')")
+    @Override
+    public ResponseEntity<SpaceDto> setSpaceIcon(String spaceId, MultipartFile file, String url) {
+        spaceService.setIcon(spaceId, file, url);
+        return ResponseEntity.ok(currentUserView(spaceId));
+    }
+
+    @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'EDIT_SPACE')")
+    @Override
+    public ResponseEntity<SpaceDto> removeSpaceIcon(String spaceId) {
+        spaceService.removeIcon(spaceId);
         return ResponseEntity.ok(currentUserView(spaceId));
     }
 

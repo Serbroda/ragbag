@@ -15,6 +15,7 @@ public class SpaceMapper {
                 .id(space.getId())
                 .name(space.getName())
                 .description(space.getDescription())
+                .iconId(space.getIconImageId())
                 .role(map(spaceWithPermissions.role()))
                 .permissions(spaceWithPermissions.permissions().stream()
                         .sorted()
@@ -27,6 +28,7 @@ public class SpaceMapper {
         return SpaceMemberDto.builder()
                 .userId(member.getUser().getId())
                 .username(member.getUser().getUsername())
+                .avatarId(member.getUser().getAvatarImageId())
                 .role(map(member.getRole()))
                 .build();
     }

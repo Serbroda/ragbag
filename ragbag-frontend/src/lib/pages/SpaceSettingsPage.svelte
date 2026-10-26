@@ -12,7 +12,8 @@
 	import { apiConfig, appBase, errorMessage } from '../api/client';
 	import { navigate, route } from '../router';
 	import RoleBadge from '../components/RoleBadge.svelte';
-	import { colorFor, initials } from '../utils/format';
+	import Avatar from '../components/Avatar.svelte';
+	import ImagePicker from '../components/ImagePicker.svelte';
 
 	const spaceApi = new SpaceApi(apiConfig());
 	const inviteApi = new InviteApi(apiConfig());
@@ -256,6 +257,30 @@
 		<!-- General -->
 		<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 			<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">General</h2>
+			<div class="mb-4">
+				<Label class="mb-3">Icon</Label>
+				{#if canEditSpace}
+					<ImagePicker
+						name={space.name}
+						imageId={space.iconId}
+						shape="rounded-2xl"
+						onupload={async (file) => {
+							space = await spaceApi.setSpaceIcon({ spaceId, file });
+							await reloadSpaces?.();
+						}}
+						onurl={async (url) => {
+							space = await spaceApi.setSpaceIcon({ spaceId, url });
+							await reloadSpaces?.();
+						}}
+						onremove={async () => {
+							space = await spaceApi.removeSpaceIcon({ spaceId });
+							await reloadSpaces?.();
+						}}
+					/>
+				{:else}
+					<Avatar name={space.name} imageId={space.iconId} class="h-20 w-20 rounded-2xl text-2xl" />
+				{/if}
+			</div>
 			<form class="flex flex-col gap-4" onsubmit={saveGeneral}>
 				<div>
 					<Label for="space-name" class="mb-2">Name</Label>
@@ -296,13 +321,7 @@
 			<ul class="divide-y divide-gray-100 dark:divide-gray-800">
 				{#each members as member (member.userId)}
 					<li class="flex items-center gap-3 py-3">
-						<div
-							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {colorFor(
-								member.username,
-							)}"
-						>
-							{initials(member.username)}
-						</div>
+						<Avatar name={member.username} imageId={member.avatarId} class="h-9 w-9 rounded-full text-sm" />
 						<div class="min-w-0 flex-1">
 							<p class="truncate font-medium text-gray-900 dark:text-white">
 								{member.username}

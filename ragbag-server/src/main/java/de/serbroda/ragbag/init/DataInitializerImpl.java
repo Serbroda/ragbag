@@ -6,6 +6,7 @@ import de.serbroda.ragbag.collection.CollectionService;
 import de.serbroda.ragbag.space.SpaceService;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
+import java.util.List;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.context.annotation.Profile;
@@ -53,6 +54,7 @@ public class DataInitializerImpl implements DataInitializer {
     private Collection createCollection(User user, String spaceId, String name, Collection parent) {
         return collectionService.createCollection(
                 user.getId(),
-                new CollectionService.CreateCollectionCommand(spaceId, name, parent != null ? parent.getId() : null));
+                new CollectionService.CreateCollectionCommand(
+                        spaceId, name, parent != null ? parent.getId() : null, false, List.of()));
     }
 }

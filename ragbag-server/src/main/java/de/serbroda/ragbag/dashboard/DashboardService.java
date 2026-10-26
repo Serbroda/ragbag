@@ -4,11 +4,13 @@ import de.serbroda.ragbag.bookmark.Bookmark;
 import de.serbroda.ragbag.bookmark.BookmarkFavoriteRepository;
 import de.serbroda.ragbag.bookmark.BookmarkRepository;
 import de.serbroda.ragbag.bookmark.BookmarkService;
+import de.serbroda.ragbag.collection.CollectionAccessService;
 import de.serbroda.ragbag.space.SpaceMembershipEndedEvent;
 import java.util.ArrayList;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Map;
+import java.util.Set;
 import java.util.function.Function;
 import java.util.stream.Collectors;
 import lombok.RequiredArgsConstructor;
@@ -29,11 +31,14 @@ public class DashboardService {
     private final BookmarkRepository bookmarkRepository;
     private final BookmarkFavoriteRepository favoriteRepository;
     private final BookmarkService bookmarkService;
+    private final CollectionAccessService collectionAccessService;
 
     /** The user's dashboard, or the default layout (favorites + recent) until they customize it. */
     @Transactional(readOnly = true)
     public Dashboard getDashboard(String userId, String spaceId) {
         List<DashboardSection> sections = sectionRepository.findByUserIdAndSpaceIdOrderByPosition(userId, spaceId);
+        // Pinned links stay pinned when their collection turns private, but are only shown to those who can see it
+        Set<String> hidden = collectionAccessService.hiddenCollectionIds(spaceId, userId);
         if (sections.isEmpty()) {
             return new Dashboard(
                     false,
@@ -52,6 +57,8 @@ public class DashboardService {
                                 section.getType(),
                                 section.getItems().stream()
                                         .map(DashboardItem::getBookmark)
+                                        .filter(bookmark -> !hidden.contains(
+                                                bookmark.getCollection().getId()))
                                         .toList()))
                         .toList());
     }
@@ -67,8 +74,10 @@ public class DashboardService {
                 .flatMap(cmd -> cmd.bookmarkIds().stream())
                 .distinct()
                 .toList();
+        Set<String> hidden = collectionAccessService.hiddenCollectionIds(spaceId, userId);
         Map<String, Bookmark> bookmarks = bookmarkRepository.findAllById(referencedIds).stream()
                 .filter(bookmark -> bookmark.getCollection().getSpace().getId().equals(spaceId))
+                .filter(bookmark -> !hidden.contains(bookmark.getCollection().getId()))
                 .collect(Collectors.toMap(Bookmark::getId, Function.identity()));
         if (bookmarks.size() != referencedIds.size()) {
             throw new IllegalArgumentException("Dashboard links must be bookmarks of this space");
@@ -127,7 +136,7 @@ public class DashboardService {
         List<Bookmark> bookmarks = switch (type) {
             case LINKS -> pinned;
             case FAVORITES -> bookmarkService.getFavoritesInSpace(userId, spaceId);
-            case RECENT -> bookmarkService.getRecentInSpace(spaceId, RECENT_COUNT);
+            case RECENT -> bookmarkService.getRecentInSpace(spaceId, userId, RECENT_COUNT);
         };
         return new Section(id, title, type, bookmarks);
     }

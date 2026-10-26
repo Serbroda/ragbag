@@ -1,0 +1,39 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+		 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+	<changeSet id="2026-10-26: add collections.restricted" author="serbroda" dbms="!sqlite">
+		<addColumn tableName="collections">
+			<column name="restricted" type="boolean" defaultValueBoolean="false">
+				<constraints nullable="false"/>
+			</column>
+		</addColumn>
+	</changeSet>
+
+	<!-- See 010: addColumn would copy the referenced collections table on SQLite -->
+	<changeSet id="2026-10-26: add collections.restricted (sqlite)" author="serbroda" dbms="sqlite">
+		<sql>ALTER TABLE collections ADD COLUMN restricted boolean NOT NULL DEFAULT 0</sql>
+	</changeSet>
+
+	<changeSet id="2026-10-26: create table collection_members" author="serbroda">
+
+		<!-- Who can see a restricted collection. Constraints are inline so the same changeset works on SQLite -->
+		<createTable tableName="collection_members">
+			<column name="collection_id" type="varchar(36)">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_collection_members"
+						referencedTableName="collections" referencedColumnNames="id"
+						foreignKeyName="fk_collection_members_collection_id" deleteCascade="true"/>
+			</column>
+			<column name="user_id" type="varchar(36)">
+				<constraints nullable="false" primaryKey="true" primaryKeyName="pk_collection_members"
+						referencedTableName="users" referencedColumnNames="id"
+						foreignKeyName="fk_collection_members_user_id" deleteCascade="true"/>
+			</column>
+			<column name="created_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+		</createTable>
+	</changeSet>
+
+</databaseChangeLog>

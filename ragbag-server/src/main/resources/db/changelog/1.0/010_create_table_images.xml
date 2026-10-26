@@ -1,0 +1,50 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<databaseChangeLog
+		xmlns="http://www.liquibase.org/xml/ns/dbchangelog"
+		xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+		xsi:schemaLocation="http://www.liquibase.org/xml/ns/dbchangelog
+		 http://www.liquibase.org/xml/ns/dbchangelog/dbchangelog-3.1.xsd">
+
+	<!-- Liquibase turns "blob" into a large-object oid on PostgreSQL; Hibernate maps byte[] to bytea -->
+	<property name="type.binary" value="bytea" dbms="postgresql"/>
+	<property name="type.binary" value="longblob" dbms="mysql,mariadb"/>
+	<property name="type.binary" value="blob"/>
+
+	<changeSet id="2026-10-26: create table images" author="serbroda">
+		<createTable tableName="images">
+			<column name="id" type="varchar(36)">
+				<constraints primaryKey="true" primaryKeyName="pk_images_id"/>
+			</column>
+			<column name="version" type="int" defaultValueNumeric="0">
+				<constraints nullable="false"/>
+			</column>
+			<column name="created_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+			<column name="updated_at" type="datetime" defaultValueComputed="CURRENT_TIMESTAMP"/>
+			<column name="content_type" type="varchar(50)">
+				<constraints nullable="false"/>
+			</column>
+			<column name="data" type="${type.binary}">
+				<constraints nullable="false"/>
+			</column>
+		</createTable>
+
+	</changeSet>
+
+	<!-- Plain references without foreign keys: the services delete replaced images themselves -->
+	<changeSet id="2026-10-26: add avatar and icon columns" author="serbroda" dbms="!sqlite">
+		<addColumn tableName="users">
+			<column name="avatar_image_id" type="varchar(36)"/>
+		</addColumn>
+		<addColumn tableName="spaces">
+			<column name="icon_image_id" type="varchar(36)"/>
+		</addColumn>
+	</changeSet>
+
+	<!-- Liquibase emulates addColumn on SQLite by copying the table, which fails for tables other tables
+		 reference; a plain ALTER TABLE is all SQLite needs -->
+	<changeSet id="2026-10-26: add avatar and icon columns (sqlite)" author="serbroda" dbms="sqlite">
+		<sql>ALTER TABLE users ADD COLUMN avatar_image_id varchar(36)</sql>
+		<sql>ALTER TABLE spaces ADD COLUMN icon_image_id varchar(36)</sql>
+	</changeSet>
+
+</databaseChangeLog>

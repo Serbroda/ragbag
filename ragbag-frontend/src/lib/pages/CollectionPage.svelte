@@ -4,9 +4,12 @@
 	import { getContext } from 'svelte';
 	import { apiConfig, errorMessage } from '../api/client';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
+	import LinkViewToggle from '../components/LinkViewToggle.svelte';
+	import { linkListClass, preferences } from '../stores/preferences.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
-	import { DotsVerticalOutline } from 'flowbite-svelte-icons';
+	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
+	import { DotsVerticalOutline, LockOutline } from 'flowbite-svelte-icons';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import { collectionsToTree, flattenTree, findNode, collectSubtreeIds } from '../components/tree';
@@ -59,6 +62,8 @@
 	let editCollectionError = $state('');
 	let editCollectionSaving = $state(false);
 	let allCollectionOptions = $state<{ id: string; label: string; depth: number }[]>([]);
+
+	let showAccessModal = $state(false);
 
 	// Delete collection
 	let showDeleteCollectionModal = $state(false);
@@ -293,17 +298,29 @@
 		<!-- Header -->
 		<div class="mb-6 flex items-center justify-between gap-3">
 			<div class="min-w-0">
-				<h1 class="truncate text-2xl font-bold tracking-tight">{collection.name}</h1>
+				<h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight">
+					<span class="truncate">{collection.name}</span>
+					{#if collection.restricted}
+						<button
+							type="button"
+							class="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/25 dark:text-amber-300"
+							title="Only selected members can see this collection"
+							onclick={() => (showAccessModal = true)}
+						>
+							<LockOutline class="h-3.5 w-3.5" /> Private
+						</button>
+					{/if}
+				</h1>
 				{#if collection.description}
 					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{collection.description}</p>
 				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
+				<LinkViewToggle />
 				{#if canCreateBookmarks}
 					<Button size="sm" onclick={openAddModal}>+ Add Link</Button>
 				{/if}
-				{#if canEditCollections || canDeleteCollections}
-					<div class="relative">
+				<div class="relative">
 						<Button
 							size="sm"
 							color="light"
@@ -318,8 +335,17 @@
 						</Button>
 						{#if openHeaderMenu}
 							<div
-								class="absolute right-0 top-10 z-20 w-40 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
+								class="absolute right-0 top-10 z-20 w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
 							>
+								<button
+									class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+									onclick={() => {
+										showAccessModal = true;
+										openHeaderMenu = false;
+									}}
+								>
+									Who can see this…
+								</button>
 								{#if canEditCollections}
 									<button
 										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -345,7 +371,6 @@
 							</div>
 						{/if}
 					</div>
-				{/if}
 			</div>
 		</div>
 
@@ -366,7 +391,7 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+			<div class={linkListClass(preferences.linkView)}>
 				{#each bookmarks as bookmark (bookmark.id)}
 					<BookmarkCard {bookmark}>
 						{#snippet actions()}
@@ -380,7 +405,9 @@
 							</button>
 							{#if openMenuId === bookmark.id}
 								<div
-									class="absolute bottom-9 right-0 z-10 w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
+									class="absolute right-0 z-20 w-44 rounded-md {preferences.linkView === 'list'
+										? 'top-8'
+										: 'bottom-9'} border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
 								>
 									<button
 										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
@@ -536,6 +563,19 @@
 </Modal>
 
 <PinToDashboardModal bind:bookmark={bookmarkToPin} {spaceId} />
+
+{#if collection}
+	<CollectionAccessModal
+		bind:open={showAccessModal}
+		{collectionId}
+		collectionName={collection.name}
+		{spaceId}
+		onchanged={() => {
+			loadData(collectionId);
+			reloadSidebar();
+		}}
+	/>
+{/if}
 
 <!-- Delete Bookmark Modal -->
 <Modal title="Delete link" open={bookmarkToDelete !== null} size="sm" onclose={() => (bookmarkToDelete = null)}>

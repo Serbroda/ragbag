@@ -1,5 +1,6 @@
 package de.serbroda.ragbag.space;
 
+import de.serbroda.ragbag.image.ImageService;
 import de.serbroda.ragbag.invite.InviteRepository;
 import de.serbroda.ragbag.invite.InviteTargetType;
 import de.serbroda.ragbag.shared.exception.AccessDeniedException;
@@ -17,6 +18,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.context.ApplicationEventPublisher;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Transactional
 @RequiredArgsConstructor
@@ -28,6 +30,7 @@ public class SpaceService {
     private final SpaceMemberRepository spaceMemberRepository;
     private final InviteRepository inviteRepository;
     private final ApplicationEventPublisher events;
+    private final ImageService imageService;
 
     @Transactional(readOnly = true)
     public Optional<Space> findById(String spaceId) {
@@ -108,12 +111,32 @@ public class SpaceService {
         return spaceRepository.save(space);
     }
 
+    public Space setIcon(String spaceId, MultipartFile file, String url) {
+        Space space = requireSpace(spaceId);
+        String previous = space.getIconImageId();
+        space.setIconImageId(imageService.store(file, url).getId());
+        imageService.deleteImage(previous);
+        return space;
+    }
+
+    public Space removeIcon(String spaceId) {
+        Space space = requireSpace(spaceId);
+        imageService.deleteImage(space.getIconImageId());
+        space.setIconImageId(null);
+        return space;
+    }
+
     public void deleteSpace(String spaceId) {
-        spaceRepository
+        Space space = requireSpace(spaceId);
+        inviteRepository.deleteByTargetTypeAndTargetId(InviteTargetType.SPACE, spaceId);
+        imageService.deleteImage(space.getIconImageId());
+        spaceRepository.deleteById(spaceId);
+    }
+
+    private Space requireSpace(String spaceId) {
+        return spaceRepository
                 .findById(spaceId)
                 .orElseThrow(() -> new ResourceNotFoundException("Space not found: " + spaceId));
-        inviteRepository.deleteByTargetTypeAndTargetId(InviteTargetType.SPACE, spaceId);
-        spaceRepository.deleteById(spaceId);
     }
 
     public void leaveSpace(String userId, String spaceId) {

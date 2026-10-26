@@ -72,11 +72,12 @@ Code is organized by domain feature, not by technical layer:
 - `dashboard/` — Per-user, per-space dashboard layout (sections of type LINKS / FAVORITES / RECENT)
 - `user/` — User entity, repository, service, controller
 - `space/` — Spaces (top-level containers), membership management; roles OWNER > ADMIN > CONTRIBUTOR > VIEWER map to `SpacePermission`s in `SpaceMemberRole` (single source of truth, also sent to the frontend)
-- `collection/` — Hierarchical collections within spaces
+- `collection/` — Hierarchical collections within spaces. Private (`restricted`) collections are visible only to their `memberIds`, whatever the space role, and hide everything below them; `CollectionAccessService` decides visibility and every bookmark/collection list or query must filter with `hiddenCollectionIds()`
 - `bookmark/` — Bookmarks within collections, personal favorites, metadata fetching (SSRF-guarded; `app.metadata.allow-private-hosts` opens private networks for homelabs)
+- `image/` — Avatars and space icons: uploads or URLs (via `SafeHttpClient`), re-encoded as 256 px PNGs, served publicly under `/api/v1/images/{id}` (new id per upload)
 - `invite/` — Invitation system (token-based invites to spaces/collections)
 - `security/` — Permission evaluation, SecurityUtils, UserDetailsService
-- `shared/` — Base entity, exception handling, API constants
+- `shared/` — Base entity, exception handling, API constants, `SafeHttpClient` (SSRF-guarded fetching of user supplied URLs)
 
 Each feature package contains its own Entity, Repository, Service, and Controller.
 
@@ -84,14 +85,15 @@ Each feature package contains its own Entity, Repository, Service, and Controlle
 - **Entity base class**: All entities extend `AbstractBaseEntity` (UUID primary key, `@Version` optimistic locking, auto-managed `createdAt`/`updatedAt`)
 - **Constructor injection**: Via Lombok `@RequiredArgsConstructor`
 - **Security**: JWT (HS256) via Spring Security OAuth2 Resource Server. Access tokens carry `type=ACCESS`, refresh tokens (httpOnly cookie) `type=REFRESH`; both carry `token_version`, which `logout/all` increments to invalidate them. Method-level `@PreAuthorize("hasPermission(#id, 'SPACE|COLLECTION|BOOKMARK', '<SpacePermission>')")` with custom `DomainPermissionEvaluator` — every endpoint taking a resource id needs one.
-- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`. Must work on H2, PostgreSQL, MariaDB and SQLite: use portable types (`text`, never `varchar(max)`) and never edit an applied changeset (add a new one instead). SQLite cannot add constraints to existing tables (`addPrimaryKey`, `addForeignKeyConstraint`, `addUniqueConstraint`): declare them inline in `createTable`, or pair a `dbms="!sqlite"` changeset with a `dbms="sqlite"` variant. SQLite JDBC URLs need `foreign_keys=on` (cascades), `journal_mode=WAL`, `busy_timeout` and `date_class=TEXT`. Run the server tests against PostgreSQL by setting `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`.
+- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`. Must work on H2, PostgreSQL, MariaDB and SQLite: use portable types (`text`, never `varchar(max)`) and never edit an applied changeset (add a new one instead). SQLite cannot add constraints to existing tables (`addPrimaryKey`, `addForeignKeyConstraint`, `addUniqueConstraint`): declare them inline in `createTable`, or pair a `dbms="!sqlite"` changeset with a `dbms="sqlite"` variant. `addColumn` on a table that others reference fails on SQLite too (Liquibase copies the table), so use a plain `ALTER TABLE ... ADD COLUMN` in a `dbms="sqlite"` changeset. Binary columns use the `type.binary` property from 010 (`blob` would become `oid` on PostgreSQL). SQLite JDBC URLs need `foreign_keys=on` (cascades), `journal_mode=WAL`, `busy_timeout` and `date_class=TEXT`. Run the server tests against PostgreSQL by setting `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`.
 - **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `sqlite` (SQLite file at `data/ragbag.db`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
 
 ### Frontend Structure (`ragbag-frontend/src/lib`)
 - `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, quick switcher)
 - `components/` — shared UI (`BookmarkCard`, modals, `QuickSwitcher`, collection tree)
 - `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user, last visited space)
-- `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`
+- `stores/preferences.svelte.ts` — personal display settings (link view: cards / compact / list), stored in localStorage per user and device
+- `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`; show users and spaces with `Avatar.svelte`
 - Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
 - `api/client.ts` — auth handling, `errorMessage()` to surface ProblemDetail `detail` texts
 

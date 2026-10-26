@@ -2,6 +2,7 @@ package de.serbroda.ragbag.security.permission;
 
 import de.serbroda.ragbag.bookmark.BookmarkRepository;
 import de.serbroda.ragbag.collection.Collection;
+import de.serbroda.ragbag.collection.CollectionAccessService;
 import de.serbroda.ragbag.collection.CollectionRepository;
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import de.serbroda.ragbag.space.SpaceMember;
@@ -19,6 +20,7 @@ public class PermissionService {
     private final SpaceRepository spaceRepository;
     private final SpaceMemberRepository spaceMemberRepository;
     private final BookmarkRepository bookmarkRepository;
+    private final CollectionAccessService collectionAccessService;
 
     public boolean hasPermissionForBookmark(String userId, String bookmarkId, SpacePermission permission) {
         String collectionId = bookmarkRepository
@@ -31,6 +33,10 @@ public class PermissionService {
         Collection collection = collectionRepository
                 .findById(collectionId)
                 .orElseThrow(() -> new ResourceNotFoundException("Collection not found: " + collectionId));
+        // Private collections do not exist for everybody else, so they get a 404 rather than a 403
+        if (!collectionAccessService.canSee(collection, userId)) {
+            throw new ResourceNotFoundException("Collection not found: " + collectionId);
+        }
 
         return hasPermissionForSpace(userId, collection.getSpace().getId(), permission);
     }

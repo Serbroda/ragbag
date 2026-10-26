@@ -5,6 +5,8 @@
 	import { errorMessage, searchBookmarks } from '../api/client';
 	import { p, route } from '../router';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
+	import LinkViewToggle from '../components/LinkViewToggle.svelte';
+	import { linkListClass, preferences } from '../stores/preferences.svelte';
 
 	const collectionName = getContext<((id: string) => string | undefined) | undefined>('collection-name');
 
@@ -40,13 +42,16 @@
 </script>
 
 <div>
-	<div class="mb-6">
-		<h1 class="text-2xl font-bold tracking-tight">Results for “{query}”</h1>
-		{#if !loading}
-			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
-				{bookmarks.length} result{bookmarks.length !== 1 ? 's' : ''} found
-			</p>
-		{/if}
+	<div class="mb-6 flex items-start justify-between gap-3">
+		<div class="min-w-0">
+			<h1 class="truncate text-2xl font-bold tracking-tight">Results for “{query}”</h1>
+			{#if !loading}
+				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+					{bookmarks.length} result{bookmarks.length !== 1 ? 's' : ''} found
+				</p>
+			{/if}
+		</div>
+		<LinkViewToggle />
 	</div>
 
 	{#if loading}
@@ -60,7 +65,7 @@
 			<p class="text-gray-500 dark:text-gray-400">No bookmarks found matching your search.</p>
 		</div>
 	{:else}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<div class={linkListClass(preferences.linkView)}>
 			{#each bookmarks as bookmark (bookmark.id)}
 				<BookmarkCard
 					{bookmark}

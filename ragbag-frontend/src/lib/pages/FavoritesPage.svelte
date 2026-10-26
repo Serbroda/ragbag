@@ -7,6 +7,8 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import { p, route } from '../router';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
+	import LinkViewToggle from '../components/LinkViewToggle.svelte';
+	import { linkListClass, preferences } from '../stores/preferences.svelte';
 
 	const collectionName = getContext<((id: string) => string | undefined) | undefined>('collection-name');
 
@@ -35,9 +37,14 @@
 </script>
 
 <div>
-	<header class="mb-6">
-		<h1 class="text-2xl font-bold tracking-tight">Favorites</h1>
-		<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">Your starred links in this space. Only you can see them.</p>
+	<header class="mb-6 flex items-start justify-between gap-3">
+		<div class="min-w-0">
+			<h1 class="text-2xl font-bold tracking-tight">Favorites</h1>
+			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+				Your starred links in this space. Only you can see them.
+			</p>
+		</div>
+		<LinkViewToggle />
 	</header>
 
 	{#if loading}
@@ -55,7 +62,7 @@
 			</p>
 		</div>
 	{:else}
-		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
+		<div class={linkListClass(preferences.linkView)}>
 			{#each favorites as bookmark (bookmark.id)}
 				<BookmarkCard
 					{bookmark}

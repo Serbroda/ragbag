@@ -37,4 +37,13 @@ public class Collection extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
+
+    /** Private collection: only {@link #memberIds} can see it and everything below it, whatever their role. */
+    @Column(nullable = false)
+    private boolean restricted;
+
+    @ElementCollection
+    @CollectionTable(name = "collection_members", joinColumns = @JoinColumn(name = "collection_id"))
+    @Column(name = "user_id", length = 36)
+    private Set<String> memberIds = new HashSet<>();
 }

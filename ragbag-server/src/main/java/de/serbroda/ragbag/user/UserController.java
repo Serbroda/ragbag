@@ -9,6 +9,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.multipart.MultipartFile;
 
 @RequiredArgsConstructor
 @RestController
@@ -22,10 +23,25 @@ public class UserController implements UserApi {
         User user = userService
                 .findUserById(SecurityUtils.currentUserId())
                 .orElseThrow(() -> new IllegalStateException("Current user not found"));
-        return ResponseEntity.ok(new UserDto.Builder()
+        return ResponseEntity.ok(toDto(user));
+    }
+
+    @Override
+    public ResponseEntity<UserDto> setAvatar(MultipartFile file, String url) {
+        return ResponseEntity.ok(toDto(userService.setAvatar(SecurityUtils.currentUserId(), file, url)));
+    }
+
+    @Override
+    public ResponseEntity<UserDto> removeAvatar() {
+        return ResponseEntity.ok(toDto(userService.removeAvatar(SecurityUtils.currentUserId())));
+    }
+
+    private static UserDto toDto(User user) {
+        return new UserDto.Builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
-                .build());
+                .avatarId(user.getAvatarImageId())
+                .build();
     }
 }

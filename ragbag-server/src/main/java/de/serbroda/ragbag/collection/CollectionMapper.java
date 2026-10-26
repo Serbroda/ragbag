@@ -11,6 +11,7 @@ public class CollectionMapper {
                 .id(node.id())
                 .name(node.name())
                 .parentId(node.parentId())
+                .restricted(node.restricted())
                 .children(node.children().stream().map(this::toDto).toList())
                 .build();
     }

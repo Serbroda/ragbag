@@ -20,6 +20,9 @@ public class Space extends AbstractBaseEntity {
 
     private String description;
 
+    @Column(name = "icon_image_id", length = 36)
+    private String iconImageId;
+
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;

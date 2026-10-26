@@ -30,15 +30,17 @@ public class BookmarkController implements BookmarkApi {
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<List<BookmarkDto>> searchBookmarks(String spaceId, String q) {
-        return ResponseEntity.ok(
-                mapper.toDtos(bookmarkService.searchInSpace(spaceId, q), SecurityUtils.currentUserId()));
+        return ResponseEntity.ok(mapper.toDtos(
+                bookmarkService.searchInSpace(spaceId, SecurityUtils.currentUserId(), q),
+                SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'READ')")
     @Override
     public ResponseEntity<List<BookmarkDto>> getRecentBookmarks(String spaceId, Integer limit) {
         return ResponseEntity.ok(mapper.toDtos(
-                bookmarkService.getRecentInSpace(spaceId, limit != null ? limit : 20), SecurityUtils.currentUserId()));
+                bookmarkService.getRecentInSpace(spaceId, SecurityUtils.currentUserId(), limit != null ? limit : 20),
+                SecurityUtils.currentUserId()));
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'CREATE_BOOKMARKS')"

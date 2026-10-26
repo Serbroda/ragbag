@@ -5,9 +5,12 @@ import static de.serbroda.ragbag.security.permission.DomainPermissionEvaluator.D
 import static de.serbroda.ragbag.shared.ApiConstants.PUBLIC_API_PREFIX;
 
 import de.serbroda.ragbag.generated.api.CollectionApi;
+import de.serbroda.ragbag.generated.model.CollectionAccessDto;
+import de.serbroda.ragbag.generated.model.CollectionAccessMemberDto;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
 import de.serbroda.ragbag.generated.model.MoveCollectionDto;
+import de.serbroda.ragbag.generated.model.UpdateCollectionAccessDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
 import de.serbroda.ragbag.security.SecurityUtils;
 import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
@@ -32,21 +35,18 @@ public class CollectionController implements CollectionApi {
         Collection collection = collectionService.createCollection(
                 SecurityUtils.currentUserId(),
                 new CollectionService.CreateCollectionCommand(
-                        spaceId, createCollectionDto.getName(), createCollectionDto.getParentId()));
-
-        return ResponseEntity.ok(new CollectionDto.Builder()
-                .id(collection.getId())
-                .name(collection.getName())
-                .description(collection.getDescription())
-                .parentId(
-                        collection.getParent() != null ? collection.getParent().getId() : null)
-                .build());
+                        spaceId,
+                        createCollectionDto.getName(),
+                        createCollectionDto.getParentId(),
+                        Boolean.TRUE.equals(createCollectionDto.getRestricted()),
+                        createCollectionDto.getMemberIds()));
+        return ResponseEntity.ok(toDto(collection));
     }
 
     @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'DELETE_COLLECTIONS')")
     @Override
     public ResponseEntity<Void> deleteCollection(String collectionId) {
-        collectionService.deleteCollection(collectionId);
+        collectionService.deleteCollection(SecurityUtils.currentUserId(), collectionId);
         return ResponseEntity.noContent().build();
     }
 
@@ -82,14 +82,41 @@ public class CollectionController implements CollectionApi {
     @Override
     public ResponseEntity<CollectionDto> moveCollection(String collectionId, MoveCollectionDto moveCollectionDto) {
         Collection collection = collectionService.moveCollection(
-                collectionId, new CollectionService.MoveCollectionCommand(moveCollectionDto.getParentId()));
-        return ResponseEntity.ok(new CollectionDto.Builder()
-                .id(collection.getId())
-                .name(collection.getName())
-                .description(collection.getDescription())
-                .parentId(
-                        collection.getParent() != null ? collection.getParent().getId() : null)
-                .build());
+                SecurityUtils.currentUserId(),
+                collectionId,
+                new CollectionService.MoveCollectionCommand(moveCollectionDto.getParentId()));
+        return ResponseEntity.ok(toDto(collection));
+    }
+
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'READ')")
+    @Override
+    public ResponseEntity<CollectionAccessDto> getCollectionAccess(String collectionId) {
+        return ResponseEntity.ok(toDto(collectionService.getAccess(SecurityUtils.currentUserId(), collectionId)));
+    }
+
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'EDIT_COLLECTIONS')")
+    @Override
+    public ResponseEntity<CollectionAccessDto> updateCollectionAccess(
+            String collectionId, UpdateCollectionAccessDto updateCollectionAccessDto) {
+        return ResponseEntity.ok(toDto(collectionService.updateAccess(
+                SecurityUtils.currentUserId(),
+                collectionId,
+                Boolean.TRUE.equals(updateCollectionAccessDto.getRestricted()),
+                updateCollectionAccessDto.getMemberIds())));
+    }
+
+    private static CollectionAccessDto toDto(CollectionService.CollectionAccess access) {
+        return new CollectionAccessDto.Builder()
+                .restricted(access.restricted())
+                .canManage(access.canManage())
+                .members(access.members().stream()
+                        .map(user -> new CollectionAccessMemberDto.Builder()
+                                .userId(user.getId())
+                                .username(user.getUsername())
+                                .avatarId(user.getAvatarImageId())
+                                .build())
+                        .toList())
+                .build();
     }
 
     private static CollectionDto toDto(Collection collection) {
@@ -99,6 +126,7 @@ public class CollectionController implements CollectionApi {
                 .description(collection.getDescription())
                 .parentId(
                         collection.getParent() != null ? collection.getParent().getId() : null)
+                .restricted(collection.isRestricted())
                 .build();
     }
 }

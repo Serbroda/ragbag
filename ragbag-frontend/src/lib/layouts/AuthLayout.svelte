@@ -1,8 +1,8 @@
 <script lang="ts">
-	import type { Snippet } from 'svelte';
+	import type { Component, Snippet } from 'svelte';
 	import type { SpacePermissionEnum } from 'ragbag-frontend-sdk';
 	import { setContext } from 'svelte';
-	import { Button, Modal, Label, Input, Select } from 'flowbite-svelte';
+	import { Button, Modal, Label, Input, Select, Toggle } from 'flowbite-svelte';
 	import {
 		ArrowRightToBracketOutline,
 		BarsOutline,
@@ -16,6 +16,7 @@
 		SearchOutline,
 		StarSolid,
 		UserAddSolid,
+		UserCircleOutline,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
 	import { navigate, p, route } from '../router';
@@ -25,10 +26,15 @@
 	import InvitePeopleModal from '../components/InvitePeopleModal.svelte';
 	import QuickSwitcher, { type SwitcherItem } from '../components/QuickSwitcher.svelte';
 	import Logo from '../components/Logo.svelte';
+	import Avatar from '../components/Avatar.svelte';
+	import MemberChecklist from '../components/MemberChecklist.svelte';
+	import ProfileModal from '../components/ProfileModal.svelte';
 	import { collectionsToTree, expandToNode, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
+	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
+	import { loadPreferences } from '../stores/preferences.svelte';
 	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
-	import { colorFor, initials } from '../utils/format';
+	import { initials } from '../utils/format';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -75,6 +81,10 @@
 		.then(() => (spacesReady = true))
 		.catch(() => {});
 	loadMe().catch(() => {});
+
+	$effect(() => {
+		if (session.me) loadPreferences(session.me.id);
+	});
 
 	$effect(() => {
 		if (activeSpaceId) {
@@ -182,6 +192,7 @@
 	let switcherOpen = $state(false);
 	let showCreateOrJoin = $state(false);
 	let showInvite = $state(false);
+	let showProfile = $state(false);
 
 	function closeMenus() {
 		spaceMenuOpen = false;
@@ -263,6 +274,15 @@
 	let newCollectionParentId = $state('');
 	let createError = $state('');
 	let creating = $state(false);
+	let newCollectionPrivate = $state(false);
+	let newCollectionMembers = $state(new Set<string>());
+	let spaceMembers = $state<SpaceMemberDto[]>([]);
+
+	async function togglePrivate() {
+		if (newCollectionPrivate && activeSpaceId && spaceMembers.length === 0) {
+			spaceMembers = await spaceApi.getSpaceMembers({ spaceId: activeSpaceId }).catch(() => []);
+		}
+	}
 
 	const parentOptions = $derived(flattenTree(menuTree));
 
@@ -274,6 +294,9 @@
 		newCollectionParentId = activeCollectionId ?? '';
 		createError = '';
 		creating = false;
+		newCollectionPrivate = false;
+		newCollectionMembers = new Set();
+		spaceMembers = [];
 		showAddModal = true;
 	}
 
@@ -289,6 +312,8 @@
 				createCollectionDto: {
 					name,
 					parentId: newCollectionParentId || undefined,
+					restricted: newCollectionPrivate,
+					memberIds: newCollectionPrivate ? [...newCollectionMembers] : undefined,
 				},
 			});
 			showAddModal = false;
@@ -303,7 +328,7 @@
 		}
 	}
 
-	type Crumb = { label: string; href?: string; icon?: typeof HomeSolid };
+	type Crumb = { label: string; href?: string; icon?: Component<{ class?: string }> };
 
 	/** Header breadcrumbs: space › collection ancestors › current page. */
 	const breadcrumbs = $derived.by((): Crumb[] => {
@@ -322,7 +347,7 @@
 				...trail.map((node, i) => ({
 					label: node.label,
 					href: i < trail.length - 1 ? node.href : undefined,
-					icon: i === trail.length - 1 ? FolderOutline : undefined,
+					icon: i === trail.length - 1 ? (node.icon ?? FolderOutline) : undefined,
 				})),
 			];
 		}
@@ -405,12 +430,20 @@
 						type="button"
 						aria-label={space.name}
 						aria-current={active ? 'page' : undefined}
-						class="flex h-12 w-12 shrink-0 items-center justify-center text-sm font-semibold transition-all duration-200 {active
-							? `rounded-2xl text-white shadow-lg ${colorFor(space.name)}`
-							: 'rounded-3xl bg-gray-800 text-gray-300 hover:rounded-2xl hover:bg-primary-500 hover:text-white'}"
+						class="h-12 w-12 shrink-0 overflow-hidden transition-all duration-200 {active
+							? 'rounded-2xl shadow-lg'
+							: 'rounded-3xl hover:rounded-2xl'}"
 						onclick={() => selectSpace(space.id)}
 					>
-						{initials(space.name)}
+						{#if space.iconId || active}
+							<Avatar name={space.name} imageId={space.iconId} class="h-full w-full text-sm" />
+						{:else}
+							<span
+								class="flex h-full w-full items-center justify-center bg-gray-800 text-sm font-semibold text-gray-300 transition-colors hover:bg-primary-500 hover:text-white"
+							>
+								{initials(space.name)}
+							</span>
+						{/if}
 					</button>
 					<span
 						class="pointer-events-none fixed left-[80px] z-50 hidden whitespace-nowrap rounded-md bg-gray-950 px-3 py-1.5 text-sm font-semibold text-white shadow-xl ring-1 ring-white/10 md:group-hover:block"
@@ -534,13 +567,15 @@
 			<!-- User panel -->
 			<div class="relative flex h-14 shrink-0 items-center gap-2 bg-gray-100 px-2 dark:bg-gray-950/50">
 				{#if session.me}
-					<span
-						class="flex h-8 w-8 shrink-0 items-center justify-center rounded-full text-xs font-semibold text-white {colorFor(
-							session.me.username,
-						)}"
+					<button
+						type="button"
+						title="Profile & appearance"
+						aria-label="Profile & appearance"
+						class="shrink-0 rounded-full transition-opacity hover:opacity-80"
+						onclick={(e) => (e.stopPropagation(), closeMenus(), (showProfile = true))}
 					>
-						{initials(session.me.username)}
-					</span>
+						<Avatar name={session.me.username} imageId={session.me.avatarId} />
+					</button>
 					<div class="min-w-0 flex-1 leading-tight">
 						<p class="truncate text-sm font-semibold">{session.me.username}</p>
 						{#if activeSpace?.role}
@@ -570,6 +605,14 @@
 						role="menu"
 						class="absolute bottom-[calc(100%+4px)] left-2 right-2 z-50 rounded-lg bg-gray-950 p-1.5 text-sm text-gray-200 shadow-2xl ring-1 ring-white/10"
 					>
+						<button
+							role="menuitem"
+							class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+							onclick={() => (closeMenus(), (showProfile = true))}
+						>
+							Profile & appearance <UserCircleOutline class="h-4 w-4" />
+						</button>
+						<div class="my-1 h-px bg-gray-800"></div>
 						<button
 							role="menuitem"
 							class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
@@ -715,6 +758,19 @@
 				{/each}
 			</Select>
 		</div>
+		<div>
+			<Toggle bind:checked={newCollectionPrivate} onchange={togglePrivate}>Private collection</Toggle>
+			<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+				Only you and the members you pick can see it, not even space admins. Great for gift ideas.
+			</p>
+		</div>
+		{#if newCollectionPrivate}
+			<MemberChecklist
+				members={spaceMembers}
+				bind:selected={newCollectionMembers}
+				currentUserId={session.me?.id}
+			/>
+		{/if}
 		{#if createError}
 			<p class="text-sm text-red-500 dark:text-red-400">{createError}</p>
 		{/if}
@@ -751,3 +807,5 @@
 {/if}
 
 <QuickSwitcher bind:open={switcherOpen} items={switcherItems} />
+
+<ProfileModal bind:open={showProfile} />

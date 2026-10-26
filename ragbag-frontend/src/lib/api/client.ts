@@ -127,6 +127,11 @@ export async function searchBookmarks(spaceId: string, query: string): Promise<B
 	return api.searchBookmarks({ spaceId, q: query });
 }
 
+/** URL of an avatar or space icon; images are public and cached forever since every upload gets a new id. */
+export function imageUrl(imageId: string): string {
+	return `${BASE_PATH}/v1/images/${imageId}`;
+}
+
 /** Path prefix of the SPA: `/app` when served by the Spring Boot backend, empty in the Vite dev server. */
 export function appBase(): string {
 	return window.location.pathname.startsWith('/app') ? '/app' : '';

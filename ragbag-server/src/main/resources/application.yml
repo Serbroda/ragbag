@@ -11,6 +11,12 @@ spring:
       hibernate:
         format_sql: true
 
+  servlet:
+    multipart:
+      # Avatars and space icons; they are scaled down to 256 px before being stored
+      max-file-size: 5MB
+      max-request-size: 6MB
+
   liquibase:
     enabled: true
     change-log: classpath:/db/changelog/db.changelog-master.xml

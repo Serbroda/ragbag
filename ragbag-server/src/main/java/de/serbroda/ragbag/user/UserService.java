@@ -1,11 +1,14 @@
 package de.serbroda.ragbag.user;
 
+import de.serbroda.ragbag.image.ImageService;
 import de.serbroda.ragbag.shared.exception.ResourceAlreadyExistsException;
+import de.serbroda.ragbag.shared.exception.ResourceNotFoundException;
 import java.util.Optional;
 import lombok.RequiredArgsConstructor;
 import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.multipart.MultipartFile;
 
 @Transactional
 @RequiredArgsConstructor
@@ -14,6 +17,7 @@ public class UserService {
 
     private final UserRepository userRepository;
     private final PasswordEncoder passwordEncoder;
+    private final ImageService imageService;
 
     public Optional<User> findUserById(String id) {
         return userRepository.findById(id);
@@ -31,6 +35,27 @@ public class UserService {
         user.setTokenVersion(0);
 
         return userRepository.save(user);
+    }
+
+    public User setAvatar(String userId, MultipartFile file, String url) {
+        User user = requireUser(userId);
+        String previous = user.getAvatarImageId();
+        user.setAvatarImageId(imageService.store(file, url).getId());
+        imageService.deleteImage(previous);
+        return user;
+    }
+
+    public User removeAvatar(String userId) {
+        User user = requireUser(userId);
+        imageService.deleteImage(user.getAvatarImageId());
+        user.setAvatarImageId(null);
+        return user;
+    }
+
+    private User requireUser(String userId) {
+        return userRepository
+                .findById(userId)
+                .orElseThrow(() -> new ResourceNotFoundException("User not found: " + userId));
     }
 
     public void incrementTokenVersion(String userId) {

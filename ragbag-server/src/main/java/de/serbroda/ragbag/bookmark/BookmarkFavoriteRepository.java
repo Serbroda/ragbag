@@ -18,9 +18,14 @@ public interface BookmarkFavoriteRepository extends JpaRepository<BookmarkFavori
     @Query("""
 			SELECT b FROM Bookmark b, BookmarkFavorite f
 			WHERE f.id.bookmarkId = b.id AND f.id.userId = :userId AND b.collection.space.id = :spaceId
+			AND b.collection.id NOT IN :hidden
 			ORDER BY f.createdAt DESC
 			""")
-    List<Bookmark> findFavoritesInSpace(@Param("userId") String userId, @Param("spaceId") String spaceId, Limit limit);
+    List<Bookmark> findFavoritesInSpace(
+            @Param("userId") String userId,
+            @Param("spaceId") String spaceId,
+            @Param("hidden") Collection<String> hiddenCollectionIds,
+            Limit limit);
 
     @Modifying
     @Query("""
