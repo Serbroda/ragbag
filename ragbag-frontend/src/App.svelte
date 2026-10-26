@@ -23,7 +23,7 @@
 {#if ready}
 	<Router base={routerBase} />
 {:else}
-	<div class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
+	<div class="flex min-h-dvh items-center justify-center bg-gray-950">
 		<p class="text-gray-500 dark:text-gray-400">Loading...</p>
 	</div>
 {/if}

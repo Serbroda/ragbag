@@ -3,6 +3,7 @@
 	import type { TreeNode } from './tree';
 	import { isDescendantOrSelf } from './tree';
 	import TreeItem from './TreeItem.svelte';
+	import { route } from '../router';
 	import { DRAG_CTX_KEY, type DragContext } from './DraggableTreeList.svelte';
 
 	let {
@@ -19,7 +20,7 @@
 	});
 
 	const hasChildren = $derived(node.children && node.children.length > 0);
-	const paddingLeft = $derived(`${0.75 + depth * 1.25}rem`);
+	const paddingLeft = $derived(`${depth * 1}rem`);
 
 	// Drag context — getContext must be called at top level, but we only use it when isDraggable
 	const dragCtx = getContext<DragContext | undefined>(DRAG_CTX_KEY);
@@ -58,12 +59,15 @@
 	}
 
 	const isDragged = $derived(dragCtx?.draggedNode === node);
+	const isActive = $derived(!!node.href && route.pathname === node.href);
 </script>
 
 <li>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="group flex items-center rounded-md text-sm text-gray-700 hover:bg-gray-100 dark:text-gray-300 dark:hover:bg-gray-700"
+		class="group mx-2 flex items-center rounded-md text-sm transition-colors {isActive
+			? 'bg-gray-200 font-medium text-gray-900 dark:bg-gray-700/70 dark:text-white'
+			: 'text-gray-600 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}"
 		class:opacity-40={isDragged}
 		class:ring-2={isDropTarget}
 		class:ring-primary-500={isDropTarget}
@@ -80,21 +84,22 @@
 		<!-- Icon -->
 		{#if node.icon}
 			{@const Icon = node.icon}
-			<Icon class="h-4 w-4 shrink-0 text-gray-500 dark:text-gray-400" />
+			<Icon class="ms-2 h-4 w-4 shrink-0 {isActive ? 'text-primary-500' : 'text-gray-400 dark:text-gray-500'}" />
 		{/if}
 
 		<!-- Clickable label -->
 		{#if node.href}
 			<a
 				href={node.href}
-				class="flex-1 truncate rounded-md px-2 py-1.5 hover:text-gray-900 dark:hover:text-white"
+				class="flex-1 truncate rounded-md px-2 py-1.5"
+				aria-current={isActive ? 'page' : undefined}
 			>
 				{node.label}
 			</a>
 		{:else}
 			<button
 				type="button"
-				class="flex-1 truncate rounded-md px-2 py-1.5 text-left hover:text-gray-900 dark:hover:text-white"
+				class="flex-1 truncate rounded-md px-2 py-1.5 text-left"
 				onclick={() => hasChildren && (expanded = !expanded)}
 			>
 				{node.label}
@@ -126,7 +131,7 @@
 	<!-- Children -->
 	{#if hasChildren && expanded}
 		<ul>
-			{#each node.children! as child (child.label)}
+			{#each node.children! as child (child.id ?? child.label)}
 				<TreeItem node={child} depth={depth + 1} draggable={isDraggable} />
 			{/each}
 		</ul>

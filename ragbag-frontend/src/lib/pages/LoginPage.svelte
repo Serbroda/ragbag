@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Card, Label, Input, Button, Alert } from 'flowbite-svelte';
+	import { Label, Input, Button, Alert } from 'flowbite-svelte';
+	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import { login, register, fetchFeatureFlags, takePendingInvite } from '../api/client';
 	import { navigate } from '../router';
 	import { resetSession } from '../stores/spaces.svelte';
@@ -76,12 +77,7 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 dark:bg-gray-900">
-	<Card class="w-full max-w-md p-10">
-		<h2 class="brand-glow mb-4 text-center text-3xl font-bold tracking-tight">Ragbag</h2>
-		<p class="mb-4 text-center text-sm text-gray-500 dark:text-gray-400">
-			{isRegister ? 'Create a new account' : 'Sign in to your account'}
-		</p>
+<CenteredScreen subtitle={isRegister ? 'Create your account' : 'Welcome back! Sign in to continue.'}>
 
 		{#if error}
 			<Alert color="red" class="mb-4">{error}</Alert>
@@ -93,7 +89,7 @@
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 			<div>
 				<Label for="username" class="mb-2">Username</Label>
-				<Input id="username" type="text" bind:value={username} required />
+				<Input id="username" type="text" autocomplete="username" bind:value={username} required />
 			</div>
 			{#if isRegister}
 				<div>
@@ -103,7 +99,13 @@
 			{/if}
 			<div>
 				<Label for="password" class="mb-2">Password</Label>
-				<Input id="password" type="password" bind:value={password} required />
+				<Input
+					id="password"
+					type="password"
+					autocomplete={isRegister ? 'new-password' : 'current-password'}
+					bind:value={password}
+					required
+				/>
 			</div>
 			{#if isRegister}
 				<div>
@@ -111,7 +113,7 @@
 					<Input id="confirmPassword" type="password" bind:value={confirmPassword} required />
 				</div>
 			{/if}
-			<Button type="submit" disabled={loading}>
+			<Button type="submit" class="mt-2" disabled={loading}>
 				{#if loading}
 					{isRegister ? 'Creating account...' : 'Signing in...'}
 				{:else}
@@ -135,5 +137,4 @@
 				{/if}
 			</div>
 		{/if}
-	</Card>
-</div>
+</CenteredScreen>

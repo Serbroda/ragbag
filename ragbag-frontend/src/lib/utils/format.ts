@@ -50,7 +50,8 @@ export function colorFor(name: string): string {
 	return AVATAR_COLORS[Math.abs(hash) % AVATAR_COLORS.length];
 }
 
-const relativeTime = new Intl.RelativeTimeFormat(undefined, { numeric: 'auto' });
+// English to match the rest of the UI
+const relativeTime = new Intl.RelativeTimeFormat('en', { numeric: 'auto' });
 const UNITS: [Intl.RelativeTimeFormatUnit, number][] = [
 	['year', 365 * 24 * 3600],
 	['month', 30 * 24 * 3600],

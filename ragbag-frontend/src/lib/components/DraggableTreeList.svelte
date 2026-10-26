@@ -92,7 +92,7 @@
 </script>
 
 <ul class="space-y-0.5 py-2">
-	{#each nodes as node (node.label)}
+	{#each nodes as node (node.id ?? node.label)}
 		<TreeItem {node} {draggable} />
 	{/each}
 

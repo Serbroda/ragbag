@@ -1,8 +1,7 @@
 <script lang="ts">
 	import type { BookmarkDto } from 'ragbag-frontend-sdk';
 	import type { Snippet } from 'svelte';
-	import { Card } from 'flowbite-svelte';
-	import { LinkOutline } from 'flowbite-svelte-icons';
+	import { FolderOutline, LinkOutline } from 'flowbite-svelte-icons';
 	import { getDomain, safeUrl, timeAgo } from '../utils/format';
 
 	let {
@@ -12,7 +11,7 @@
 		actions,
 	}: {
 		bookmark: BookmarkDto;
-		/** Shown in the meta line when the card is listed outside its collection. */
+		/** Shown in the footer when the card is listed outside its collection. */
 		collectionName?: string;
 		collectionHref?: string;
 		actions?: Snippet;
@@ -20,84 +19,93 @@
 
 	const href = $derived(safeUrl(bookmark.url));
 	let faviconFailed = $state(false);
+	let imageFailed = $state(false);
 	const favicon = $derived(faviconFailed ? undefined : safeUrl(bookmark.favicon));
+	const image = $derived(imageFailed ? undefined : safeUrl(bookmark.ogImage));
 </script>
 
-<Card
-	class="relative w-full max-w-none p-4 hover:border-gray-400 md:w-[calc(50%-0.5rem)] lg:w-[calc(33.333%-0.75rem)] {actions
-		? 'pb-12'
-		: ''}"
+<article
+	class="group relative flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
 >
-	<div class="flex flex-col gap-2">
-		<div class="flex items-start gap-4">
+	{#if image}
+		<img
+			src={image}
+			alt=""
+			loading="lazy"
+			referrerpolicy="no-referrer"
+			class="aspect-[2.4/1] w-full bg-gray-100 object-cover dark:bg-gray-800"
+			onerror={() => (imageFailed = true)}
+		/>
+	{/if}
+
+	<div class="flex flex-1 flex-col gap-2 p-4">
+		<div class="flex items-center gap-2 text-xs text-gray-500">
 			{#if favicon}
 				<img
 					src={favicon}
 					alt=""
 					loading="lazy"
 					referrerpolicy="no-referrer"
-					class="mt-1 h-6 w-6 shrink-0 rounded"
+					class="h-4 w-4 shrink-0 rounded-sm"
 					onerror={() => (faviconFailed = true)}
 				/>
 			{:else}
-				<div class="mt-1 flex h-6 w-6 shrink-0 items-center justify-center rounded bg-gray-100 dark:bg-gray-700">
-					<LinkOutline class="h-4 w-4 text-gray-400" />
-				</div>
+				<LinkOutline class="h-4 w-4 shrink-0" />
 			{/if}
-
-			<div class="min-w-0 flex-1">
-				<a
-					{href}
-					target="_blank"
-					rel="noopener noreferrer"
-					class="line-clamp-2 block break-words font-medium text-gray-900 hover:text-primary-600 dark:text-white dark:hover:text-primary-400"
-				>
-					{bookmark.title || bookmark.url}
-				</a>
-				<p class="truncate text-xs text-gray-400 dark:text-gray-500">{getDomain(bookmark.url)}</p>
-			</div>
+			<span class="truncate">{getDomain(bookmark.url)}</span>
 		</div>
 
+		<!-- The title link covers the whole card; footer controls sit above it -->
+		<a
+			{href}
+			target="_blank"
+			rel="noopener noreferrer"
+			class="line-clamp-2 break-words font-semibold leading-snug text-gray-900 after:absolute after:inset-0 after:content-[''] group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400"
+		>
+			{bookmark.title || bookmark.url}
+		</a>
+
 		{#if bookmark.description}
-			<div class="line-clamp-2 break-words text-sm text-gray-500 dark:text-gray-400">
-				{bookmark.description}
-			</div>
+			<p class="line-clamp-2 break-words text-sm text-gray-600 dark:text-gray-400">{bookmark.description}</p>
 		{/if}
 
 		{#if bookmark.tags && bookmark.tags.length > 0}
-			<div class="flex flex-wrap gap-1">
+			<div class="flex flex-wrap gap-1.5">
 				{#each bookmark.tags as tag (tag)}
 					<span
-						class="rounded-full border border-gray-200 px-2 py-0.5 text-xs text-gray-600 dark:border-gray-700 dark:text-gray-300"
+						class="rounded-full bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 dark:text-primary-300"
 					>
-						{tag}
+						#{tag}
 					</span>
 				{/each}
 			</div>
 		{/if}
 
-		{#if bookmark.createdBy || bookmark.createdAt || collectionName}
-			<p class="text-xs text-gray-400 dark:text-gray-500">
-				{#if bookmark.createdBy}added by <span class="font-medium">{bookmark.createdBy}</span>{/if}
-				{#if bookmark.createdAt}
-					<time datetime={bookmark.createdAt.toISOString()} title={bookmark.createdAt.toLocaleString()}>
-						{timeAgo(bookmark.createdAt)}</time
-					>{/if}
+		<div class="relative z-10 mt-auto flex items-center gap-2 pt-2 text-xs text-gray-500">
+			<p class="min-w-0 flex-1 truncate">
 				{#if collectionName}
-					in
 					{#if collectionHref}
-						<a href={collectionHref} class="font-medium hover:underline">{collectionName}</a>
+						<a href={collectionHref} class="inline-flex items-center gap-1 font-medium hover:text-gray-800 dark:hover:text-gray-200">
+							<FolderOutline class="h-3.5 w-3.5" />{collectionName}</a
+						>
+						·
 					{:else}
-						<span class="font-medium">{collectionName}</span>
+						<span class="font-medium">{collectionName}</span> ·
 					{/if}
 				{/if}
+				{#if bookmark.createdBy}{bookmark.createdBy}{/if}
+				{#if bookmark.createdAt}
+					·
+					<time datetime={bookmark.createdAt.toISOString()} title={bookmark.createdAt.toLocaleString()}>
+						{timeAgo(bookmark.createdAt)}
+					</time>
+				{/if}
 			</p>
-		{/if}
-	</div>
-
-	{#if actions}
-		<div class="absolute bottom-3 right-3">
-			{@render actions()}
+			{#if actions}
+				<div class="relative">
+					{@render actions()}
+				</div>
+			{/if}
 		</div>
-	{/if}
-</Card>
+	</div>
+</article>

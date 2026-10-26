@@ -5,6 +5,7 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
+	import { DotsVerticalOutline } from 'flowbite-svelte-icons';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import { collectionsToTree, flattenTree, findNode, collectSubtreeIds } from '../components/tree';
@@ -281,7 +282,7 @@
 
 <svelte:window onclick={() => ((openMenuId = null), (openHeaderMenu = false))} />
 
-<main class="mx-auto p-6">
+<div>
 	{#if loading}
 		<p class="text-gray-500 dark:text-gray-400">Loading...</p>
 	{:else if error}
@@ -290,7 +291,7 @@
 		<!-- Header -->
 		<div class="mb-6 flex items-center justify-between gap-3">
 			<div class="min-w-0">
-				<h1 class="truncate text-2xl font-bold text-gray-900 dark:text-white">{collection.name}</h1>
+				<h1 class="truncate text-2xl font-bold tracking-tight">{collection.name}</h1>
 				{#if collection.description}
 					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{collection.description}</p>
 				{/if}
@@ -363,19 +364,19 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="flex flex-col gap-4 md:flex-row md:flex-wrap">
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				{#each bookmarks as bookmark (bookmark.id)}
 					<BookmarkCard {bookmark}>
 						{#snippet actions()}
 							{#if canEditBookmarks || canDeleteBookmarks}
-								<Button
-									size="xs"
-									color="light"
+								<button
+									type="button"
+									class="rounded-md p-1 text-gray-400 opacity-60 transition hover:bg-gray-100 hover:text-gray-700 group-hover:opacity-100 dark:hover:bg-gray-800 dark:hover:text-gray-200"
 									onclick={(e: MouseEvent) => toggleMenu(bookmark.id, e)}
 									aria-label="Link actions"
 								>
-									&#x22EE;
-								</Button>
+									<DotsVerticalOutline class="h-4 w-4" />
+								</button>
 								{#if openMenuId === bookmark.id}
 									<div
 										class="absolute bottom-9 right-0 z-10 w-32 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
@@ -412,7 +413,7 @@
 			</div>
 		{/if}
 	{/if}
-</main>
+</div>
 
 <!-- Add Bookmark Modal -->
 <Modal title="Add Link" bind:open={showAddModal} size="sm" autoclose={false}>

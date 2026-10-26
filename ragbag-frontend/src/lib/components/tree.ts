@@ -1,5 +1,6 @@
 import type { Component } from 'svelte';
 import type { CollectionDto } from 'ragbag-frontend-sdk';
+import { FolderOutline } from 'flowbite-svelte-icons';
 
 export interface TreeNode {
 	id?: string;
@@ -15,6 +16,7 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 	return {
 		id: collection.id,
 		label: collection.name,
+		icon: FolderOutline,
 		children: collection.children?.length
 			? collection.children.map((c) => collectionToTreeNode(c, spaceId))
 			: undefined,

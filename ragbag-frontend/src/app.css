@@ -1,4 +1,5 @@
 @import "tailwindcss";
+@import "@fontsource-variable/inter";
 @plugin 'flowbite/plugin';
 @custom-variant dark (&:where(.dark, .dark *));
 /* ... */
@@ -45,6 +46,11 @@
     --color-gray-700: #44403c;
     --color-gray-800: #292524;
     --color-gray-900: #1c1917;
+    /* Extra steps for the layered app shell: rail < sidebar < content */
+    --color-gray-850: #211d1b;
+    --color-gray-950: #0c0a09;
+
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
 }
 
 @layer base {
@@ -52,17 +58,20 @@
     [role='button'] {
         cursor: pointer;
     }
+
+    html {
+        font-feature-settings: 'cv11', 'ss01';
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Thin scrollbars that match the warm dark theme */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-gray-700) transparent;
+    }
 }
 
 /* --- Brand accents --- */
-
-/* Warm gradient logo text */
-.brand-glow {
-    background: linear-gradient(135deg, #f59e0b, #d97706, #b45309);
-    background-clip: text;
-    -webkit-background-clip: text;
-    -webkit-text-fill-color: transparent;
-}
 
 /* Warm glow on primary buttons (dark mode) */
 :where(.dark) button[type='submit'] {
@@ -71,17 +80,4 @@
 }
 :where(.dark) button[type='submit']:hover {
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
-}
-
-/* Warm accent line under navbar */
-.navbar-accent {
-    height: 2px;
-    background: linear-gradient(90deg, #b45309, #f59e0b, #fbbf24, #f59e0b, #b45309);
-    background-size: 200% 100%;
-    animation: gradient-shift 8s ease infinite;
-}
-
-@keyframes gradient-shift {
-    0% { background-position: 0% 50%; }
-    100% { background-position: 200% 50%; }
 }

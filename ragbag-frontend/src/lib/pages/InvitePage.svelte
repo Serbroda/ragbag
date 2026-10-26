@@ -1,7 +1,8 @@
 <script lang="ts">
 	import { InviteApi } from 'ragbag-frontend-sdk';
 	import type { InvitePreviewDto } from 'ragbag-frontend-sdk';
-	import { Alert, Button, Card } from 'flowbite-svelte';
+	import { Alert, Button } from 'flowbite-svelte';
+	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import { apiConfig, errorMessage } from '../api/client';
 	import { navigate, route } from '../router';
 	import { loadSpaces } from '../stores/spaces.svelte';
@@ -51,9 +52,8 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
-	<Card class="w-full max-w-md p-10 text-center">
-		<h2 class="brand-glow mb-6 text-3xl font-bold tracking-tight">Ragbag</h2>
+<CenteredScreen>
+	<div class="text-center">
 
 		{#if loading}
 			<p class="text-gray-500 dark:text-gray-400">Loading invite...</p>
@@ -85,5 +85,5 @@
 			<Alert color="red" class="mb-4">{error}</Alert>
 			<Button class="w-full" color="light" onclick={() => navigate('/')}>Go to my spaces</Button>
 		{/if}
-	</Card>
-</div>
+	</div>
+</CenteredScreen>

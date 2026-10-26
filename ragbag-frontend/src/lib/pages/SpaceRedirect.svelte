@@ -1,5 +1,6 @@
 <script lang="ts">
-	import { Button, Card } from 'flowbite-svelte';
+	import { Button } from 'flowbite-svelte';
+	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
@@ -37,36 +38,33 @@
 	}
 </script>
 
-<div class="flex min-h-screen items-center justify-center bg-gray-50 p-4 dark:bg-gray-900">
-	{#if failed}
-		<Card class="w-full max-w-md p-8 text-center">
-			<p class="mb-4 text-gray-700 dark:text-gray-300">Could not load your spaces.</p>
+{#if failed}
+	<CenteredScreen>
+		<div class="text-center">
+			<p class="mb-4 text-gray-300">Could not load your spaces.</p>
 			<div class="flex justify-center gap-2">
 				<Button onclick={init}>Try again</Button>
-				<Button color="light" onclick={handleLogout}>Log out</Button>
+				<Button color="alternative" onclick={handleLogout}>Log out</Button>
 			</div>
-		</Card>
-	{:else if session.loaded && session.spaces.length === 0}
-		<Card class="w-full max-w-md p-10 text-center">
-			<h2 class="brand-glow mb-2 text-3xl font-bold tracking-tight">Ragbag</h2>
-			<p class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">
+		</div>
+	</CenteredScreen>
+{:else if session.loaded && session.spaces.length === 0}
+	<CenteredScreen subtitle="Collect and share links with your people.">
+		<div class="text-center">
+			<p class="mb-1 text-lg font-semibold text-white">
 				Welcome{session.me ? `, ${session.me.username}` : ''}!
 			</p>
-			<p class="mb-6 text-sm text-gray-500 dark:text-gray-400">
+			<p class="mb-6 text-sm text-gray-400">
 				You are not part of any space yet. Create your own or join one with an invite link.
 			</p>
 			<Button class="w-full" onclick={() => (showCreateOrJoin = true)}>Create or join a space</Button>
-			<button
-				type="button"
-				class="mt-4 text-sm text-gray-500 hover:underline dark:text-gray-400"
-				onclick={handleLogout}
-			>
+			<button type="button" class="mt-4 text-sm text-gray-400 hover:underline" onclick={handleLogout}>
 				Log out
 			</button>
-		</Card>
-	{:else}
-		<p class="text-gray-500 dark:text-gray-400">Loading...</p>
-	{/if}
-</div>
+		</div>
+	</CenteredScreen>
+{:else}
+	<div class="flex min-h-dvh items-center justify-center bg-gray-950 text-gray-500">Loading...</div>
+{/if}
 
 <CreateOrJoinSpaceModal bind:open={showCreateOrJoin} ondone={openSpace} />

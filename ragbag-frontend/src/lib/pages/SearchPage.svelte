@@ -39,9 +39,9 @@
 	}
 </script>
 
-<main class="mx-auto p-6">
+<div>
 	<div class="mb-6">
-		<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Search results for "{query}"</h1>
+		<h1 class="text-2xl font-bold tracking-tight">Results for “{query}”</h1>
 		{#if !loading}
 			<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
 				{bookmarks.length} result{bookmarks.length !== 1 ? 's' : ''} found
@@ -60,7 +60,7 @@
 			<p class="text-gray-500 dark:text-gray-400">No bookmarks found matching your search.</p>
 		</div>
 	{:else}
-		<div class="flex flex-col gap-4 md:flex-row md:flex-wrap">
+		<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 			{#each bookmarks as bookmark (bookmark.id)}
 				<BookmarkCard
 					{bookmark}
@@ -70,4 +70,4 @@
 			{/each}
 		</div>
 	{/if}
-</main>
+</div>

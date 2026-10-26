@@ -8,9 +8,11 @@
 		SpaceMemberRoleEnum,
 	} from 'ragbag-frontend-sdk';
 	import { getContext } from 'svelte';
-	import { Alert, Badge, Button, Card, Input, Label, Modal, Select, Textarea } from 'flowbite-svelte';
+	import { Alert, Button, Input, Label, Modal, Select, Textarea } from 'flowbite-svelte';
 	import { apiConfig, appBase, errorMessage } from '../api/client';
 	import { navigate, route } from '../router';
+	import RoleBadge from '../components/RoleBadge.svelte';
+	import { colorFor, initials } from '../utils/format';
 
 	const spaceApi = new SpaceApi(apiConfig());
 	const inviteApi = new InviteApi(apiConfig());
@@ -26,12 +28,6 @@
 		ADMIN: 'Admin',
 		CONTRIBUTOR: 'Contributor',
 		VIEWER: 'Viewer',
-	};
-	const ROLE_COLORS: Record<SpaceMemberRoleEnum, 'purple' | 'blue' | 'green' | 'gray'> = {
-		OWNER: 'purple',
-		ADMIN: 'blue',
-		CONTRIBUTOR: 'green',
-		VIEWER: 'gray',
 	};
 	const rank = (role: SpaceMemberRoleEnum) => ROLES.indexOf(role);
 
@@ -249,8 +245,8 @@
 	}
 </script>
 
-<main class="mx-auto max-w-4xl space-y-6 p-4 md:p-8">
-	<h1 class="text-2xl font-bold text-gray-900 dark:text-white">Space settings</h1>
+<div class="mx-auto max-w-3xl space-y-6">
+	<h1 class="text-2xl font-bold tracking-tight">Space settings</h1>
 
 	{#if loading}
 		<p class="text-gray-500 dark:text-gray-400">Loading...</p>
@@ -258,7 +254,7 @@
 		<Alert color="red">{loadError}</Alert>
 	{:else if space}
 		<!-- General -->
-		<Card class="max-w-none p-6">
+		<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 			<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">General</h2>
 			<form class="flex flex-col gap-4" onsubmit={saveGeneral}>
 				<div>
@@ -286,10 +282,10 @@
 					</div>
 				{/if}
 			</form>
-		</Card>
+		</section>
 
 		<!-- Members -->
-		<Card class="max-w-none p-6">
+		<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 			<div class="mb-4 flex items-center justify-between">
 				<h2 class="text-lg font-semibold text-gray-900 dark:text-white">Members</h2>
 				<span class="text-sm text-gray-500 dark:text-gray-400">{members.length}</span>
@@ -297,13 +293,15 @@
 			{#if memberError}
 				<Alert color="red" class="mb-4">{memberError}</Alert>
 			{/if}
-			<ul class="divide-y divide-gray-200 dark:divide-gray-700">
+			<ul class="divide-y divide-gray-100 dark:divide-gray-800">
 				{#each members as member (member.userId)}
 					<li class="flex items-center gap-3 py-3">
 						<div
-							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full bg-gray-200 text-sm font-semibold text-gray-700 dark:bg-gray-700 dark:text-gray-200"
+							class="flex h-9 w-9 shrink-0 items-center justify-center rounded-full text-sm font-semibold text-white {colorFor(
+								member.username,
+							)}"
 						>
-							{member.username.slice(0, 2).toUpperCase()}
+							{initials(member.username)}
 						</div>
 						<div class="min-w-0 flex-1">
 							<p class="truncate font-medium text-gray-900 dark:text-white">
@@ -328,16 +326,16 @@
 							</Select>
 							<Button size="xs" color="light" onclick={() => (memberToRemove = member)}>Remove</Button>
 						{:else}
-							<Badge color={ROLE_COLORS[member.role]}>{ROLE_LABELS[member.role]}</Badge>
+							<RoleBadge role={member.role} />
 						{/if}
 					</li>
 				{/each}
 			</ul>
-		</Card>
+		</section>
 
 		<!-- Invites -->
 		{#if canManageMembers}
-			<Card class="max-w-none p-6">
+			<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 				<h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Invite links</h2>
 				<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
 					Anyone with the link can join this space with the selected role.
@@ -379,16 +377,19 @@
 				{/if}
 
 				{#if invites.length > 0}
-					<ul class="mt-4 divide-y divide-gray-200 dark:divide-gray-700">
+					<ul class="mt-4 divide-y divide-gray-100 dark:divide-gray-800">
 						{#each invites as invite (invite.token)}
 							{@const active = isActive(invite)}
 							<li class="flex flex-wrap items-center gap-3 py-3" class:opacity-60={!active}>
-								<Badge color={invite.role ? ROLE_COLORS[invite.role] : 'gray'}>
-									{invite.role ? ROLE_LABELS[invite.role] : '–'}
-								</Badge>
+								{#if invite.role}
+									<RoleBadge role={invite.role} />
+								{/if}
 								<div class="min-w-0 flex-1">
-									<p class="truncate font-mono text-xs text-gray-700 dark:text-gray-300">
-										{inviteLink(invite.token!)}
+									<p
+										class="truncate font-mono text-xs text-gray-700 dark:text-gray-300"
+										title={inviteLink(invite.token!)}
+									>
+										…/invite/{invite.token!.slice(0, 10)}…
 									</p>
 									<p class="text-xs text-gray-500 dark:text-gray-400">
 										by {invite.createdBy} · used {invite.usedCount ?? 0}{invite.maxUses
@@ -409,11 +410,11 @@
 						{/each}
 					</ul>
 				{/if}
-			</Card>
+			</section>
 		{/if}
 
 		<!-- Danger zone -->
-		<Card class="max-w-none border-red-300 p-6 dark:border-red-800">
+		<section class="rounded-xl border border-red-500/30 bg-white p-6 dark:bg-gray-900">
 			<h2 class="mb-4 text-lg font-semibold text-red-600 dark:text-red-500">Danger zone</h2>
 			{#if dangerError && !showLeaveModal && !showDeleteModal}
 				<Alert color="red" class="mb-4">{dangerError}</Alert>
@@ -445,9 +446,9 @@
 					</div>
 				{/if}
 			</div>
-		</Card>
+		</section>
 	{/if}
-</main>
+</div>
 
 <Modal title="Remove member" open={memberToRemove !== null} onclose={() => (memberToRemove = null)} size="sm">
 	<p class="text-gray-700 dark:text-gray-300">

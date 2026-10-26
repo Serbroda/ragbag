@@ -51,12 +51,12 @@
 	});
 </script>
 
-<main class="mx-auto max-w-6xl p-2 md:p-6">
-	<header class="mb-6">
+<div>
+	<header class="mb-8">
 		<p class="text-sm text-gray-500 dark:text-gray-400">
 			{greeting}{session.me ? `, ${session.me.username}` : ''} 👋
 		</p>
-		<h1 class="text-3xl font-bold text-gray-900 dark:text-white">{space?.name ?? 'Dashboard'}</h1>
+		<h1 class="text-3xl font-bold tracking-tight">{space?.name ?? 'Dashboard'}</h1>
 		{#if space?.description}
 			<p class="mt-1 text-gray-600 dark:text-gray-300">{space.description}</p>
 		{/if}
@@ -105,7 +105,7 @@
 				{/if}
 			</div>
 		{:else}
-			<div class="flex flex-col gap-4 md:flex-row md:flex-wrap">
+			<div class="grid gap-4 sm:grid-cols-2 xl:grid-cols-3">
 				{#each recent as bookmark (bookmark.id)}
 					<BookmarkCard
 						{bookmark}
@@ -118,4 +118,4 @@
 			</div>
 		{/if}
 	</section>
-</main>
+</div>
