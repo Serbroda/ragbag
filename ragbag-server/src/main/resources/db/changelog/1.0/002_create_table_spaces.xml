@@ -36,7 +36,7 @@
         </createTable>
     </changeSet>
 
-    <changeSet id="2026-02-01: create table spaces_members" author="serbroda">
+    <changeSet id="2026-02-01: create table spaces_members" author="serbroda" dbms="!sqlite">
         <preConditions onFail="MARK_RAN">
             <not>
                 <tableExists tableName="spaces_members"/>
@@ -57,6 +57,21 @@
 
         <addUniqueConstraint tableName="spaces_members" columnNames="space_id,user_id"
                              constraintName="uc_spaces_members"/>
+    </changeSet>
+
+    <!-- SQLite cannot add constraints to existing tables, so it gets the same table with inline constraints -->
+    <changeSet id="2026-10-26: create table spaces_members (sqlite)" author="serbroda" dbms="sqlite">
+        <createTable tableName="spaces_members">
+            <column name="space_id" type="varchar(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="uc_spaces_members"/>
+            </column>
+            <column name="user_id" type="varchar(36)">
+                <constraints nullable="false" primaryKey="true" primaryKeyName="uc_spaces_members"/>
+            </column>
+            <column name="role" type="varchar(80)">
+                <constraints nullable="false"/>
+            </column>
+        </createTable>
     </changeSet>
 
 </databaseChangeLog>

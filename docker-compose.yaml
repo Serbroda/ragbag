@@ -1,0 +1,35 @@
+# Ragbag in a single container with SQLite, the simplest setup for personal use and homelabs.
+# For PostgreSQL use docker-compose.postgres.yaml instead.
+#
+#   cp .env.example .env    # then change the secrets
+#   docker compose up -d --build
+#
+# Open http://localhost:8080 and register the first account. The database lives in the
+# ragbag-data volume (/data/ragbag.db inside the container).
+# Every value below has a dummy default so the stack starts out of the box. Do not use the
+# defaults for anything reachable from the internet.
+
+services:
+  app:
+    build: .
+    image: ragbag:latest
+    restart: unless-stopped
+    ports:
+      - "${RAGBAG_PORT:-8080}:8080"
+    volumes:
+      - ragbag-data:/data
+    environment:
+      SPRING_DATASOURCE_URL: "jdbc:sqlite:/data/ragbag.db?foreign_keys=on&journal_mode=WAL&busy_timeout=5000&date_class=TEXT"
+      # At least 32 characters, e.g. `openssl rand -base64 32`
+      JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
+      # Send the refresh cookie over HTTPS only. Keep false for plain http (localhost, LAN without TLS),
+      # otherwise the browser drops the cookie and you are logged out after 15 minutes.
+      SECURITY_JWT_SECURECOOKIE: ${SECURE_COOKIE:-false}
+      # Comma-separated keys for /actuator (header X-Api-Key); empty disables access
+      ACTUATOR_API_KEYS: ${ACTUATOR_API_KEYS:-}
+      APP_FEATURES_REGISTRATIONENABLED: ${REGISTRATION_ENABLED:-true}
+      # Allow loading link titles from your own network (homelab dashboards)
+      APP_METADATA_ALLOWPRIVATEHOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+
+volumes:
+  ragbag-data:

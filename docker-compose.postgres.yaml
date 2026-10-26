@@ -1,7 +1,7 @@
-# Ragbag with PostgreSQL.
+# Ragbag with PostgreSQL. For a single-container setup with SQLite see docker-compose.yaml.
 #
 #   cp .env.example .env    # then change the secrets
-#   docker compose up -d --build
+#   docker compose -f docker-compose.postgres.yaml up -d --build
 #
 # Open http://localhost:8080 and register the first account.
 # Every value below has a dummy default so the stack starts out of the box. Do not use the

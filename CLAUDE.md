@@ -33,9 +33,10 @@ The OpenAPI spec lives at `openapi/openapi.yaml`. Generation outputs:
 
 ### Docker
 ```bash
-docker compose up -d --build   # App + PostgreSQL 18 on http://localhost:8080 (dummy secrets, see .env.example)
+docker compose up -d --build                                   # single container with SQLite in a volume
+docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQL 18
 ```
-Multi-stage `Dockerfile` (JDK build → JRE Alpine runtime, non-root). Configuration via environment variables in `docker-compose.yaml`.
+Both on http://localhost:8080 with dummy secrets (see `.env.example`). Multi-stage `Dockerfile` (JDK build → JRE Alpine runtime, non-root); the image defaults to SQLite at `/data/ragbag.db`, `SPRING_DATASOURCE_URL` switches the database.
 
 ### Tests
 ```bash
@@ -83,14 +84,15 @@ Each feature package contains its own Entity, Repository, Service, and Controlle
 - **Entity base class**: All entities extend `AbstractBaseEntity` (UUID primary key, `@Version` optimistic locking, auto-managed `createdAt`/`updatedAt`)
 - **Constructor injection**: Via Lombok `@RequiredArgsConstructor`
 - **Security**: JWT (HS256) via Spring Security OAuth2 Resource Server. Access tokens carry `type=ACCESS`, refresh tokens (httpOnly cookie) `type=REFRESH`; both carry `token_version`, which `logout/all` increments to invalidate them. Method-level `@PreAuthorize("hasPermission(#id, 'SPACE|COLLECTION|BOOKMARK', '<SpacePermission>')")` with custom `DomainPermissionEvaluator` — every endpoint taking a resource id needs one.
-- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`. Must work on H2, PostgreSQL and MariaDB: use portable types (`text`, never `varchar(max)`) and never edit an applied changeset (add a new one instead). Run the server tests against PostgreSQL by setting `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`.
-- **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
+- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`. Must work on H2, PostgreSQL, MariaDB and SQLite: use portable types (`text`, never `varchar(max)`) and never edit an applied changeset (add a new one instead). SQLite cannot add constraints to existing tables (`addPrimaryKey`, `addForeignKeyConstraint`, `addUniqueConstraint`): declare them inline in `createTable`, or pair a `dbms="!sqlite"` changeset with a `dbms="sqlite"` variant. SQLite JDBC URLs need `foreign_keys=on` (cascades), `journal_mode=WAL`, `busy_timeout` and `date_class=TEXT`. Run the server tests against PostgreSQL by setting `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`.
+- **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `sqlite` (SQLite file at `data/ragbag.db`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
 
 ### Frontend Structure (`ragbag-frontend/src/lib`)
 - `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, quick switcher)
 - `components/` — shared UI (`BookmarkCard`, modals, `QuickSwitcher`, collection tree)
 - `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user, last visited space)
 - `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`
+- Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
 - `api/client.ts` — auth handling, `errorMessage()` to surface ProblemDetail `detail` texts
 
 ### API Prefix
