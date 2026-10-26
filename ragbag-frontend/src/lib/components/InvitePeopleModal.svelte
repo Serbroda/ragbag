@@ -4,6 +4,7 @@
 	import { untrack } from 'svelte';
 	import { Button, Input, Label, Modal, Select } from 'flowbite-svelte';
 	import { apiConfig, appBase, errorMessage } from '../api/client';
+	import { copyText } from '../utils/clipboard';
 
 	let {
 		open = $bindable(false),
@@ -23,6 +24,8 @@
 	let error = $state('');
 	let busy = $state(false);
 	let copied = $state(false);
+	let copyFailed = $state(false);
+	let linkInput = $state<HTMLInputElement>();
 
 	$effect(() => {
 		if (!open) return;
@@ -31,6 +34,7 @@
 			role = 'VIEWER';
 			days = '7';
 			copied = false;
+			copyFailed = false;
 			generate();
 		});
 	});
@@ -58,13 +62,15 @@
 	}
 
 	async function copy() {
-		try {
-			await navigator.clipboard.writeText(link);
-			copied = true;
-			setTimeout(() => (copied = false), 2000);
-		} catch {
-			// Clipboard unavailable: the link stays selectable in the input
+		copyFailed = !(await copyText(link));
+		if (copyFailed) {
+			// Leave the link selected so Ctrl/Cmd+C copies it
+			linkInput?.focus();
+			linkInput?.select();
+			return;
 		}
+		copied = true;
+		setTimeout(() => (copied = false), 2000);
 	}
 </script>
 
@@ -93,6 +99,7 @@
 		<div class="flex gap-2">
 			<Input
 				id="quick-invite-link"
+				bind:elementRef={linkInput}
 				readonly
 				value={busy ? 'Generating…' : link}
 				class="font-mono text-xs"
@@ -102,6 +109,11 @@
 				{copied ? 'Copied' : 'Copy'}
 			</Button>
 		</div>
+		{#if copyFailed}
+			<p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
+				Your browser blocked copying. The link is selected, press Ctrl+C (⌘C on Mac).
+			</p>
+		{/if}
 	</div>
 	{#if error}
 		<p class="text-sm text-red-500 dark:text-red-400">{error}</p>

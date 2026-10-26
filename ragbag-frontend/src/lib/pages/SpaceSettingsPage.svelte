@@ -14,6 +14,7 @@
 	import RoleBadge from '../components/RoleBadge.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import ImagePicker from '../components/ImagePicker.svelte';
+	import { copyText } from '../utils/clipboard';
 
 	const spaceApi = new SpaceApi(apiConfig());
 	const inviteApi = new InviteApi(apiConfig());
@@ -147,6 +148,8 @@
 	let creatingInvite = $state(false);
 	let inviteError = $state('');
 	let copiedToken = $state<string | null>(null);
+	/** Shown for manual copying when the browser refuses clipboard access. */
+	let manualCopyLink = $state<string | null>(null);
 
 	function inviteLink(token: string): string {
 		return `${window.location.origin}${appBase()}/invite/${token}`;
@@ -183,15 +186,15 @@
 	}
 
 	async function copyLink(token: string) {
-		try {
-			await navigator.clipboard.writeText(inviteLink(token));
-			copiedToken = token;
-			setTimeout(() => {
-				if (copiedToken === token) copiedToken = null;
-			}, 2000);
-		} catch {
-			// Clipboard not available (e.g. insecure context): the link stays visible for manual copying
+		if (!(await copyText(inviteLink(token)))) {
+			manualCopyLink = inviteLink(token);
+			return;
 		}
+		manualCopyLink = null;
+		copiedToken = token;
+		setTimeout(() => {
+			if (copiedToken === token) copiedToken = null;
+		}, 2000);
 	}
 
 	async function revokeInvite(token: string) {
@@ -393,6 +396,23 @@
 				</form>
 				{#if inviteError}
 					<Alert color="red" class="mt-4">{inviteError}</Alert>
+				{/if}
+				{#if manualCopyLink}
+					<div class="mt-4 rounded-lg bg-amber-500/10 p-3 ring-1 ring-inset ring-amber-500/30">
+						<p class="mb-2 text-sm text-amber-700 dark:text-amber-300">
+							Your browser blocked copying. Copy the link with Ctrl+C (⌘C on Mac):
+						</p>
+						<input
+							readonly
+							value={manualCopyLink}
+							class="w-full rounded-lg border border-gray-300 bg-gray-50 px-3 py-2 font-mono text-xs text-gray-900 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+							onfocus={(e) => e.currentTarget.select()}
+							{@attach (node) => {
+								node.focus();
+								node.select();
+							}}
+						/>
+					</div>
 				{/if}
 
 				{#if invites.length > 0}
