@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Build: OpenAPI SDKs, Svelte frontend and Spring Boot jar ---------------------------------
-FROM eclipse-temurin:25-jdk AS build
+FROM docker.io/library/eclipse-temurin:25-jdk AS build
 WORKDIR /build
 # Leave memory for the Node/Vite frontend build on small hosts (default heap is 1/4 of RAM per JVM)
 ENV MAVEN_OPTS="-Xmx768m"
@@ -21,13 +21,15 @@ RUN --mount=type=cache,target=/root/.m2 \
     && cp ragbag-server/target/ragbag-server-*.jar /ragbag.jar
 
 # --- Runtime ---------------------------------------------------------------------------------
-FROM eclipse-temurin:25-jre-alpine
+FROM docker.io/library/eclipse-temurin:25-jre-alpine
 
-RUN addgroup -S ragbag && adduser -S -G ragbag ragbag \
+# Fixed ids so a bind-mounted data directory can also be prepared on the host (chown 1000:1000 data)
+RUN apk add --no-cache su-exec \
+    && addgroup -S -g 1000 ragbag && adduser -S -u 1000 -G ragbag ragbag \
     && mkdir /data && chown ragbag:ragbag /data
 WORKDIR /app
 COPY --from=build /ragbag.jar /app/ragbag.jar
-USER ragbag
+COPY --chmod=755 docker/entrypoint.sh /entrypoint.sh
 
 # SQLite in /data by default; set SPRING_DATASOURCE_URL to use PostgreSQL or MariaDB instead.
 # foreign_keys enables cascades, WAL lets reads run alongside writes, busy_timeout waits for locks.
@@ -41,4 +43,6 @@ EXPOSE 8080
 HEALTHCHECK --interval=30s --timeout=5s --start-period=60s --retries=3 \
     CMD wget -q -O /dev/null http://localhost:8080/api/app/config/features || exit 1
 
-ENTRYPOINT ["java", "-jar", "/app/ragbag.jar"]
+# Starts as root only to fix the ownership of /data, then runs the app as the ragbag user
+ENTRYPOINT ["/entrypoint.sh"]
+CMD ["java", "-jar", "/app/ragbag.jar"]

@@ -36,7 +36,7 @@ The OpenAPI spec lives at `openapi/openapi.yaml`. Generation outputs:
 docker compose up -d --build                                   # single container with SQLite in a volume
 docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQL 18
 ```
-Both on http://localhost:8080 with dummy secrets (see `.env.example`). Multi-stage `Dockerfile` (JDK build → JRE Alpine runtime, non-root); the image defaults to SQLite at `/data/ragbag.db`, `SPRING_DATASOURCE_URL` switches the database.
+Both on http://localhost:8080 with dummy secrets (see `.env.example`). Multi-stage `Dockerfile` (JDK build → JRE Alpine runtime, non-root); the image defaults to SQLite at `/data/ragbag.db`, `SPRING_DATASOURCE_URL` switches the database. `docker/entrypoint.sh` starts as root only to chown bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
 
 ### Tests
 ```bash

@@ -18,6 +18,9 @@ services:
       - "${RAGBAG_PORT:-8080}:8080"
     volumes:
       - ragbag-data:/data
+      # Or keep the database next to this file; the container fixes the permissions on startup.
+      # On SELinux hosts (Fedora, RHEL) append :Z, i.e. ./data:/data:Z
+      # - ./data:/data
     environment:
       SPRING_DATASOURCE_URL: "jdbc:sqlite:/data/ragbag.db?foreign_keys=on&journal_mode=WAL&busy_timeout=5000&date_class=TEXT"
       # At least 32 characters, e.g. `openssl rand -base64 32`
