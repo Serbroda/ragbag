@@ -39,8 +39,8 @@ services:
       SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ragbag-dummy-db-password}
       # At least 32 characters, e.g. `openssl rand -base64 32`
       JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
-      # Send the refresh cookie over HTTPS only. Keep false for plain http (localhost, LAN without TLS),
-      # otherwise the browser drops the cookie and you are logged out after 15 minutes.
+      # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
+      # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
       SECURITY_JWT_SECURECOOKIE: ${SECURE_COOKIE:-false}
       # Comma-separated keys for /actuator (header X-Api-Key). Without it /actuator stays closed.
       # Not passed by default: some podman-compose versions hand an empty ${VAR:-} default over literally.

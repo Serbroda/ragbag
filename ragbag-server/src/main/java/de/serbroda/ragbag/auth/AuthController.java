@@ -27,6 +27,8 @@ import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.security.oauth2.jwt.JwtDecoder;
 import org.springframework.security.oauth2.jwt.JwtException;
 import org.springframework.web.bind.annotation.*;
+import org.springframework.web.context.request.RequestContextHolder;
+import org.springframework.web.context.request.ServletRequestAttributes;
 
 @Slf4j
 @RequiredArgsConstructor
@@ -64,7 +66,7 @@ public class AuthController implements AuthenticationApi {
 
         ResponseCookie refreshCookie = ResponseCookie.from(REFRESH_COOKIE, refreshToken)
                 .httpOnly(true)
-                .secure(secureCookie)
+                .secure(secureCookie())
                 .sameSite("Strict")
                 .path(REFRESH_COOKIE_PATH)
                 .maxAge(Duration.ofMinutes(jwtService.getExpirationRefreshTokenMinutes()))
@@ -120,12 +122,19 @@ public class AuthController implements AuthenticationApi {
                 .build();
     }
 
+    /** Forced by configuration, otherwise whenever the browser talks HTTPS (directly or via a reverse proxy). */
+    private boolean secureCookie() {
+        return secureCookie
+                || (RequestContextHolder.getRequestAttributes() instanceof ServletRequestAttributes attributes
+                        && attributes.getRequest().isSecure());
+    }
+
     private ResponseCookie deleteRefreshCookie() {
         return ResponseCookie.from(REFRESH_COOKIE, "")
                 .path(REFRESH_COOKIE_PATH)
                 .maxAge(0)
                 .httpOnly(true)
-                .secure(secureCookie)
+                .secure(secureCookie())
                 .sameSite("Strict")
                 .build();
     }

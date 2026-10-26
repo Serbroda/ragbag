@@ -1,3 +1,15 @@
+server:
+  # Behind a reverse proxy (nginx proxy manager, Traefik, Caddy, ...) use the X-Forwarded-Proto/-Host headers
+  # to know the public URL. Without this, the browser's Origin (https://ragbag.example.com) does not match
+  # the internal address and same-origin requests are rejected as cross-origin. Only proxies from private
+  # networks are trusted (server.tomcat.remoteip.internal-proxies to change).
+  forward-headers-strategy: native
+  tomcat:
+    remoteip:
+      # Spelled out: without them Tomcat ignores the scheme (https) the proxy reports
+      remote-ip-header: X-Forwarded-For
+      protocol-header: X-Forwarded-Proto
+
 spring:
   application:
     name: ragbag-server
@@ -38,6 +50,8 @@ security:
   jwt:
     issuer: ragbag
     secret: "CHANGE_ME_TO_A_VERY_LONG_RANDOM_SECRET_AT_LEAST_32_CHARS" # openssl rand -base64 32
+    # Force the Secure flag on the refresh cookie. Without it the flag is set automatically for HTTPS
+    # requests, including those a reverse proxy terminates (X-Forwarded-Proto: https)
     secure-cookie: false
     expiration:
       accessToken: 15 # minutes
@@ -46,6 +60,13 @@ security:
     - qixG+XyASUrmrSae1vuMbpe4UjfVaYplU2E3LrqML3Q= # openssl rand -base64 32
 
 app:
+  cors:
+    # Origins of frontends served from somewhere else than this server (the Vite dev server by default).
+    # Not needed behind a reverse proxy that serves /app and /api under the same domain.
+    allowed-origins:
+      - http://localhost:3000
+      - http://localhost:4200
+      - http://localhost:5173
   features:
     # Enable or disable the registration endpoint
     registration-enabled: true
