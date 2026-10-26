@@ -9,6 +9,7 @@ import de.serbroda.ragbag.generated.model.CollectionAccessDto;
 import de.serbroda.ragbag.generated.model.CollectionAccessMemberDto;
 import de.serbroda.ragbag.generated.model.CollectionDto;
 import de.serbroda.ragbag.generated.model.CreateCollectionDto;
+import de.serbroda.ragbag.generated.model.ImportResultDto;
 import de.serbroda.ragbag.generated.model.MoveCollectionDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionAccessDto;
 import de.serbroda.ragbag.generated.model.UpdateCollectionDto;
@@ -28,6 +29,7 @@ public class CollectionController implements CollectionApi {
 
     private final CollectionService collectionService;
     private final CollectionMapper mapper;
+    private final CollectionExchangeService exchangeService;
 
     @PreAuthorize("hasPermission(#spaceId, '" + DOMAIN_PREFIX_SPACE + "', 'CREATE_COLLECTIONS')")
     @Override
@@ -103,6 +105,29 @@ public class CollectionController implements CollectionApi {
                 collectionId,
                 Boolean.TRUE.equals(updateCollectionAccessDto.getRestricted()),
                 updateCollectionAccessDto.getMemberIds())));
+    }
+
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'IMPORT_EXPORT')")
+    @Override
+    public ResponseEntity<Object> exportCollection(String collectionId) {
+        return ResponseEntity.ok(exchangeService.export(SecurityUtils.currentUserId(), collectionId));
+    }
+
+    @PreAuthorize("hasPermission(#collectionId, '" + DOMAIN_PREFIX_COLLECTION + "', 'IMPORT_EXPORT')")
+    @Override
+    public ResponseEntity<ImportResultDto> importCollection(String collectionId, Object body, Boolean preview) {
+        CollectionExchangeService.ImportResult result = exchangeService.importInto(
+                SecurityUtils.currentUserId(), collectionId, body, Boolean.TRUE.equals(preview));
+        return ResponseEntity.ok(new ImportResultDto.Builder()
+                .preview(result.preview())
+                .formatVersion(result.formatVersion())
+                .appVersion(result.appVersion())
+                .collectionsCreated(result.collectionsCreated())
+                .collectionsMerged(result.collectionsMerged())
+                .bookmarksImported(result.linksImported())
+                .bookmarksSkipped(result.linksSkipped())
+                .bookmarksInvalid(result.linksInvalid())
+                .build());
     }
 
     private static CollectionAccessDto toDto(CollectionService.CollectionAccess access) {

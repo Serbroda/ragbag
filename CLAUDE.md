@@ -72,7 +72,7 @@ Code is organized by domain feature, not by technical layer:
 - `dashboard/` — Per-user, per-space dashboard layout (sections of type LINKS / FAVORITES / RECENT)
 - `user/` — User entity, repository, service, controller
 - `space/` — Spaces (top-level containers), membership management; roles OWNER > ADMIN > CONTRIBUTOR > VIEWER map to `SpacePermission`s in `SpaceMemberRole` (single source of truth, also sent to the frontend)
-- `collection/` — Hierarchical collections within spaces. Private (`restricted`) collections are visible only to their `memberIds`, whatever the space role, and hide everything below them; `CollectionAccessService` decides visibility and every bookmark/collection list or query must filter with `hiddenCollectionIds()`
+- `collection/` — Hierarchical collections within spaces. Export/import as versioned JSON (`CollectionExchange`, format `ragbag-collection`): raise `FORMAT_VERSION` on incompatible changes and add a converter in `CollectionExchangeService.parse`; the import preview runs the real import and rolls it back. Private (`restricted`) collections are visible only to their `memberIds`, whatever the space role, and hide everything below them; `CollectionAccessService` decides visibility and every bookmark/collection list or query must filter with `hiddenCollectionIds()`
 - `bookmark/` — Bookmarks within collections, personal favorites, metadata fetching (SSRF-guarded; `app.metadata.allow-private-hosts` opens private networks for homelabs)
 - `image/` — Avatars and space icons: uploads or URLs (via `SafeHttpClient`), re-encoded as 256 px PNGs, served publicly under `/api/v1/images/{id}` (new id per upload)
 - `invite/` — Invitation system (token-based invites to spaces/collections)

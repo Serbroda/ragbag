@@ -144,6 +144,14 @@
                         </exclude>
                     </excludes>
                 </configuration>
+                <executions>
+                    <!-- META-INF/build-info.properties: the app version written into exports -->
+                    <execution>
+                        <goals>
+                            <goal>build-info</goal>
+                        </goals>
+                    </execution>
+                </executions>
             </plugin>
 
             <plugin>

@@ -782,6 +782,76 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/collections/{collectionId}/export:
+    get:
+      summary: Export a collection with its sub-collections and links as a versioned JSON file
+      operationId: exportCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: The export file (format "ragbag-collection", see CollectionExchange on the server)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/import:
+    post:
+      summary: Import an export file into a collection; sub-collections with the same name are merged
+      operationId: importCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: query
+          name: preview
+          description: Only report what the import would do, without changing anything
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResultDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # Bookmarks
   /v1/spaces/{spaceId}/bookmarks:
     get:
@@ -1441,6 +1511,7 @@ components:
         - DELETE_BOOKMARKS # Permission to delete bookmarks within the space
         - DELETE_SPACE # Permission to delete the space
         - MANAGE_MEMBERS # Permission to change member roles, remove members and manage invites
+        - IMPORT_EXPORT # Permission to export collections and import export files
 
     UpdateSpaceDto:
       properties:
@@ -1546,6 +1617,38 @@ components:
             $ref: '#/components/schemas/ID'
       required:
         - restricted
+
+    ImportResultDto:
+      description: What an import did, or as preview would do
+      properties:
+        preview:
+          type: boolean
+        formatVersion:
+          type: integer
+        appVersion:
+          type: string
+          description: Ragbag version that exported the file
+        collectionsCreated:
+          type: integer
+        collectionsMerged:
+          type: integer
+          description: Sub-collections of the file that already existed under the same name
+        bookmarksImported:
+          type: integer
+        bookmarksSkipped:
+          type: integer
+          description: Links already in the target collection
+        bookmarksInvalid:
+          type: integer
+          description: Links without a valid http(s) URL
+      required:
+        - preview
+        - formatVersion
+        - collectionsCreated
+        - collectionsMerged
+        - bookmarksImported
+        - bookmarksSkipped
+        - bookmarksInvalid
 
     ImageUpload:
       type: object

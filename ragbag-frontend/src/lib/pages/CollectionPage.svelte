@@ -9,6 +9,7 @@
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
 	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
+	import ImportCollectionModal from '../components/ImportCollectionModal.svelte';
 	import { DotsVerticalOutline, LockOutline } from 'flowbite-svelte-icons';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
@@ -27,6 +28,7 @@
 	const canDeleteBookmarks = $derived(hasSpacePermission?.('DELETE_BOOKMARKS') ?? false);
 	const canEditCollections = $derived(hasSpacePermission?.('EDIT_COLLECTIONS') ?? false);
 	const canDeleteCollections = $derived(hasSpacePermission?.('DELETE_COLLECTIONS') ?? false);
+	const canImportExport = $derived(hasSpacePermission?.('IMPORT_EXPORT') ?? false);
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
@@ -64,6 +66,24 @@
 	let allCollectionOptions = $state<{ id: string; label: string; depth: number }[]>([]);
 
 	let showAccessModal = $state(false);
+	let showImportModal = $state(false);
+
+	async function exportCollection() {
+		if (!collection) return;
+		actionError = '';
+		try {
+			const file = await collectionApi.exportCollection({ collectionId });
+			const blob = new Blob([JSON.stringify(file, null, 2)], { type: 'application/json' });
+			const slug = collection.name.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-|-$/g, '') || 'collection';
+			const link = document.createElement('a');
+			link.href = URL.createObjectURL(blob);
+			link.download = `ragbag-${slug}-${new Date().toISOString().slice(0, 10)}.json`;
+			link.click();
+			URL.revokeObjectURL(link.href);
+		} catch (err) {
+			actionError = await errorMessage(err, 'Export failed.');
+		}
+	}
 
 	// Delete collection
 	let showDeleteCollectionModal = $state(false);
@@ -357,7 +377,29 @@
 										Edit Collection
 									</button>
 								{/if}
+								{#if canImportExport}
+									<div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											exportCollection();
+											openHeaderMenu = false;
+										}}
+									>
+										Export as JSON
+									</button>
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											showImportModal = true;
+											openHeaderMenu = false;
+										}}
+									>
+										Import JSON…
+									</button>
+								{/if}
 								{#if canDeleteCollections}
+									<div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
 									<button
 										class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
 										onclick={() => {
@@ -563,6 +605,18 @@
 </Modal>
 
 <PinToDashboardModal bind:bookmark={bookmarkToPin} {spaceId} />
+
+{#if collection && canImportExport}
+	<ImportCollectionModal
+		bind:open={showImportModal}
+		{collectionId}
+		collectionName={collection.name}
+		ondone={() => {
+			loadData(collectionId);
+			reloadSidebar();
+		}}
+	/>
+{/if}
 
 {#if collection}
 	<CollectionAccessModal
