@@ -24,6 +24,8 @@
 
     <properties>
         <java.version>25</java.version>
+        <!-- Node used by frontend-maven-plugin for the SDK and the frontend build -->
+        <node.version>v24.22.1</node.version>
     </properties>
 
     <dependencyManagement>
@@ -59,7 +61,7 @@
                 <plugin>
                     <groupId>com.github.eirslett</groupId>
                     <artifactId>frontend-maven-plugin</artifactId>
-                    <version>1.15.4</version>
+                    <version>2.0.2</version>
                 </plugin>
 
                 <plugin>
