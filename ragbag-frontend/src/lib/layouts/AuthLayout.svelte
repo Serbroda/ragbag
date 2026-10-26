@@ -13,7 +13,6 @@
 		PlusOutline,
 		SearchOutline,
 		UserAddSolid,
-		UsersGroupSolid,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
 	import { navigate, route } from '../router';
@@ -21,7 +20,6 @@
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
 	import InvitePeopleModal from '../components/InvitePeopleModal.svelte';
-	import MemberList from '../components/MemberList.svelte';
 	import QuickSwitcher, { type SwitcherItem } from '../components/QuickSwitcher.svelte';
 	import { collectionsToTree, expandToNode, flattenTree, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
@@ -146,7 +144,6 @@
 	const MIN_WIDTH = 200;
 	const MAX_WIDTH = 480;
 	const DEFAULT_WIDTH = 256;
-	const MEMBER_PANEL_WIDTH = 240;
 
 	let sidebarWidth = $state(DEFAULT_WIDTH);
 	let isResizing = $state(false);
@@ -172,20 +169,9 @@
 	// --- Menus & panels ---
 	let spaceMenuOpen = $state(false);
 	let userMenuOpen = $state(false);
-	let membersOpen = $state(readFlag('members_panel', true));
 	let switcherOpen = $state(false);
 	let showCreateOrJoin = $state(false);
 	let showInvite = $state(false);
-
-	function readFlag(key: string, fallback: boolean): boolean {
-		const value = localStorage.getItem(key);
-		return value === null ? fallback : value === 'true';
-	}
-
-	function toggleMembers() {
-		membersOpen = !membersOpen;
-		localStorage.setItem('members_panel', String(membersOpen));
-	}
 
 	function closeMenus() {
 		spaceMenuOpen = false;
@@ -373,19 +359,6 @@
 			>
 				Jump to… <kbd class="rounded bg-gray-100 px-1 font-sans dark:bg-gray-800">{isMac ? '⌘K' : 'Ctrl K'}</kbd>
 			</button>
-			{#if activeSpaceId}
-				<button
-					type="button"
-					class="hidden rounded-lg p-2 lg:block {membersOpen
-						? 'text-gray-900 dark:text-white'
-						: 'text-gray-400 hover:text-gray-600 dark:hover:text-gray-200'}"
-					title={membersOpen ? 'Hide member list' : 'Show member list'}
-					aria-pressed={membersOpen}
-					onclick={toggleMembers}
-				>
-					<UsersGroupSolid class="h-5 w-5" />
-				</button>
-			{/if}
 		</div>
 	</Navbar>
 	<div class="navbar-accent"></div>
@@ -621,23 +594,8 @@
 		<div class="h-full w-full hover:bg-gray-300 dark:hover:bg-gray-600" class:!bg-primary-500={isResizing}></div>
 	</div>
 
-	<!-- Member list (Discord's right panel) -->
-	{#if activeSpaceId && membersOpen}
-		<aside
-			class="fixed top-[61px] right-0 z-30 hidden h-[calc(100vh-61px)] border-l border-gray-200 bg-gray-50 lg:block dark:border-gray-700 dark:bg-gray-800"
-			style:width="{MEMBER_PANEL_WIDTH}px"
-			aria-label="Members"
-		>
-			<MemberList spaceId={activeSpaceId} currentUserId={session.me?.id} />
-		</aside>
-	{/if}
-
 	<!-- Main Content -->
-	<div
-		class="p-4"
-		style:--sidebar-w="{SPACE_BAR_WIDTH + sidebarWidth}px"
-		style:--members-w="{activeSpaceId && membersOpen ? MEMBER_PANEL_WIDTH : 0}px"
-	>
+	<div class="p-4" style:--sidebar-w="{SPACE_BAR_WIDTH + sidebarWidth}px">
 		<div class="md-sidebar-offset">
 			{@render children()}
 		</div>
@@ -714,11 +672,6 @@
 	@media (min-width: 768px) {
 		.md-sidebar-offset {
 			margin-left: var(--sidebar-w);
-		}
-	}
-	@media (min-width: 1024px) {
-		.md-sidebar-offset {
-			margin-right: var(--members-w);
 		}
 	}
 </style>

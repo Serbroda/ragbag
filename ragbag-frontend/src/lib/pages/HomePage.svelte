@@ -62,7 +62,14 @@
 		{/if}
 		<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
 			{#if memberCount !== null}
-				<span>{memberCount} member{memberCount === 1 ? '' : 's'}</span>
+				<button
+					type="button"
+					class="hover:text-gray-700 hover:underline dark:hover:text-gray-200"
+					title="Show members in space settings"
+					onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId } })}
+				>
+					{memberCount} member{memberCount === 1 ? '' : 's'}
+				</button>
 			{/if}
 			{#if space?.role}
 				<span>You are <span class="font-medium capitalize">{space.role.toLowerCase()}</span></span>

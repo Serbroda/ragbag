@@ -80,8 +80,8 @@ Each feature package contains its own Entity, Repository, Service, and Controlle
 - **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
 
 ### Frontend Structure (`ragbag-frontend/src/lib`)
-- `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, member panel, quick switcher)
-- `components/` — shared UI (`BookmarkCard`, modals, `MemberList`, `QuickSwitcher`, collection tree)
+- `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, quick switcher)
+- `components/` — shared UI (`BookmarkCard`, modals, `QuickSwitcher`, collection tree)
 - `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user, last visited space)
 - `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`
 - `api/client.ts` — auth handling, `errorMessage()` to surface ProblemDetail `detail` texts
