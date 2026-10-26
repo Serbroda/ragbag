@@ -8,38 +8,27 @@ on:
     branches:
       - '**'
 
-env:
-  GO_VERSION: "1.24.x"
-  TAR_OPTIONS: --skip-old-files
-
 jobs:
   build:
     runs-on: ubuntu-latest
     steps:
       - uses: actions/checkout@v4
+
+      - uses: actions/setup-java@v4
         with:
-          fetch-depth: 0
-      - name: Read version
-        run: |
-          echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
+          distribution: temurin
+          java-version: '25'
+          cache: maven
 
-      - uses: actions/setup-go@v5
+      - uses: actions/cache@v4
         with:
-          go-version: ${{ env.GO_VERSION }}
+          path: ~/.npm
+          key: ${{ runner.os }}-npm-${{ hashFiles('ragbag-frontend/package-lock.json') }}
 
-      - uses: actions/cache@v3
-        with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+      # Generates both SDKs, builds the frontend, runs server tests and spotless:check
+      - name: Build
+        run: ./mvnw -B clean verify
 
-      - name: Run tests
-        run: make test
-
-      - name: Build platforms
-        run: make build
-
-      - name: Run binary to check start
-        run: |
-          ./bin/ragbag-v${{ env.VERSION }}-linux-amd64 --version
+      - name: Frontend type check
+        working-directory: ragbag-frontend
+        run: npm run check
