@@ -76,6 +76,18 @@ class CollectionExchangeTests extends AbstractApiTest {
                         .header("Authorization", bearer(other.accessToken())))
                 .andExpect(jsonPath("$[0].title").value("Newest"))
                 .andExpect(jsonPath("$[1].title").value("Example"));
+        // Imported links keep their original date
+        String source = mockMvc.perform(get("/api/v1/collections/{id}/bookmarks", root)
+                        .header("Authorization", bearer(owner.accessToken())))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        String copy = mockMvc.perform(get("/api/v1/collections/{id}/bookmarks", target)
+                        .header("Authorization", bearer(other.accessToken())))
+                .andReturn()
+                .getResponse()
+                .getContentAsString();
+        assertThat((String) JsonPath.read(copy, "$[0].createdAt")).isEqualTo(JsonPath.read(source, "$[0].createdAt"));
         mockMvc.perform(get("/api/v1/spaces/{id}/collections", otherSpace)
                         .header("Authorization", bearer(other.accessToken())))
                 .andExpect(jsonPath("$[0].children[0].name").value("Monitoring"));

@@ -60,6 +60,9 @@ security:
     - qixG+XyASUrmrSae1vuMbpe4UjfVaYplU2E3LrqML3Q= # openssl rand -base64 32
 
 app:
+  # Usernames (comma-separated) that may manage all users, e.g. create password reset links.
+  # The demo user exists in dev only; production reads ADMIN_USERS (application-prod.yml).
+  admin-users: admin
   cors:
     # Origins of frontends served from somewhere else than this server (the Vite dev server by default).
     # Not needed behind a reverse proxy that serves /app and /api under the same domain.

@@ -17,6 +17,7 @@
 		StarSolid,
 		UserAddSolid,
 		UserCircleOutline,
+		UsersOutline,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
 	import { navigate, p, route } from '../router';
@@ -29,6 +30,7 @@
 	import Avatar from '../components/Avatar.svelte';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
+	import AdminUsersModal from '../components/AdminUsersModal.svelte';
 	import { collectionsToTree, expandToNode, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
@@ -193,6 +195,7 @@
 	let showCreateOrJoin = $state(false);
 	let showInvite = $state(false);
 	let showProfile = $state(false);
+	let showAdminUsers = $state(false);
 
 	function closeMenus() {
 		spaceMenuOpen = false;
@@ -612,6 +615,15 @@
 						>
 							Profile & appearance <UserCircleOutline class="h-4 w-4" />
 						</button>
+						{#if session.me?.instanceAdmin}
+							<button
+								role="menuitem"
+								class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+								onclick={() => (closeMenus(), (showAdminUsers = true))}
+							>
+								Manage users <UsersOutline class="h-4 w-4" />
+							</button>
+						{/if}
 						<div class="my-1 h-px bg-gray-800"></div>
 						<button
 							role="menuitem"
@@ -809,3 +821,7 @@
 <QuickSwitcher bind:open={switcherOpen} items={switcherItems} />
 
 <ProfileModal bind:open={showProfile} />
+
+{#if session.me?.instanceAdmin}
+	<AdminUsersModal bind:open={showAdminUsers} />
+{/if}

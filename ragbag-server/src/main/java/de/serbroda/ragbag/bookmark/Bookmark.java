@@ -4,6 +4,7 @@ import de.serbroda.ragbag.collection.Collection;
 import de.serbroda.ragbag.shared.base.AbstractBaseEntity;
 import de.serbroda.ragbag.user.User;
 import jakarta.persistence.*;
+import java.time.Instant;
 import java.util.LinkedHashSet;
 import java.util.Set;
 import lombok.Getter;
@@ -39,4 +40,9 @@ public class Bookmark extends AbstractBaseEntity {
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "created_by", nullable = false)
     private User createdBy;
+
+    /** Keeps the original date when a link is imported; new links get the current time on persist. */
+    public void setCreatedAt(Instant createdAt) {
+        this.createdAt = createdAt;
+    }
 }

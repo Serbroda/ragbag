@@ -43,6 +43,10 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/LoginPage.svelte'),
 		meta: { public: true },
 	},
+	'/reset-password/:token': {
+		'/': () => import('./pages/ResetPasswordPage.svelte'),
+		meta: { public: true },
+	},
 	hooks: {
 		beforeLoad({ meta }) {
 			if (!meta.public && !isAuthenticated()) {

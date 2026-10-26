@@ -143,6 +143,101 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/password-reset/{token}:
+    get:
+      summary: Check a password reset link (public)
+      operationId: getPasswordReset
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetPreviewDto'
+    post:
+      summary: Set a new password with a reset link (public); signs out all devices of the user
+      operationId: resetPassword
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Instance administration (users listed in app.admin-users / ADMIN_USERS)
+  /v1/admin/users:
+    get:
+      summary: All users of this installation
+      operationId: getAllUsers
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/users/{userId}/password-reset:
+    post:
+      summary: Create a one-time password reset link for a user (replaces an older one)
+      operationId: createPasswordReset
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # Users
   /v1/users/me:
     get:
@@ -1402,6 +1497,64 @@ components:
       required:
         - access_token
 
+    ResetPasswordRequest:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - newPassword
+
+    PasswordResetPreviewDto:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: False if the link is unknown, expired or already used
+        username:
+          type: string
+      required:
+        - valid
+
+    PasswordResetDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Only returned once; the server keeps a hash
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - expiresAt
+
+    AdminUserDto:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        username:
+          type: string
+        email:
+          type: string
+        avatarId:
+          $ref: '#/components/schemas/ID'
+        instanceAdmin:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        spaces:
+          type: integer
+          description: Number of spaces the user is a member of
+      required:
+        - id
+        - username
+        - email
+        - instanceAdmin
+
     ChangePasswordRequest:
       type: object
       properties:
@@ -1438,6 +1591,9 @@ components:
           type: string
         avatarId:
           $ref: '#/components/schemas/ID'
+        instanceAdmin:
+          type: boolean
+          description: Listed in ADMIN_USERS, may manage all users of this installation
       required:
         - id
         - username

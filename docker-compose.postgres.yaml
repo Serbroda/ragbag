@@ -45,6 +45,9 @@ services:
       # Comma-separated keys for /actuator (header X-Api-Key). Without it /actuator stays closed.
       # Not passed by default: some podman-compose versions hand an empty ${VAR:-} default over literally.
       # ACTUATOR_API_KEYS: ${ACTUATOR_API_KEYS}
+      # Usernames (comma-separated) that may manage all users, e.g. create password reset links:
+      # Profile menu → Manage users. Set ADMIN_USERS in .env and uncomment.
+      # ADMIN_USERS: ${ADMIN_USERS}
       APP_FEATURES_REGISTRATIONENABLED: ${REGISTRATION_ENABLED:-true}
       # Allow loading link titles from your own network (homelab dashboards)
       APP_METADATA_ALLOWPRIVATEHOSTS: ${ALLOW_PRIVATE_HOSTS:-false}

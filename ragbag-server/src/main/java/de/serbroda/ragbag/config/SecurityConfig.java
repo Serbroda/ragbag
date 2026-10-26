@@ -90,6 +90,7 @@ public class SecurityConfig {
                                 "/api/auth/login",
                                 "/api/auth/refresh",
                                 "/api/auth/logout",
+                                "/api/auth/password-reset/*",
                                 "/api/docs/**",
                                 "/api/app/config/features",
                                 "/api/v1/images/*")

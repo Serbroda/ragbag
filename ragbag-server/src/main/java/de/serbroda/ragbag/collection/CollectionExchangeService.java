@@ -184,6 +184,11 @@ public class CollectionExchangeService {
             bookmark.setOgImage(httpUrlOrNull(link.ogImage()));
             bookmark.setFavicon(httpUrlOrNull(link.favicon()));
             bookmark.setCanonical(httpUrlOrNull(link.canonical()));
+            // Original date if the file has one, otherwise strictly increasing in file order (oldest first)
+            bookmark.setCreatedAt(
+                    link.createdAt() != null
+                            ? link.createdAt()
+                            : counter.importStart.plusMillis(counter.linksImported));
             bookmarkRepository.save(bookmark);
             counter.linksImported++;
         }
@@ -267,6 +272,7 @@ public class CollectionExchangeService {
     }
 
     private static final class Counter {
+        final Instant importStart = Instant.now();
         int totalCollections;
         int totalLinks;
         int collectionsCreated;

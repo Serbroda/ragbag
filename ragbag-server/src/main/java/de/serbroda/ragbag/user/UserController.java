@@ -17,6 +17,7 @@ import org.springframework.web.multipart.MultipartFile;
 public class UserController implements UserApi {
 
     private final UserService userService;
+    private final InstanceAdminService adminService;
 
     @Override
     public ResponseEntity<UserDto> me() {
@@ -36,12 +37,13 @@ public class UserController implements UserApi {
         return ResponseEntity.ok(toDto(userService.removeAvatar(SecurityUtils.currentUserId())));
     }
 
-    private static UserDto toDto(User user) {
+    private UserDto toDto(User user) {
         return new UserDto.Builder()
                 .id(user.getId())
                 .username(user.getUsername())
                 .email(user.getEmail())
                 .avatarId(user.getAvatarImageId())
+                .instanceAdmin(adminService.isAdmin(user))
                 .build();
     }
 }

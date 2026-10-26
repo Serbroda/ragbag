@@ -2,7 +2,7 @@
 	import { Label, Input, Button, Alert } from 'flowbite-svelte';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import { errorMessage, login, register, fetchFeatureFlags, takePendingInvite } from '../api/client';
-	import { navigate } from '../router';
+	import { navigate, route } from '../router';
 	import { resetSession } from '../stores/spaces.svelte';
 
 	let registrationEnabled = $state(false);
@@ -20,7 +20,8 @@
 	let password = $state('');
 	let confirmPassword = $state('');
 	let error = $state('');
-	let success = $state('');
+	// Set after a password reset, which sends the user here
+	let success = $state(route.search.reset ? 'Your password has been changed. Sign in with the new one.' : '');
 	let loading = $state(false);
 
 	function resetForm() {
@@ -123,6 +124,12 @@
 				{/if}
 			</Button>
 		</form>
+
+		{#if !isRegister}
+			<p class="mt-4 text-center text-xs text-gray-500">
+				Forgot your password? Ask the administrator of this Ragbag for a reset link.
+			</p>
+		{/if}
 
 		{#if registrationEnabled}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">

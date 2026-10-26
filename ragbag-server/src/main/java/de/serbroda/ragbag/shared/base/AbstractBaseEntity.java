@@ -28,7 +28,10 @@ public abstract class AbstractBaseEntity {
     @PrePersist
     protected void setCreatedAndLastModifiedOnCreate() {
         Instant now = Instant.now();
-        createdAt = now;
+        // Imports may carry the original creation date
+        if (createdAt == null || createdAt.isAfter(now)) {
+            createdAt = now;
+        }
         updatedAt = now;
     }
 

@@ -7,9 +7,12 @@ import de.serbroda.ragbag.generated.api.AuthenticationApi;
 import de.serbroda.ragbag.generated.model.ChangePasswordRequest;
 import de.serbroda.ragbag.generated.model.LoginRequest;
 import de.serbroda.ragbag.generated.model.LoginResponse;
+import de.serbroda.ragbag.generated.model.PasswordResetPreviewDto;
 import de.serbroda.ragbag.generated.model.RegisterRequest;
+import de.serbroda.ragbag.generated.model.ResetPasswordRequest;
 import de.serbroda.ragbag.generated.model.UserDto;
 import de.serbroda.ragbag.security.SecurityUtils;
+import de.serbroda.ragbag.user.PasswordResetService;
 import de.serbroda.ragbag.user.User;
 import de.serbroda.ragbag.user.UserService;
 import java.time.Duration;
@@ -46,6 +49,7 @@ public class AuthController implements AuthenticationApi {
     private final UserService userService;
     private final RegisterService registerService;
     private final AppProperties appProperties;
+    private final PasswordResetService passwordResetService;
 
     @Value("${security.jwt.secure-cookie:false}")
     private boolean secureCookie;
@@ -62,6 +66,24 @@ public class AuthController implements AuthenticationApi {
                 .orElseThrow(() -> new DisabledException("User blocked"));
 
         return issueTokens(user);
+    }
+
+    @Override
+    public ResponseEntity<PasswordResetPreviewDto> getPasswordReset(String token) {
+        return ResponseEntity.ok(passwordResetService
+                .findUser(token)
+                .map(user -> new PasswordResetPreviewDto.Builder()
+                        .valid(true)
+                        .username(user.getUsername())
+                        .build())
+                .orElseGet(
+                        () -> new PasswordResetPreviewDto.Builder().valid(false).build()));
+    }
+
+    @Override
+    public ResponseEntity<Void> resetPassword(String token, ResetPasswordRequest resetPasswordRequest) {
+        passwordResetService.reset(token, resetPasswordRequest.getNewPassword());
+        return ResponseEntity.noContent().build();
     }
 
     @Override

@@ -12,6 +12,10 @@ springdoc:
   swagger-ui:
     enabled: false
 
+app:
+  # Comma-separated usernames, e.g. ADMIN_USERS=danny
+  admin-users: ${ADMIN_USERS:}
+
 security:
   jwt:
     secret: ${JWT_SECRET}

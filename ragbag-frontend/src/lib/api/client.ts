@@ -91,6 +91,15 @@ export async function changePassword(currentPassword: string, newPassword: strin
 	setAccessToken(response.accessToken);
 }
 
+/** Who a password reset link belongs to; works without being signed in. */
+export async function getPasswordReset(token: string): Promise<{ valid: boolean; username?: string }> {
+	return new AuthenticationApi(anonConfig()).getPasswordReset({ token });
+}
+
+export async function resetPassword(token: string, newPassword: string): Promise<void> {
+	await new AuthenticationApi(anonConfig()).resetPassword({ token, resetPasswordRequest: { newPassword } });
+}
+
 /** Signs out on this device only. */
 export async function logout(): Promise<void> {
 	try {

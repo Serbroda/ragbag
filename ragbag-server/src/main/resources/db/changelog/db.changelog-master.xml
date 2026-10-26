@@ -16,5 +16,6 @@
 	<include file="/db/changelog/1.0/009_create_tables_dashboard.xml"/>
 	<include file="/db/changelog/1.0/010_create_table_images.xml"/>
 	<include file="/db/changelog/1.0/011_add_private_collections.xml"/>
+	<include file="/db/changelog/1.0/012_create_table_password_resets.xml"/>
 
 </databaseChangeLog>
