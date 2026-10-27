@@ -12,12 +12,15 @@
 		collectionId,
 		collectionName,
 		spaceId,
+		privateVia,
 		onchanged,
 	}: {
 		open?: boolean;
 		collectionId: string;
 		collectionName: string;
 		spaceId: string;
+		/** Nearest private collection above this one, which limits who can see it anyway. */
+		privateVia?: string;
 		onchanged?: () => void;
 	} = $props();
 
@@ -81,10 +84,16 @@
 				{#if restricted}
 					Only the members selected below see this collection, its sub-collections and links. Not even space
 					owners and admins can see it otherwise.
-				{:else}
+				{:else if !privateVia}
 					Everyone in the space can see this collection.
 				{/if}
 			</p>
+			{#if privateVia}
+				<p class="rounded-lg bg-amber-500/10 p-3 text-sm text-amber-700 ring-1 ring-inset ring-amber-500/30 dark:text-amber-300">
+					This collection is inside the private collection <strong>{privateVia}</strong>. Only its members can see
+					it{restricted ? ', and of them only the ones selected here' : ''}.
+				</p>
+			{/if}
 			{#if restricted}
 				<MemberChecklist {members} bind:selected currentUserId={session.me?.id} disabled={!canManage} />
 			{/if}

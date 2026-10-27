@@ -29,6 +29,7 @@
 	const canEditCollections = $derived(hasSpacePermission?.('EDIT_COLLECTIONS') ?? false);
 	const canDeleteCollections = $derived(hasSpacePermission?.('DELETE_COLLECTIONS') ?? false);
 	const canImportExport = $derived(hasSpacePermission?.('IMPORT_EXPORT') ?? false);
+	const privateAncestor = getContext<((collectionId: string) => string | undefined) | undefined>('private-ancestor');
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
@@ -92,6 +93,8 @@
 
 	const collectionId = $derived(route.params.collectionId ?? '');
 	const spaceId = $derived(route.params.spaceId ?? '');
+	/** Name of the nearest private collection above this one: its members are the only ones who see this one. */
+	const privateVia = $derived(collectionId ? privateAncestor?.(collectionId) : undefined);
 
 	$effect(() => {
 		if (collectionId) {
@@ -316,18 +319,22 @@
 		<Alert color="red" class="mb-4">{error}</Alert>
 	{:else if collection}
 		<!-- Header -->
-		<div class="mb-6 flex items-center justify-between gap-3">
+		<!-- Stacked on phones so the title keeps the full width -->
+		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
 			<div class="min-w-0">
-				<h1 class="flex items-center gap-2 text-2xl font-bold tracking-tight">
-					<span class="truncate">{collection.name}</span>
-					{#if collection.restricted}
+				<h1 class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-bold tracking-tight sm:text-2xl">
+					<span class="min-w-0 break-words">{collection.name}</span>
+					{#if collection.restricted || privateVia}
 						<button
 							type="button"
-							class="inline-flex shrink-0 items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/25 dark:text-amber-300"
-							title="Only selected members can see this collection"
+							class="inline-flex max-w-full shrink-0 items-center gap-1 rounded-md bg-amber-500/15 px-2 py-0.5 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/25 dark:text-amber-300"
+							title={collection.restricted
+								? 'Only selected members can see this collection'
+								: `Inside the private collection “${privateVia}”: only its members can see this one`}
 							onclick={() => (showAccessModal = true)}
 						>
-							<LockOutline class="h-3.5 w-3.5" /> Private
+							<LockOutline class="h-3.5 w-3.5 shrink-0" />
+							<span class="truncate">{collection.restricted ? 'Private' : `Private via ${privateVia}`}</span>
 						</button>
 					{/if}
 				</h1>
@@ -336,7 +343,7 @@
 				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
-				<LinkViewToggle />
+				<div class="me-auto sm:me-0"><LinkViewToggle /></div>
 				{#if canCreateBookmarks}
 					<Button size="sm" onclick={openAddModal}>+ Add Link</Button>
 				{/if}
@@ -624,6 +631,7 @@
 		{collectionId}
 		collectionName={collection.name}
 		{spaceId}
+		{privateVia}
 		onchanged={() => {
 			loadData(collectionId);
 			reloadSidebar();

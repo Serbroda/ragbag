@@ -118,6 +118,14 @@
 
 	setContext('collection-name', (collectionId: string) => findLabel(menuTree, collectionId));
 
+	// Visibility is inherited: below a private collection only its members see anything
+	setContext('private-ancestor', (collectionId: string) =>
+		pathToNode(menuTree, collectionId)
+			.slice(0, -1)
+			.reverse()
+			.find((node) => node.restricted)?.label,
+	);
+
 	function findLabel(nodes: TreeNode[], id: string): string | undefined {
 		for (const node of nodes) {
 			if (node.id === id) return node.label;
@@ -678,7 +686,8 @@
 						<!-- On small screens only the current page is shown -->
 						<li class="items-center gap-1 {last ? 'flex min-w-0' : 'hidden shrink-0 sm:flex'}">
 							{#if i > 0}
-								<ChevronRightOutline class="h-3.5 w-3.5 shrink-0 text-gray-400" />
+								<!-- Phones only show the last crumb, which then needs no separator -->
+								<ChevronRightOutline class="hidden h-3.5 w-3.5 shrink-0 text-gray-400 sm:block" />
 							{/if}
 							{#if crumb.href && !last}
 								<a

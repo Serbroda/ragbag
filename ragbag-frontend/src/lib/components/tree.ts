@@ -11,6 +11,8 @@ export interface TreeNode {
 	/** Route path without the base, used to detect the active item */
 	path?: string;
 	expanded?: boolean;
+	/** Private collection (only its members see it and everything below). */
+	restricted?: boolean;
 	icon?: Component<{ class?: string }>;
 	children?: TreeNode[];
 }
@@ -22,6 +24,7 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 		label: collection.name,
 		// Private collections are only visible to selected members
 		icon: collection.restricted ? LockOutline : FolderOutline,
+		restricted: collection.restricted,
 		children: collection.children?.length
 			? collection.children.map((c) => collectionToTreeNode(c, spaceId))
 			: undefined,
