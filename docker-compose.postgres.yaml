@@ -34,23 +34,18 @@ services:
     ports:
       - "${RAGBAG_PORT:-8080}:8080"
     environment:
-      SPRING_DATASOURCE_URL: jdbc:postgresql://db:5432/${DB_NAME:-ragbag}
-      SPRING_DATASOURCE_USERNAME: ${DB_USER:-ragbag}
-      SPRING_DATASOURCE_PASSWORD: ${DB_PASSWORD:-ragbag-dummy-db-password}
+      # URL-encode special characters of the password (e.g. @ as %40)
+      DATABASE_URL: postgres://${DB_USER:-ragbag}:${DB_PASSWORD:-ragbag-dummy-db-password}@db:5432/${DB_NAME:-ragbag}?sslmode=disable
       # At least 32 characters, e.g. `openssl rand -base64 32`
       JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
       # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
       # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
-      SECURITY_JWT_SECURECOOKIE: ${SECURE_COOKIE:-false}
-      # Comma-separated keys for /actuator (header X-Api-Key). Without it /actuator stays closed.
-      # Not passed by default: some podman-compose versions hand an empty ${VAR:-} default over literally.
-      # ACTUATOR_API_KEYS: ${ACTUATOR_API_KEYS}
-      # Usernames (comma-separated) that may manage all users, e.g. create password reset links:
-      # Profile menu → Manage users. Set ADMIN_USERS in .env and uncomment.
-      # ADMIN_USERS: ${ADMIN_USERS}
-      APP_FEATURES_REGISTRATIONENABLED: ${REGISTRATION_ENABLED:-true}
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
+      # Usernames (comma-separated) that may manage all users, e.g. create password reset links
+      ADMIN_USERS: ${ADMIN_USERS:-}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
       # Allow loading link titles from your own network (homelab dashboards)
-      APP_METADATA_ALLOWPRIVATEHOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+      ALLOW_PRIVATE_HOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
 
 volumes:
   db-data:

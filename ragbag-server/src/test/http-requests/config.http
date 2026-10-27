@@ -1,2 +1,0 @@
-### GET request to example server
-GET {{host}}/api/app/config/features

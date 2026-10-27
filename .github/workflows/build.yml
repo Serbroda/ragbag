@@ -11,24 +11,41 @@ on:
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
 
-      - uses: actions/setup-java@v4
+      - uses: actions/setup-go@v5
         with:
-          distribution: temurin
-          java-version: '25'
-          cache: maven
+          go-version-file: go.mod
 
-      - uses: actions/cache@v4
+      - uses: actions/setup-node@v4
         with:
-          path: ~/.npm
-          key: ${{ runner.os }}-npm-${{ hashFiles('ragbag-frontend/package-lock.json') }}
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ragbag-frontend/package-lock.json
 
-      # Generates both SDKs, builds the frontend, runs server tests and spotless:check
+      - name: Generated code is up to date
+        run: go generate ./internal/api && git diff --exit-code internal/api
+
       - name: Build
-        run: ./mvnw -B clean verify
+        run: make build
 
-      - name: Frontend type check
-        working-directory: ragbag-frontend
-        run: npm run check
+      - name: Lint and type check
+        run: make check
+
+      - name: Test (SQLite)
+        run: go test ./...
+
+      - name: Test (PostgreSQL)
+        run: go test -count=1 ./internal/server/...
+        env:
+          RAGBAG_TEST_POSTGRES: postgres://postgres:test@localhost:5432/postgres?sslmode=disable

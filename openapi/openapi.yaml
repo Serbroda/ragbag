@@ -80,7 +80,8 @@ paths:
       parameters:
         - in: cookie
           name: refresh_token
-          required: true
+          description: Missing when signed out; the server then answers 401
+          required: false
           schema:
             type: string
       responses:

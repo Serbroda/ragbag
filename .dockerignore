@@ -8,7 +8,7 @@
 .env.*
 !.env.example
 data
-**/target
+bin
+web/dist
 **/node_modules
 **/node
-ragbag-frontend/dist

@@ -16,7 +16,7 @@ services:
     restart: unless-stopped
     ports:
       - "${RAGBAG_PORT:-8080}:8080"
-    # "Fetch details" and avatar URLs need DNS inside the container. If the log says "Cannot resolve host",
+    # "Fetch details" and avatar URLs need DNS inside the container. If the log says "cannot resolve host",
     # the host firewall probably blocks the container network's DNS (Podman + UFW: allow 10.88.0.0/15),
     # or bypass it with public resolvers:
     # dns:
@@ -28,21 +28,16 @@ services:
       # On SELinux hosts (Fedora, RHEL) append :Z, i.e. ./data:/data:Z
       # - ./data:/data
     environment:
-      SPRING_DATASOURCE_URL: "jdbc:sqlite:/data/ragbag.db?foreign_keys=on&journal_mode=WAL&busy_timeout=5000&date_class=TEXT"
       # At least 32 characters, e.g. `openssl rand -base64 32`
       JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
       # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
       # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
-      SECURITY_JWT_SECURECOOKIE: ${SECURE_COOKIE:-false}
-      # Comma-separated keys for /actuator (header X-Api-Key). Without it /actuator stays closed.
-      # Not passed by default: some podman-compose versions hand an empty ${VAR:-} default over literally.
-      # ACTUATOR_API_KEYS: ${ACTUATOR_API_KEYS}
-      # Usernames (comma-separated) that may manage all users, e.g. create password reset links:
-      # Profile menu → Manage users. Set ADMIN_USERS in .env and uncomment.
-      # ADMIN_USERS: ${ADMIN_USERS}
-      APP_FEATURES_REGISTRATIONENABLED: ${REGISTRATION_ENABLED:-true}
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
+      # Usernames (comma-separated) that may manage all users, e.g. create password reset links
+      ADMIN_USERS: ${ADMIN_USERS:-}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
       # Allow loading link titles from your own network (homelab dashboards)
-      APP_METADATA_ALLOWPRIVATEHOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+      ALLOW_PRIVATE_HOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
 
 volumes:
   ragbag-data:

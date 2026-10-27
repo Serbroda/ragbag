@@ -1,4 +1,0 @@
-# Local development with a SQLite file in data/ (same setup as the default Docker image)
-spring:
-  datasource:
-    url: "jdbc:sqlite:data/ragbag.db?foreign_keys=on&journal_mode=WAL&busy_timeout=5000&date_class=TEXT"

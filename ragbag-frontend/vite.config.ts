@@ -1,3 +1,4 @@
+import { fileURLToPath } from 'node:url'
 import { defineConfig, loadEnv } from 'vite'
 import { svelte } from '@sveltejs/vite-plugin-svelte'
 import tailwindcss from '@tailwindcss/vite'
@@ -15,5 +16,14 @@ export default defineConfig(({ mode }) => {
   return {
     base,
     plugins: [svelte(), tailwindcss()],
+    resolve: {
+      // Generated from openapi/openapi.yaml by `make generate`
+      alias: { 'ragbag-frontend-sdk': fileURLToPath(new URL('./src/lib/sdk/index.ts', import.meta.url)) },
+    },
+    build: {
+      // Embedded into the Go binary (web/embed.go)
+      outDir: '../web/dist',
+      emptyOutDir: true,
+    },
   }
 })

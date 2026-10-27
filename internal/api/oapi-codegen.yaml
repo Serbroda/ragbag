@@ -1,0 +1,9 @@
+# go generate ./internal/api  (or: make generate)
+package: api
+output: api.gen.go
+generate:
+  echo-server: true
+  models: true
+  embedded-spec: false
+output-options:
+  skip-prune: true

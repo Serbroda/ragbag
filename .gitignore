@@ -299,3 +299,8 @@ package
 
 node/
 data/
+
+# Go build output; web/dist holds the frontend build embedded into the binary
+bin/
+web/dist/*
+!web/dist/.gitkeep

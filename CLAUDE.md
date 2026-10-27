@@ -2,92 +2,86 @@
 
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
-## Build & Development Commands
+Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag`) that serves a REST API under
+`/api` and the embedded Svelte frontend under `/app`. It runs on SQLite (default) or PostgreSQL.
 
-This is a Maven multi-module project (Java 25, Spring Boot 4.1). Use the Maven wrapper (`./mvnw`); `JAVA_HOME` must point to a JDK 25.
+## Commands
 
-### Full Build
+`make help` lists everything. The important ones:
+
 ```bash
-./mvnw clean package        # Builds all modules (server-sdk → frontend-sdk → frontend → server)
+make dev            # server on :8080 with the demo account admin/test123 (RAGBAG_DEV=true, SQLite in data/)
+make dev-ui         # Vite dev server on :5173 against the server on :8080
+make build          # frontend → web/dist, then bin/ragbag with the frontend embedded
+make test           # go test ./... (SQLite)
+make test-postgres  # the same tests against a throwaway PostgreSQL container
+make check          # go vet, gofmt and the frontend type check (svelte-check)
+make generate       # regenerate Go server interfaces + TypeScript client from openapi/openapi.yaml
+make docker         # container image ragbag:latest
 ```
 
-### Backend Only
-```bash
-./mvnw -pl ragbag-server spring-boot:run -Dspring-boot.run.profiles=h2
-```
-
-### Frontend Only
-```bash
-cd ragbag-frontend && npm run dev       # Vite dev server
-cd ragbag-frontend && npm run build     # Production build
-cd ragbag-frontend && npm run check     # Type checking (svelte-check + tsc)
-```
-
-### Code Generation (from OpenAPI spec)
-```bash
-./mvnw -pl ragbag-server-sdk,ragbag-frontend-sdk install  # Regenerates Spring interfaces + TypeScript fetch client
-```
-The OpenAPI spec lives at `openapi/openapi.yaml`. Generation outputs:
-- Spring controller interfaces → `ragbag-server-sdk/target/generated-sources` (package `de.serbroda.ragbag.generated.api` / `.model`)
-- TypeScript fetch client → `ragbag-frontend-sdk/target/generated-sources`, consumed by the frontend as the npm package `ragbag-frontend-sdk`
+A single test: `go test ./internal/server -run TestPrivateCollections`.
 
 ### Docker
 ```bash
 docker compose up -d --build                                   # single container with SQLite in a volume
 docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQL 18
 ```
-Both on http://localhost:8080 with dummy secrets (see `.env.example`). Multi-stage `Dockerfile` (JDK build → JRE Alpine runtime, non-root); the image defaults to SQLite at `/data/ragbag.db`, `SPRING_DATASOURCE_URL` switches the database. `docker/entrypoint.sh` starts as root only to chown bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
-
-### Tests
-```bash
-./mvnw -pl ragbag-server test                                    # All server tests
-./mvnw -pl ragbag-server test -Dtest=RagbagServerApplicationTests  # Single test class
-```
-
-### Formatting
-```bash
-./mvnw -pl ragbag-server spotless:apply   # Auto-format Java code
-./mvnw -pl ragbag-server spotless:check   # Check formatting (runs at package phase)
-```
-Spotless enforces Palantir Java Format with tab indentation (4 spaces per tab).
+Configuration is via environment variables (`internal/config`, documented in `.env.example`): `DATABASE_URL`
+(`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
+`REGISTRATION_ENABLED`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`. Values that still look like
+`${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
+as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
 
 ## Architecture
 
-### Module Structure
-- **openapi/** — the OpenAPI spec (single source of truth for the REST API)
-- **ragbag-server-sdk** — generates Spring server interfaces + models from the spec
-- **ragbag-frontend-sdk** — generates the TypeScript fetch client from the spec
-- **ragbag-frontend** — Svelte 5 + TypeScript SPA (Vite). Built by Maven via frontend-maven-plugin and copied into server's static resources (served under `/app`).
-- **ragbag-server** — Spring Boot backend. Depends on ragbag-server-sdk for generated interfaces.
+### API-first
+`openapi/openapi.yaml` is the single source of truth. `make generate` produces:
+- `internal/api/api.gen.go` (oapi-codegen, `go tool` dependency): models and the Echo `ServerInterface`, which
+  `internal/server.Server` implements; CI fails if it is out of date
+- `ragbag-frontend/src/lib/sdk/` (openapi-generator typescript-fetch via a container), imported as
+  `ragbag-frontend-sdk` through a Vite/tsconfig alias
 
-### API-First Design
-Controllers implement generated interfaces from the OpenAPI spec. When adding/changing endpoints:
-1. Edit `openapi/openapi.yaml`
-2. Run code generation (see above)
-3. Implement the generated interface in the server controller
+When changing the API: edit the spec, `make generate`, implement the new method in `internal/server`.
 
-### Feature-Based Package Organization (`de.serbroda.ragbag`)
-Code is organized by domain feature, not by technical layer:
-- `auth/` — Authentication (login, register, JWT token generation)
-- `dashboard/` — Per-user, per-space dashboard layout (sections of type LINKS / FAVORITES / RECENT)
-- `user/` — User entity, repository, service, controller; password change and reset links. Instance admins are configured by username (`app.admin-users` / `ADMIN_USERS`, demo user `admin` outside prod), never stored, and may list users and create one-time reset links (`PasswordResetService`, only token hashes are stored)
-- `space/` — Spaces (top-level containers), membership management; roles OWNER > ADMIN > CONTRIBUTOR > VIEWER map to `SpacePermission`s in `SpaceMemberRole` (single source of truth, also sent to the frontend)
-- `collection/` — Hierarchical collections within spaces. Export/import as versioned JSON (`CollectionExchange`, format `ragbag-collection`): raise `FORMAT_VERSION` on incompatible changes and add a converter in `CollectionExchangeService.parse`; the import preview runs the real import and rolls it back. Private (`restricted`) collections are visible only to their `memberIds`, whatever the space role, and hide everything below them; `CollectionAccessService` decides visibility and every bookmark/collection list or query must filter with `hiddenCollectionIds()`
-- `bookmark/` — Bookmarks within collections, personal favorites, metadata fetching (SSRF-guarded; `app.metadata.allow-private-hosts` opens private networks for homelabs)
-- `image/` — Avatars and space icons: uploads or URLs (via `SafeHttpClient`), re-encoded as 256 px PNGs, served publicly under `/api/v1/images/{id}` (new id per upload)
-- `invite/` — Invitation system (token-based invites to spaces/collections)
-- `security/` — Permission evaluation, SecurityUtils, UserDetailsService
-- `shared/` — Base entity, exception handling, API constants, `SafeHttpClient` (SSRF-guarded fetching of user supplied URLs)
+### Packages
+- `cmd/ragbag` — main: config, database, demo seed (dev), HTTP server with graceful shutdown
+- `internal/config` — environment configuration
+- `internal/db` — opens SQLite (pure Go `modernc.org/sqlite`, `CGO_ENABLED=0`) or PostgreSQL (pgx) and runs goose
+  migrations from `migrations/sqlite` and `migrations/postgres`. Refuses databases of the former Java version
+  (Liquibase table present) with a clear error
+- `internal/store` — all SQL, via sqlx. Queries are written once with `?` placeholders (rebound for PostgreSQL) and
+  must stay portable: no dialect specific functions, `ON CONFLICT DO NOTHING`, `LIKE … ESCAPE '\'`. `InTx` runs a
+  transaction, `DryRun` one that is always rolled back (import preview)
+- `internal/server` — HTTP handlers and business rules, one file per domain (auth, users, spaces, collections,
+  bookmarks, dashboard, invites, exchange). Errors are RFC 9457 problem details (`badRequest`, `forbidden`,
+  `notFound`, `conflict`); the frontend shows `detail`
+- `internal/auth` — JWTs (HS256) and BCrypt passwords (8 characters to 72 bytes)
+- `internal/fetch` — SSRF-guarded fetching of user supplied URLs (every redirect and the dialed IP are checked;
+  loopback/link-local always refused, private networks unless `ALLOW_PRIVATE_HOSTS`) and the page metadata parser
+- `internal/images` — avatars and space icons: content sniffing, decompression bomb check, center crop, 256 px PNG
+- `web` — embeds `web/dist` (the frontend build; only `.gitkeep` is committed)
 
-Each feature package contains its own Entity, Repository, Service, and Controller.
+### Domain rules (keep them in sync with the tests in `internal/server/*_test.go`)
+- **Roles** OWNER > ADMIN > CONTRIBUTOR > VIEWER map to permissions in `permissions.go` (single source of truth,
+  also sent to the frontend). Every handler taking a resource id starts with `requireSpace`, `requireCollection`
+  or `requireBookmark`.
+- **Private collections** (`restricted`) are visible only to their members, whatever the space role, and hide
+  everything below them (`hiddenCollections`). Hidden collections answer 404, and every list or query of bookmarks
+  must exclude them. Parents with hidden children cannot be deleted; leaving a space deletes private collections
+  nobody can see anymore.
+- **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
+  httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
+  carry `token_version`; logout everywhere, password changes and resets increment it.
+- **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users and create
+  one-time password reset links (only SHA-256 hashes stored, 24 h, one per user).
+- **Export/import** (`exchange.go`): versioned JSON (`format: ragbag-collection`, `format_version`). Raise the
+  version on incompatible changes and convert older files in `parseExchange`. The format is compatible with
+  exports of the former Java version, which is the migration path to this one.
 
-### Key Patterns
-- **Entity base class**: All entities extend `AbstractBaseEntity` (UUID primary key, `@Version` optimistic locking, auto-managed `createdAt`/`updatedAt`)
-- **Constructor injection**: Via Lombok `@RequiredArgsConstructor`
-- **Security**: JWT (HS256) via Spring Security OAuth2 Resource Server. Access tokens carry `type=ACCESS`, refresh tokens (httpOnly cookie) `type=REFRESH`; both carry `token_version`, which `logout/all` increments to invalidate them. Method-level `@PreAuthorize("hasPermission(#id, 'SPACE|COLLECTION|BOOKMARK', '<SpacePermission>')")` with custom `DomainPermissionEvaluator` — every endpoint taking a resource id needs one.
-- **Database migrations**: Liquibase changelogs in `ragbag-server/src/main/resources/db/changelog/`. Must work on H2, PostgreSQL, MariaDB and SQLite: use portable types (`text`, never `varchar(max)`) and never edit an applied changeset (add a new one instead). SQLite cannot add constraints to existing tables (`addPrimaryKey`, `addForeignKeyConstraint`, `addUniqueConstraint`): declare them inline in `createTable`, or pair a `dbms="!sqlite"` changeset with a `dbms="sqlite"` variant. `addColumn` on a table that others reference fails on SQLite too (Liquibase copies the table), so use a plain `ALTER TABLE ... ADD COLUMN` in a `dbms="sqlite"` changeset. Binary columns use the `type.binary` property from 010 (`blob` would become `oid` on PostgreSQL). SQLite JDBC URLs need `foreign_keys=on` (cascades), `journal_mode=WAL`, `busy_timeout` and `date_class=TEXT`. Run the server tests against PostgreSQL by setting `SPRING_DATASOURCE_URL`/`_USERNAME`/`_PASSWORD`.
-- **Reverse proxies**: `server.forward-headers-strategy: native` with explicit `remoteip` headers makes Spring see the public https URL behind nginx proxy manager & co. Without it the browser's Origin does not match and logins fail as cross-origin (403). The refresh cookie gets `Secure` automatically for HTTPS requests.
-- **Profiles**: default (H2 in-memory), `h2` (H2 TCP server with file-based DB at `data/`), `sqlite` (SQLite file at `data/ragbag.db`), `prod` (PostgreSQL/MariaDB via `SPRING_DATASOURCE_*`; requires `JWT_SECRET`, optional `ACTUATOR_API_KEYS`). The demo user `admin`/`test123` is created in every profile except `prod`.
+### Database migrations
+Fresh schema per dialect in `internal/db/migrations/{sqlite,postgres}`; add a new numbered file to both for every
+change, never edit an applied one. Times are stored in UTC, truncated to microseconds; ids are UUID strings.
 
 ### Frontend Structure (`ragbag-frontend/src/lib`)
 - `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, quick switcher)
@@ -96,10 +90,5 @@ Each feature package contains its own Entity, Repository, Service, and Controlle
 - `stores/preferences.svelte.ts` — personal display settings (link view: cards / compact / list), stored in localStorage per user and device
 - `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`; show users and spaces with `Avatar.svelte`
 - Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
-- `api/client.ts` — auth handling, `errorMessage()` to surface ProblemDetail `detail` texts
-
-### API Prefix
-All REST endpoints are under `/api`. Constant defined in `shared/ApiConstants.java`.
-
-### Swagger UI
-Available at `/api/docs/swagger-ui` when the server is running.
+- `api/client.ts` — auth handling, `errorMessage()` to surface problem detail texts
+- `sdk/` — generated, do not edit (see API-first)
