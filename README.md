@@ -90,8 +90,17 @@ sudo ./scripts/install.sh --uninstall --purge   # remove everything
 make install DIR=/opt/ragbag                    # build and install in one step
 ```
 
-Updates keep the location chosen with `--dir`. Building on a Mac for a Linux server: `make build-linux` creates
-`bin/ragbag-linux-amd64` and `bin/ragbag-linux-arm64`.
+Updates keep the location chosen with `--dir`.
+
+**No Go, Node or make on the server?** Let the script build the binary in a container – only podman or docker is
+needed:
+
+```bash
+sudo ./scripts/install.sh --build --dir /opt/ragbag   # after a git pull, the same command updates
+```
+
+Alternatively build on your machine and copy the binary: `make build-linux` creates `bin/ragbag-linux-amd64` and
+`bin/ragbag-linux-arm64`, or `docker build --target binary --output bin .` builds `bin/ragbag` for your platform.
 
 ### From source
 

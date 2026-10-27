@@ -3,6 +3,7 @@
 #
 #   sudo ./scripts/install.sh                        # bin/ragbag → /usr/local/bin/ragbag, port 8080
 #   sudo ./scripts/install.sh --dir /opt/ragbag      # binary → /opt/ragbag/ragbag
+#   sudo ./scripts/install.sh --build                # build bin/ragbag with podman/docker first (no Go/Node/make)
 #   sudo ./scripts/install.sh --binary ./ragbag-linux-amd64 --port 9000
 #   sudo ./scripts/install.sh --uninstall [--purge]  # --purge also deletes data and configuration
 #
@@ -27,9 +28,10 @@ port="$DEFAULT_PORT"
 dir=""
 action=install
 purge=false
+build=false
 
 usage() {
-	sed -n '2,10p' "$0" | sed 's/^# \{0,1\}//'
+	sed -n '2,11p' "$0" | sed 's/^# \{0,1\}//'
 	exit "${1:-0}"
 }
 
@@ -40,6 +42,7 @@ while [ $# -gt 0 ]; do
 		--dir) dir="${2%/}"; shift 2 ;;
 		--uninstall) action=uninstall; shift ;;
 		--purge) purge=true; shift ;;
+		--build) build=true; shift ;;
 		-h | --help) usage ;;
 		*) echo "Unknown option: $1" >&2; usage 1 ;;
 	esac
@@ -150,8 +153,20 @@ WantedBy=multi-user.target
 UNIT
 }
 
+# Builds the binary in a container (Dockerfile stage "binary"), so the host needs neither Go nor Node nor make.
+build_binary() {
+	engine=$(command -v podman || command -v docker || true)
+	[ -n "$engine" ] || { echo "--build needs podman or docker" >&2; exit 1; }
+	repo=$(cd "$(dirname "$0")/.." && pwd)
+	version=$(git -C "$repo" describe --tags --always --dirty 2>/dev/null || echo dev)
+	echo "Building $APP $version with $(basename "$engine") (this takes a few minutes the first time)..."
+	"$engine" build --target binary --build-arg VERSION="$version" --output "$repo/bin" "$repo"
+	binary="$repo/bin/$APP"
+}
+
 install_app() {
-	[ -f "$binary" ] || { echo "Binary not found: $binary (build it with: make build)" >&2; exit 1; }
+	[ "$build" = true ] && build_binary
+	[ -f "$binary" ] || { echo "Binary not found: $binary (build it with --build or make build)" >&2; exit 1; }
 	updating=false
 	[ -n "$installed_path" ] && updating=true
 

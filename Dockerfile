@@ -21,6 +21,11 @@ ARG VERSION=dev
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /ragbag ./cmd/ragbag
 
+# --- Binary only: builds bin/ragbag without Go, Node or make on the host -------------------------
+#   podman build --target binary --output bin .     (docker: docker build --target binary --output bin .)
+FROM scratch AS binary
+COPY --from=server /ragbag /ragbag
+
 # --- Runtime ----------------------------------------------------------------------------------
 FROM docker.io/library/alpine:3.22
 
