@@ -20,10 +20,6 @@ export default defineConfig(({ mode }) => {
       // Generated from openapi/openapi.yaml by `make generate`
       alias: { 'ragbag-frontend-sdk': fileURLToPath(new URL('./src/lib/sdk/index.ts', import.meta.url)) },
     },
-    build: {
-      // Embedded into the Go binary (web/embed.go)
-      outDir: '../web/dist',
-      emptyOutDir: true,
-    },
+    // dist is embedded into the Go binary (ui/ui.go)
   }
 })

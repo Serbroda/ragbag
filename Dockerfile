@@ -2,11 +2,11 @@
 
 # --- Frontend ---------------------------------------------------------------------------------
 FROM docker.io/library/node:24-alpine AS ui
-WORKDIR /build/ragbag-frontend
-COPY ragbag-frontend/package.json ragbag-frontend/package-lock.json ./
+WORKDIR /build/ui/v1
+COPY ui/v1/package.json ui/v1/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
-COPY ragbag-frontend ./
-RUN mkdir -p ../web/dist && VITE_APP_BASE=/app npm run build
+COPY ui/v1 ./
+RUN VITE_APP_BASE=/app npm run build
 
 # --- Server: a static binary with the frontend embedded ---------------------------------------
 FROM docker.io/library/golang:1.27-alpine AS server
@@ -15,8 +15,8 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd cmd
 COPY internal internal
-COPY web/embed.go web/
-COPY --from=ui /build/web/dist web/dist
+COPY ui/ui.go ui/
+COPY --from=ui /build/ui/v1/dist ui/v1/dist
 ARG VERSION=dev
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
     CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /ragbag ./cmd/ragbag

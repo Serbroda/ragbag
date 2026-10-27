@@ -4,7 +4,6 @@ package main
 import (
 	"context"
 	"errors"
-	"io/fs"
 	"log/slog"
 	"net/http"
 	"os"
@@ -16,7 +15,7 @@ import (
 	"github.com/Serbroda/ragbag/internal/db"
 	"github.com/Serbroda/ragbag/internal/server"
 	"github.com/Serbroda/ragbag/internal/store"
-	"github.com/Serbroda/ragbag/web"
+	"github.com/Serbroda/ragbag/ui"
 )
 
 // version is set at build time: -ldflags "-X main.version=1.2.3"
@@ -51,14 +50,9 @@ func run() error {
 			return err
 		}
 	}
-	frontend, err := fs.Sub(web.Dist, "dist")
-	if err != nil {
-		return err
-	}
-
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
-		Handler:           srv.Handler(frontend),
+		Handler:           srv.Handler(ui.Frontend()),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
 	errs := make(chan error, 1)

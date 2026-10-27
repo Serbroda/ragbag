@@ -31,7 +31,7 @@ jobs:
         with:
           node-version: '24'
           cache: npm
-          cache-dependency-path: ragbag-frontend/package-lock.json
+          cache-dependency-path: ui/v1/package-lock.json
 
       - name: Generated code is up to date
         run: go generate ./internal/api && git diff --exit-code internal/api

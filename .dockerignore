@@ -9,6 +9,6 @@
 !.env.example
 data
 bin
-web/dist
+ui/v1/dist
 **/node_modules
 **/node

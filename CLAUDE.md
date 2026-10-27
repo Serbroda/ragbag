@@ -3,7 +3,7 @@
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag`) that serves a REST API under
-`/api` and the embedded Svelte frontend under `/app`. It runs on SQLite (default) or PostgreSQL.
+`/api` and the embedded Svelte frontend (`ui/v1`) under `/app`. It runs on SQLite (default) or PostgreSQL.
 
 ## Commands
 
@@ -12,7 +12,7 @@ Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag
 ```bash
 make dev            # server on :8080 with the demo account admin/test123 (RAGBAG_DEV=true, SQLite in data/)
 make dev-ui         # Vite dev server on :5173 against the server on :8080
-make build          # frontend → web/dist, then bin/ragbag with the frontend embedded
+make build          # frontend → ui/v1/dist, then bin/ragbag with the frontend embedded
 make test           # go test ./... (SQLite)
 make test-postgres  # the same tests against a throwaway PostgreSQL container
 make check          # go vet, gofmt and the frontend type check (svelte-check)
@@ -39,7 +39,7 @@ as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), th
 `openapi/openapi.yaml` is the single source of truth. `make generate` produces:
 - `internal/api/api.gen.go` (oapi-codegen, `go tool` dependency): models and the Echo `ServerInterface`, which
   `internal/server.Server` implements; CI fails if it is out of date
-- `ragbag-frontend/src/lib/sdk/` (openapi-generator typescript-fetch via a container), imported as
+- `ui/v1/src/lib/sdk/` (openapi-generator typescript-fetch via a container), imported as
   `ragbag-frontend-sdk` through a Vite/tsconfig alias
 
 When changing the API: edit the spec, `make generate`, implement the new method in `internal/server`.
@@ -60,7 +60,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - `internal/fetch` — SSRF-guarded fetching of user supplied URLs (every redirect and the dialed IP are checked;
   loopback/link-local always refused, private networks unless `ALLOW_PRIVATE_HOSTS`) and the page metadata parser
 - `internal/images` — avatars and space icons: content sniffing, decompression bomb check, center crop, 256 px PNG
-- `web` — embeds `web/dist` (the frontend build; only `.gitkeep` is committed)
+- `ui` — embeds the frontend build `ui/v1/dist` (only `.gitkeep` is committed, so the package compiles before
+  the first build). `v1` leaves room to develop a new UI generation next to the current one
 
 ### Domain rules (keep them in sync with the tests in `internal/server/*_test.go`)
 - **Roles** OWNER > ADMIN > CONTRIBUTOR > VIEWER map to permissions in `permissions.go` (single source of truth,
@@ -83,7 +84,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 Fresh schema per dialect in `internal/db/migrations/{sqlite,postgres}`; add a new numbered file to both for every
 change, never edit an applied one. Times are stored in UTC, truncated to microseconds; ids are UUID strings.
 
-### Frontend Structure (`ragbag-frontend/src/lib`)
+### Frontend Structure (`ui/v1/src/lib`)
 - `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, quick switcher)
 - `components/` — shared UI (`BookmarkCard`, modals, `QuickSwitcher`, collection tree)
 - `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user, last visited space)

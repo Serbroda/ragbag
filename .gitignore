@@ -300,7 +300,8 @@ package
 node/
 data/
 
-# Go build output; web/dist holds the frontend build embedded into the binary
+# Go build output
 bin/
-web/dist/*
-!web/dist/.gitkeep
+
+# IntelliJ module files
+*.iml
