@@ -197,3 +197,9 @@ Contributions are welcome:
 1. Open an issue – feature request or bug
 2. Fork the repository & create a branch
 3. Submit a pull request with a clear description
+
+---
+
+## 📄 License
+
+Ragbag is released under the **MIT License**. See [LICENSE](LICENSE) for details.
