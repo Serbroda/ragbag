@@ -6,7 +6,7 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 CONTAINER ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/null)
 OPENAPI_GENERATOR := docker.io/openapitools/openapi-generator-cli:v7.26.0
 
-.PHONY: help build build-ui build-server generate dev dev-ui test test-postgres check docker clean
+.PHONY: help build build-ui build-server build-linux install generate dev dev-ui test test-postgres check docker clean
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -18,6 +18,14 @@ build-ui: ## Build the frontend into ui/v1/dist
 
 build-server: ## Build the Go binary (static, no CGO)
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/ragbag ./cmd/ragbag
+
+build-linux: build-ui ## Build bin/ragbag-linux-{amd64,arm64} for servers (e.g. when building on a Mac)
+	for arch in amd64 arm64; do \
+		CGO_ENABLED=0 GOOS=linux GOARCH=$$arch go build -trimpath -ldflags "$(LDFLAGS)" -o bin/ragbag-linux-$$arch ./cmd/ragbag; \
+	done
+
+install: build ## Install or update ragbag as a systemd service on this Linux machine (asks for sudo)
+	sudo ./scripts/install.sh --binary bin/ragbag
 
 generate: ## Regenerate server interfaces and the TypeScript client from openapi/openapi.yaml
 	go generate ./internal/api

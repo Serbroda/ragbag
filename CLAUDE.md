@@ -18,7 +18,14 @@ make test-postgres  # the same tests against a throwaway PostgreSQL container
 make check          # go vet, gofmt and the frontend type check (svelte-check)
 make generate       # regenerate Go server interfaces + TypeScript client from openapi/openapi.yaml
 make docker         # container image ragbag:latest
+make install        # build and install/update as a systemd service (Linux, sudo)
+make build-linux    # bin/ragbag-linux-{amd64,arm64} to copy to a server
 ```
+
+### systemd
+`scripts/install.sh` installs or updates the binary as a hardened systemd service (`DynamicUser`, state in
+`/var/lib/ragbag`, configuration in `/etc/ragbag/ragbag.env` with a generated `JWT_SECRET`, kept on updates);
+`--uninstall [--purge]` removes it. Only the `APP`/`DESCRIPTION`/defaults lines at the top are app specific.
 
 A single test: `go test ./internal/server -run TestPrivateCollections`.
 
