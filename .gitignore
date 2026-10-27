@@ -305,3 +305,6 @@ bin/
 
 # IntelliJ module files
 *.iml
+
+# Template for .env.local (the merge-backup rule *.LOCAL.* matches it on case-insensitive file systems)
+!.env.local.example

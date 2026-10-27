@@ -25,8 +25,9 @@ generate: ## Regenerate server interfaces and the TypeScript client from openapi
 		-i /local/openapi/openapi.yaml -g typescript-fetch -o /local/ui/v1/src/lib/sdk \
 		--additional-properties=supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true
 
-dev: ## Run the server with the demo account admin/test123 on :8080 (SQLite in data/)
-	RAGBAG_DEV=true go run ./cmd/ragbag
+dev: ## Run the server on :8080 with the settings from .env.local (demo account admin/test123)
+	@test -f .env.local || (cp .env.local.example .env.local && echo "created .env.local from .env.local.example")
+	go run ./cmd/ragbag
 
 dev-ui: ## Run the Vite dev server on :5173 (talks to the server on :8080)
 	cd ui/v1 && npm run dev

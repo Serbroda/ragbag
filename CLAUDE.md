@@ -10,7 +10,7 @@ Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag
 `make help` lists everything. The important ones:
 
 ```bash
-make dev            # server on :8080 with the demo account admin/test123 (RAGBAG_DEV=true, SQLite in data/)
+make dev            # server on :8080 with the settings from .env.local (demo account admin/test123)
 make dev-ui         # Vite dev server on :5173 against the server on :8080
 make build          # frontend → ui/v1/dist, then bin/ragbag with the frontend embedded
 make test           # go test ./... (SQLite)
@@ -27,7 +27,8 @@ A single test: `go test ./internal/server -run TestPrivateCollections`.
 docker compose up -d --build                                   # single container with SQLite in a volume
 docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQL 18
 ```
-Configuration is via environment variables (`internal/config`, documented in `.env.example`): `DATABASE_URL`
+Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
+development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
 `REGISTRATION_ENABLED`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts

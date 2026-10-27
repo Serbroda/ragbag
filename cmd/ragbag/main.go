@@ -30,6 +30,9 @@ func main() {
 }
 
 func run() error {
+	if err := config.LoadDotenv(); err != nil {
+		return err
+	}
 	cfg, err := config.Load()
 	if err != nil {
 		return err
@@ -45,7 +48,7 @@ func run() error {
 
 	srv := server.New(cfg, store.New(database, dialect), version)
 	if cfg.Dev {
-		slog.Warn("RAGBAG_DEV=true: demo account and generated JWT secret, not for production")
+		slog.Warn("RAGBAG_DEV=true: demo account admin/test123, not for production")
 		if err := srv.SeedDemo(ctx); err != nil {
 			return err
 		}
