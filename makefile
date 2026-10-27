@@ -24,8 +24,8 @@ build-linux: build-ui ## Build bin/ragbag-linux-{amd64,arm64} for servers (e.g. 
 		CGO_ENABLED=0 GOOS=linux GOARCH=$$arch go build -trimpath -ldflags "$(LDFLAGS)" -o bin/ragbag-linux-$$arch ./cmd/ragbag; \
 	done
 
-install: build ## Install or update ragbag as a systemd service on this Linux machine (asks for sudo)
-	sudo ./scripts/install.sh --binary bin/ragbag
+install: build ## Install/update as a systemd service (sudo); DIR=/opt/ragbag to choose the binary location
+	sudo ./scripts/install.sh --binary bin/ragbag $(if $(DIR),--dir $(DIR))
 
 generate: ## Regenerate server interfaces and the TypeScript client from openapi/openapi.yaml
 	go generate ./internal/api

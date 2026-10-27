@@ -25,6 +25,7 @@ make build-linux    # bin/ragbag-linux-{amd64,arm64} to copy to a server
 ### systemd
 `scripts/install.sh` installs or updates the binary as a hardened systemd service (`DynamicUser`, state in
 `/var/lib/ragbag`, configuration in `/etc/ragbag/ragbag.env` with a generated `JWT_SECRET`, kept on updates);
+`--dir /opt/ragbag` (or `make install DIR=/opt/ragbag`) chooses the binary location, which later updates keep;
 `--uninstall [--purge]` removes it. Only the `APP`/`DESCRIPTION`/defaults lines at the top are app specific.
 
 A single test: `go test ./internal/server -run TestPrivateCollections`.
