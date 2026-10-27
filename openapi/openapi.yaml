@@ -1,0 +1,2118 @@
+openapi: 3.1.0
+info:
+  title: Authentication Api
+  version: 1.0.0
+
+paths:
+  # App
+  /app/config/features:
+    get:
+      summary: App Feature Flags
+      operationId: featureFlags
+      tags:
+        - App
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/FeatureFlags'
+
+  # Authentication
+  /auth/register:
+    post:
+      summary: Register a new user
+      operationId: register
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RegisterRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /auth/login:
+    post:
+      summary: Login
+      operationId: login
+      tags:
+        - Authentication
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '200':
+          description: OK
+          headers:
+            Set-Cookie:
+              description: >
+                HttpOnly refresh token cookie.
+                Path=/api/auth/refresh; SameSite=Lax; Secure (in prod).
+              schema:
+                type: string
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+
+  /auth/refresh:
+    post:
+      summary: Refresh access token
+      operationId: refresh
+      description: >
+        Uses the HttpOnly refresh_token cookie to issue a new access token.
+      tags:
+        - Authentication
+      parameters:
+        - in: cookie
+          name: refresh_token
+          description: Missing when signed out; the server then answers 401
+          required: false
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/logout:
+    post:
+      summary: Logout on this device (clears the refresh token cookie)
+      operationId: logout
+      tags:
+        - Authentication
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+
+  /auth/logout/all:
+    get:
+      summary: Logout from all devices
+      operationId: logoutAll
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '203':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/password:
+    post:
+      summary: Change the own password; signs out all other devices and returns new tokens for this one
+      operationId: changePassword
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangePasswordRequest'
+      responses:
+        '200':
+          description: OK, a new refresh token cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /auth/password-reset/{token}:
+    get:
+      summary: Check a password reset link (public)
+      operationId: getPasswordReset
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetPreviewDto'
+    post:
+      summary: Set a new password with a reset link (public); signs out all devices of the user
+      operationId: resetPassword
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResetPasswordRequest'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  # Instance administration (users listed in app.admin-users / ADMIN_USERS)
+  /v1/admin/users:
+    get:
+      summary: All users of this installation
+      operationId: getAllUsers
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AdminUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/users/{userId}/password-reset:
+    post:
+      summary: Create a one-time password reset link for a user (replaces an older one)
+      operationId: createPasswordReset
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PasswordResetDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Users
+  /v1/users/me:
+    get:
+      summary: Get current user
+      operationId: me
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/users/me/avatar:
+    put:
+      summary: Set the avatar of the current user from an uploaded file or a URL
+      operationId: setAvatar
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUpload'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    delete:
+      summary: Remove the avatar of the current user
+      operationId: removeAvatar
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/images/{imageId}:
+    get:
+      summary: Get an avatar or space icon (public, ids are unguessable and change with every upload)
+      operationId: getImage
+      tags:
+        - Image
+      security: [ ]
+      parameters:
+        - in: path
+          name: imageId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: The image
+          content:
+            image/*:
+              schema:
+                type: string
+                format: binary
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Spaces
+  /v1/spaces:
+    get:
+      summary: Get all spaces
+      operationId: getSpaces
+      tags:
+        - Space
+      security:
+        - bearerAuth: []
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Create a space (the current user becomes its owner)
+      operationId: createSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateSpaceDto'
+      responses:
+        '201':
+          description: Created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/spaces/{spaceId}:
+    get:
+      summary: Get a space
+      operationId: getSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update a space
+      operationId: updateSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSpaceDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a space
+      operationId: deleteSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/icon:
+    put:
+      summary: Set the icon of a space from an uploaded file or a URL
+      operationId: setSpaceIcon
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUpload'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Remove the icon of a space
+      operationId: removeSpaceIcon
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/leave:
+    post:
+      summary: Leave a space
+      operationId: leaveSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/members:
+    get:
+      summary: List the members of a space
+      operationId: getSpaceMembers
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/SpaceMemberDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/members/{userId}:
+    put:
+      summary: Change the role of a space member
+      operationId: updateSpaceMember
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateSpaceMemberDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceMemberDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+    delete:
+      summary: Remove a member from a space
+      operationId: removeSpaceMember
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/spaces/{spaceId}/invites:
+    get:
+      summary: List the open invites of a space
+      operationId: getSpaceInvites
+      tags:
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InviteDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  # Collections
+  /v1/spaces/{spaceId}/collections:
+    get:
+      summary: Get all collections of a space
+      operationId: getCollections
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Create a collection
+      operationId: createCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateCollectionDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}:
+    get:
+      summary: Get a collection
+      operationId: getCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update a collection
+      operationId: updateCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a collection
+      operationId: deleteCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/move:
+    post:
+      summary: Move a collection to a new parent
+      operationId: moveCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/MoveCollectionDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/access:
+    get:
+      summary: Who can see a collection
+      operationId: getCollectionAccess
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionAccessDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Make a collection private to selected members, or visible to the whole space again
+      operationId: updateCollectionAccess
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateCollectionAccessDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionAccessDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/export:
+    get:
+      summary: Export a collection with its sub-collections and links as a versioned JSON file
+      operationId: exportCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: The export file (format "ragbag-collection", see CollectionExchange on the server)
+          content:
+            application/json:
+              schema:
+                type: object
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/import:
+    post:
+      summary: Import an export file into a collection; sub-collections with the same name are merged
+      operationId: importCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: query
+          name: preview
+          description: Only report what the import would do, without changing anything
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              type: object
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ImportResultDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Bookmarks
+  /v1/spaces/{spaceId}/bookmarks:
+    get:
+      summary: Most recently added bookmarks of a space
+      operationId: getRecentBookmarks
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 100
+            default: 20
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/spaces/{spaceId}/bookmarks/search:
+    get:
+      summary: Search bookmarks in a space
+      operationId: searchBookmarks
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: query
+          name: q
+          required: true
+          schema:
+            type: string
+          description: Search query - matches title, URL, description, and tags
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/collections/{collectionId}/bookmarks:
+    get:
+      summary: Get all bookmarks of a collection
+      operationId: getBookmarks
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Create a bookmark
+      operationId: createBookmark
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateBookmarkDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/bookmarks/metadata:
+    post:
+      summary: Fetch title, description and other metadata of a URL without saving anything
+      operationId: fetchBookmarkMetadata
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/FetchMetadataRequest'
+      responses:
+        '200':
+          description: Metadata; fields are empty if the page could not be loaded
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkMetadataDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/spaces/{spaceId}/favorites:
+    get:
+      summary: Favorites of the current user in a space
+      operationId: getFavorites
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/bookmarks/{bookmarkId}/favorite:
+    put:
+      summary: Mark a bookmark as favorite for the current user
+      operationId: addFavorite
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      summary: Remove a bookmark from the current user's favorites
+      operationId: removeFavorite
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/spaces/{spaceId}/dashboard:
+    get:
+      summary: The current user's dashboard for a space (a default layout until customized)
+      operationId: getDashboard
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    put:
+      summary: Replace the current user's dashboard layout for a space
+      operationId: updateDashboard
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateDashboardDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/DashboardDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      summary: Reset the current user's dashboard to the default layout
+      operationId: resetDashboard
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/bookmarks/{bookmarkId}:
+    get:
+      summary: Get a bookmark
+      operationId: getBookmark
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Update a bookmark
+      operationId: updateBookmark
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UpdateBookmarkDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Delete a bookmark
+      operationId: deleteBookmark
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  # Invites
+  /v1/invites:
+    post:
+      summary: Create an invite link
+      operationId: createInvite
+      tags: 
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateInviteRequest'
+      responses:
+        '201':
+          description: Invite created
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InviteDto'
+
+    get:
+      summary: List invites created by current user
+      operationId: getInvites
+      tags: 
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: List of invites
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/InviteDto'
+
+  /v1/invites/{token}:
+    get:
+      summary: Preview an invite before accepting it
+      operationId: getInvite
+      tags:
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitePreviewDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    post:
+      summary: Accept an invite
+      operationId: acceptInvite
+      tags:
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: Invite accepted
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitePreviewDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '409':
+          description: Invite expired or used up
+
+    delete:
+      summary: Revoke an invite
+      operationId: deleteInvite
+      tags:
+        - Invite
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '204':
+          description: Invite revoked
+
+components:
+  schemas:
+    ID:
+      type: string
+      description: UUID
+      example: "fa2b6a4a-5403-498c-9be8-c31d7d01a724"
+      minLength: 36
+      maxLength: 36
+
+    JWT:
+      type: string
+      description: JSON Web Token
+      example: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJzdW..."
+
+    Error:
+      type: object
+      properties:
+        message:
+          type: string
+
+    FeatureFlags:
+      type: object
+      additionalProperties:
+        type: string
+
+    LoginRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - password
+
+    LoginResponse:
+      type: object
+      properties:
+        access_token:
+          $ref: '#/components/schemas/JWT'
+      required:
+        - access_token
+
+    ResetPasswordRequest:
+      type: object
+      properties:
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - newPassword
+
+    PasswordResetPreviewDto:
+      type: object
+      properties:
+        valid:
+          type: boolean
+          description: False if the link is unknown, expired or already used
+        username:
+          type: string
+      required:
+        - valid
+
+    PasswordResetDto:
+      type: object
+      properties:
+        token:
+          type: string
+          description: Only returned once; the server keeps a hash
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - expiresAt
+
+    AdminUserDto:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        username:
+          type: string
+        email:
+          type: string
+        avatarId:
+          $ref: '#/components/schemas/ID'
+        instanceAdmin:
+          type: boolean
+        createdAt:
+          type: string
+          format: date-time
+        spaces:
+          type: integer
+          description: Number of spaces the user is a member of
+      required:
+        - id
+        - username
+        - email
+        - instanceAdmin
+
+    ChangePasswordRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+        newPassword:
+          type: string
+          minLength: 8
+      required:
+        - currentPassword
+        - newPassword
+
+    RegisterRequest:
+      type: object
+      properties:
+        username:
+          type: string
+        email:
+          type: string
+        password:
+          type: string
+      required:
+        - username
+        - email
+        - password
+
+    UserDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        username:
+          type: string
+        email:
+          type: string
+        avatarId:
+          $ref: '#/components/schemas/ID'
+        instanceAdmin:
+          type: boolean
+          description: Listed in ADMIN_USERS, may manage all users of this installation
+      required:
+        - id
+        - username
+        - email
+
+    SpaceDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        iconId:
+          $ref: '#/components/schemas/ID'
+        role:
+          $ref: '#/components/schemas/SpaceMemberRoleEnum'
+        permissions:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpacePermissionEnum'
+      required:
+        - id
+        - name
+
+    CreateSpaceDto:
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 80
+        description:
+          type: string
+      required:
+        - name
+
+    SpaceMemberRoleEnum:
+      type: string
+      enum:
+        - OWNER
+        - ADMIN
+        - CONTRIBUTOR
+        - VIEWER
+
+    InviteRoleEnum:
+      type: string
+      description: Roles that can be handed out via invite links
+      enum:
+        - ADMIN
+        - CONTRIBUTOR
+        - VIEWER
+
+    SpaceMemberDto:
+      properties:
+        userId:
+          $ref: '#/components/schemas/ID'
+        username:
+          type: string
+        avatarId:
+          $ref: '#/components/schemas/ID'
+        role:
+          $ref: '#/components/schemas/SpaceMemberRoleEnum'
+      required:
+        - userId
+        - username
+        - role
+
+    UpdateSpaceMemberDto:
+      properties:
+        role:
+          $ref: '#/components/schemas/SpaceMemberRoleEnum'
+      required:
+        - role
+
+    InvitePreviewDto:
+      properties:
+        targetType:
+          type: string
+          enum: [ SPACE, COLLECTION ]
+        targetId:
+          $ref: '#/components/schemas/ID'
+        targetName:
+          type: string
+        role:
+          $ref: '#/components/schemas/InviteRoleEnum'
+        invitedBy:
+          type: string
+        valid:
+          type: boolean
+          description: False if the invite is expired or used up
+        alreadyMember:
+          type: boolean
+      required:
+        - targetType
+        - targetId
+        - valid
+        - alreadyMember
+
+    SpacePermissionEnum:
+      type: string
+      enum:
+        - READ # Permission to read space details and collections
+        - EDIT_SPACE # Permission to edit space details (name, description)
+        - CREATE_COLLECTIONS # Permission to create collections within the space
+        - EDIT_COLLECTIONS # Permission to create and manage collections within the space
+        - DELETE_COLLECTIONS # Permission to delete collections within the space
+        - CREATE_BOOKMARKS # Permission to create bookmarks within the space
+        - EDIT_BOOKMARKS # Permission to create and manage bookmarks within the space
+        - DELETE_BOOKMARKS # Permission to delete bookmarks within the space
+        - DELETE_SPACE # Permission to delete the space
+        - MANAGE_MEMBERS # Permission to change member roles, remove members and manage invites
+        - IMPORT_EXPORT # Permission to export collections and import export files
+
+    UpdateSpaceDto:
+      properties:
+        name:
+          type: string
+        description:
+          type: string
+      required:
+        - name
+
+    SpaceDtoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/SpaceDto'
+
+    CollectionDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        parentId:
+          $ref: '#/components/schemas/ID'
+        restricted:
+          type: boolean
+          description: Only the members listed in the collection's access can see it (and everything inside)
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/CollectionDto'
+      required:
+        - id
+        - name
+
+    CollectionVisibilityDto:
+      type: string
+      enum:
+        - PRIVATE
+        - INTERNAL
+        - PUBLIC
+
+    CollectionDtoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/CollectionDto'
+
+    CreateCollectionDto:
+      properties:
+        name:
+          type: string
+        parentId:
+          $ref: '#/components/schemas/ID'
+        restricted:
+          type: boolean
+          description: Create the collection as private; the creator always has access
+        memberIds:
+          type: array
+          description: Further space members who may see a private collection
+          items:
+            $ref: '#/components/schemas/ID'
+      required:
+        - name
+
+    CollectionAccessDto:
+      properties:
+        restricted:
+          type: boolean
+        members:
+          type: array
+          description: Members who can see the collection (empty unless restricted)
+          items:
+            $ref: '#/components/schemas/CollectionAccessMemberDto'
+        canManage:
+          type: boolean
+          description: Whether the current user may change who can see the collection
+      required:
+        - restricted
+        - members
+        - canManage
+
+    CollectionAccessMemberDto:
+      properties:
+        userId:
+          $ref: '#/components/schemas/ID'
+        username:
+          type: string
+        avatarId:
+          $ref: '#/components/schemas/ID'
+      required:
+        - userId
+        - username
+
+    UpdateCollectionAccessDto:
+      properties:
+        restricted:
+          type: boolean
+        memberIds:
+          type: array
+          description: Space members who may see the private collection; the current user is always kept
+          items:
+            $ref: '#/components/schemas/ID'
+      required:
+        - restricted
+
+    ImportResultDto:
+      description: What an import did, or as preview would do
+      properties:
+        preview:
+          type: boolean
+        formatVersion:
+          type: integer
+        appVersion:
+          type: string
+          description: Ragbag version that exported the file
+        collectionsCreated:
+          type: integer
+        collectionsMerged:
+          type: integer
+          description: Sub-collections of the file that already existed under the same name
+        bookmarksImported:
+          type: integer
+        bookmarksSkipped:
+          type: integer
+          description: Links already in the target collection
+        bookmarksInvalid:
+          type: integer
+          description: Links without a valid http(s) URL
+      required:
+        - preview
+        - formatVersion
+        - collectionsCreated
+        - collectionsMerged
+        - bookmarksImported
+        - bookmarksSkipped
+        - bookmarksInvalid
+
+    ImageUpload:
+      type: object
+      description: Either an image file (PNG, JPEG, GIF or WebP) or the URL of one
+      properties:
+        file:
+          type: string
+          format: binary
+        url:
+          type: string
+
+    UpdateCollectionDto:
+      properties:
+        name:
+          type: string
+      required:
+        - name
+
+    MoveCollectionDto:
+      type: object
+      properties:
+        parentId:
+          $ref: '#/components/schemas/ID'
+          nullable: true
+          description: Target parent collection ID, or null to move to root
+
+    BookmarkDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        collectionId:
+          $ref: '#/components/schemas/ID'
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        ogImage:
+          type: string
+        favicon:
+          type: string
+        canonical:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+          description: Username of the member who added the bookmark
+        favorite:
+          type: boolean
+          description: Whether the current user marked this bookmark as favorite
+      required:
+        - id
+        - url
+
+    DashboardSectionTypeEnum:
+      type: string
+      description: >
+        LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+      enum:
+        - LINKS
+        - FAVORITES
+        - RECENT
+
+    DashboardDto:
+      properties:
+        customized:
+          type: boolean
+          description: False while the user still sees the default layout
+        sections:
+          type: array
+          items:
+            $ref: '#/components/schemas/DashboardSectionDto'
+      required:
+        - customized
+        - sections
+
+    DashboardSectionDto:
+      properties:
+        id:
+          type: string
+          description: Empty for sections of the default layout
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/DashboardSectionTypeEnum'
+        bookmarks:
+          type: array
+          items:
+            $ref: '#/components/schemas/BookmarkDto'
+      required:
+        - title
+        - type
+        - bookmarks
+
+    UpdateDashboardDto:
+      properties:
+        sections:
+          type: array
+          maxItems: 30
+          items:
+            $ref: '#/components/schemas/UpdateDashboardSectionDto'
+      required:
+        - sections
+
+    UpdateDashboardSectionDto:
+      properties:
+        title:
+          type: string
+        type:
+          $ref: '#/components/schemas/DashboardSectionTypeEnum'
+        bookmarkIds:
+          type: array
+          description: Only used for LINKS sections, in display order
+          items:
+            $ref: '#/components/schemas/ID'
+      required:
+        - title
+        - type
+
+    FetchMetadataRequest:
+      properties:
+        url:
+          type: string
+      required:
+        - url
+
+    BookmarkMetadataDto:
+      properties:
+        url:
+          type: string
+          description: The normalized URL (e.g. with https:// added)
+        found:
+          type: boolean
+          description: False if the page could not be loaded or had no usable metadata
+        title:
+          type: string
+        description:
+          type: string
+        ogImage:
+          type: string
+        favicon:
+          type: string
+        canonical:
+          type: string
+        keywords:
+          type: array
+          items:
+            type: string
+      required:
+        - url
+        - found
+
+    BookmarkDtoList:
+      type: array
+      items:
+        $ref: '#/components/schemas/BookmarkDto'
+
+    CreateBookmarkDto:
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - url
+
+    UpdateBookmarkDto:
+      properties:
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+      required:
+        - url
+
+    InviteDto:
+      type: object
+      properties:
+        token:
+          type: string
+        targetType:
+          type: string
+          enum: [ SPACE, COLLECTION ]
+        targetId:
+          type: string
+        role:
+          $ref: '#/components/schemas/InviteRoleEnum'
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        maxUses:
+          type: integer
+          nullable: true
+        usedCount:
+          type: integer
+        createdAt:
+          type: string
+          format: date-time
+        createdBy:
+          type: string
+
+    CreateInviteRequest:
+      type: object
+      required:
+        - targetType
+        - targetId
+      properties:
+        targetType:
+          type: string
+          enum: [ SPACE, COLLECTION ]
+        targetId:
+          type: string
+        role:
+          $ref: '#/components/schemas/InviteRoleEnum'
+        expiresAt:
+          type: string
+          format: date-time
+          nullable: true
+        maxUses:
+          type: integer
+          nullable: true
+
+  responses:
+    BadRequest:
+      description: Bad Request
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    NoContent:
+      description: No Content
+    Unauthorized:
+      description: Unauthorized
+    Forbidden:
+      description: Forbidden
+    NotFound:
+      description: The specified resource was not found
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
+    Conflict:
+      description: Conflict
+
+  securitySchemes:
+    bearerAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+
+security:
+  - bearerAuth: []

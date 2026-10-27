@@ -8,38 +8,44 @@ on:
     branches:
       - '**'
 
-env:
-  GO_VERSION: "1.24.x"
-  TAR_OPTIONS: --skip-old-files
-
 jobs:
   build:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:18-alpine
+        env:
+          POSTGRES_PASSWORD: test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready --health-interval 5s --health-timeout 5s --health-retries 10
     steps:
       - uses: actions/checkout@v4
-        with:
-          fetch-depth: 0
-      - name: Read version
-        run: |
-          echo "VERSION=$(cat VERSION)" >> $GITHUB_ENV
 
       - uses: actions/setup-go@v5
         with:
-          go-version: ${{ env.GO_VERSION }}
+          go-version-file: go.mod
 
-      - uses: actions/cache@v3
+      - uses: actions/setup-node@v4
         with:
-          path: |
-            ~/.cache/go-build
-            ~/go/pkg/mod
-          key: ${{ runner.os }}-go-${{ hashFiles('**/go.sum') }}
+          node-version: '24'
+          cache: npm
+          cache-dependency-path: ui/v1/package-lock.json
 
-      - name: Run tests
-        run: make test
+      - name: Generated code is up to date
+        run: go generate ./internal/api && git diff --exit-code internal/api
 
-      - name: Build platforms
+      - name: Build
         run: make build
 
-      - name: Run binary to check start
-        run: |
-          ./bin/ragbag-v${{ env.VERSION }}-linux-amd64 --version
+      - name: Lint and type check
+        run: make check
+
+      - name: Test (SQLite)
+        run: go test ./...
+
+      - name: Test (PostgreSQL)
+        run: go test -count=1 ./internal/server/...
+        env:
+          RAGBAG_TEST_POSTGRES: postgres://postgres:test@localhost:5432/postgres?sslmode=disable

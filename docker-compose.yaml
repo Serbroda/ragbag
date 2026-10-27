@@ -1,0 +1,43 @@
+# Ragbag in a single container with SQLite, the simplest setup for personal use and homelabs.
+# For PostgreSQL use docker-compose.postgres.yaml instead.
+#
+#   cp .env.example .env    # then change the secrets
+#   docker compose up -d --build
+#
+# Open http://localhost:8080 and register the first account. The database lives in the
+# ragbag-data volume (/data/ragbag.db inside the container).
+# Every value below has a dummy default so the stack starts out of the box. Do not use the
+# defaults for anything reachable from the internet.
+
+services:
+  app:
+    build: .
+    image: ragbag:latest
+    restart: unless-stopped
+    ports:
+      - "${RAGBAG_PORT:-8080}:8080"
+    # "Fetch details" and avatar URLs need DNS inside the container. If the log says "cannot resolve host",
+    # the host firewall probably blocks the container network's DNS (Podman + UFW: allow 10.88.0.0/15),
+    # or bypass it with public resolvers:
+    # dns:
+    #   - 192.168.2.1
+    #   - 9.9.9.9
+    volumes:
+      - ragbag-data:/data
+      # Or keep the database next to this file; the container fixes the permissions on startup.
+      # On SELinux hosts (Fedora, RHEL) append :Z, i.e. ./data:/data:Z
+      # - ./data:/data
+    environment:
+      # At least 32 characters, e.g. `openssl rand -base64 32`
+      JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
+      # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
+      # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
+      # Usernames (comma-separated) that may manage all users, e.g. create password reset links
+      ADMIN_USERS: ${ADMIN_USERS:-}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      # Allow loading link titles from your own network (homelab dashboards)
+      ALLOW_PRIVATE_HOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+
+volumes:
+  ragbag-data:

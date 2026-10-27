@@ -1,0 +1,83 @@
+@import "tailwindcss";
+@import "@fontsource-variable/inter";
+@plugin 'flowbite/plugin';
+@custom-variant dark (&:where(.dark, .dark *));
+/* ... */
+@source "../node_modules/flowbite-svelte/dist";
+@source "../node_modules/flowbite-svelte-icons/dist";
+
+@source './src/**/*.{html,js,svelte,ts,md}';
+
+@theme {
+    --z-index-100: 100;
+
+    /* Primary — Amber / Copper */
+    --color-primary-50: #fffbeb;
+    --color-primary-100: #fef3c7;
+    --color-primary-200: #fde68a;
+    --color-primary-300: #fcd34d;
+    --color-primary-400: #fbbf24;
+    --color-primary-500: #f59e0b;
+    --color-primary-600: #d97706;
+    --color-primary-700: #b45309;
+    --color-primary-800: #92400e;
+    --color-primary-900: #78350f;
+
+    /* Secondary — Warm Stone */
+    --color-secondary-50: #fafaf9;
+    --color-secondary-100: #f5f5f4;
+    --color-secondary-200: #e7e5e4;
+    --color-secondary-300: #d6d3d1;
+    --color-secondary-400: #a8a29e;
+    --color-secondary-500: #78716c;
+    --color-secondary-600: #57534e;
+    --color-secondary-700: #44403c;
+    --color-secondary-800: #292524;
+    --color-secondary-900: #1c1917;
+
+    /* Gray — Warm Neutral */
+    --color-gray-50: #fafaf9;
+    --color-gray-100: #f5f5f4;
+    --color-gray-200: #e7e5e4;
+    --color-gray-300: #d6d3d1;
+    --color-gray-400: #a8a29e;
+    --color-gray-500: #78716c;
+    --color-gray-600: #57534e;
+    --color-gray-700: #44403c;
+    --color-gray-800: #292524;
+    --color-gray-900: #1c1917;
+    /* Extra steps for the layered app shell: rail < sidebar < content */
+    --color-gray-850: #211d1b;
+    --color-gray-950: #0c0a09;
+
+    --font-sans: 'Inter Variable', ui-sans-serif, system-ui, -apple-system, 'Segoe UI', sans-serif;
+}
+
+@layer base {
+    button,
+    [role='button'] {
+        cursor: pointer;
+    }
+
+    html {
+        font-feature-settings: 'cv11', 'ss01';
+        -webkit-font-smoothing: antialiased;
+    }
+
+    /* Thin scrollbars that match the warm dark theme */
+    * {
+        scrollbar-width: thin;
+        scrollbar-color: var(--color-gray-700) transparent;
+    }
+}
+
+/* --- Brand accents --- */
+
+/* Warm glow on primary buttons (dark mode) */
+:where(.dark) button[type='submit'] {
+    box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
+    transition: box-shadow 0.2s ease;
+}
+:where(.dark) button[type='submit']:hover {
+    box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
+}

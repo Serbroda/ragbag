@@ -1,0 +1,14 @@
+# Keep the build context small and free of local state
+.git
+.idea
+.claude
+.DS_Store
+**/.DS_Store
+.env
+.env.*
+!.env.example
+data
+bin
+ui/v1/dist
+**/node_modules
+**/node

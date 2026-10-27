@@ -1,0 +1,51 @@
+# Ragbag with PostgreSQL. For a single-container setup with SQLite see docker-compose.yaml.
+#
+#   cp .env.example .env    # then change the secrets
+#   docker compose -f docker-compose.postgres.yaml up -d --build
+#
+# Open http://localhost:8080 and register the first account.
+# Every value below has a dummy default so the stack starts out of the box. Do not use the
+# defaults for anything reachable from the internet.
+
+services:
+  db:
+    image: postgres:18-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-ragbag}
+      POSTGRES_USER: ${DB_USER:-ragbag}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-ragbag-dummy-db-password}
+    volumes:
+      # Postgres 18 keeps its data below /var/lib/postgresql/<version>
+      - db-data:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+  app:
+    build: .
+    image: ragbag:latest
+    restart: unless-stopped
+    depends_on:
+      db:
+        condition: service_healthy
+    ports:
+      - "${RAGBAG_PORT:-8080}:8080"
+    environment:
+      # URL-encode special characters of the password (e.g. @ as %40)
+      DATABASE_URL: postgres://${DB_USER:-ragbag}:${DB_PASSWORD:-ragbag-dummy-db-password}@db:5432/${DB_NAME:-ragbag}?sslmode=disable
+      # At least 32 characters, e.g. `openssl rand -base64 32`
+      JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
+      # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
+      # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
+      # Usernames (comma-separated) that may manage all users, e.g. create password reset links
+      ADMIN_USERS: ${ADMIN_USERS:-}
+      REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      # Allow loading link titles from your own network (homelab dashboards)
+      ALLOW_PRIVATE_HOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+
+volumes:
+  db-data:
