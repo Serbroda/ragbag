@@ -25,11 +25,13 @@ models/CreateSpaceDto.ts
 models/DashboardDto.ts
 models/DashboardSectionDto.ts
 models/DashboardSectionTypeEnum.ts
+models/DiscoverableSpaceDto.ts
 models/FetchMetadataRequest.ts
 models/ImportResultDto.ts
 models/InviteDto.ts
 models/InvitePreviewDto.ts
 models/InviteRoleEnum.ts
+models/JoinRoleEnum.ts
 models/LoginRequest.ts
 models/LoginResponse.ts
 models/ModelError.ts

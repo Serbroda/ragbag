@@ -513,6 +513,61 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/spaces/discover:
+    get:
+      summary: List the discoverable spaces of this instance
+      description: Every signed-in account sees them and can join with the space's join role.
+      operationId: discoverSpaces
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: query
+          name: q
+          required: false
+          description: Filters by name and description
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK, the 100 largest matching spaces
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/DiscoverableSpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
+  /v1/spaces/{spaceId}/join:
+    post:
+      summary: Join a discoverable space
+      description: New members get the space's join role; existing memberships are kept as they are.
+      operationId: joinSpace
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/spaces/{spaceId}/leave:
     post:
       summary: Leave a space
@@ -1616,9 +1671,43 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/SpacePermissionEnum'
+        discoverable:
+          type: boolean
+          description: Listed for every account of the instance, which can join without an invite
+        joinRole:
+          $ref: '#/components/schemas/JoinRoleEnum'
       required:
         - id
         - name
+
+    DiscoverableSpaceDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        iconId:
+          $ref: '#/components/schemas/ID'
+        memberCount:
+          type: integer
+        joinRole:
+          $ref: '#/components/schemas/JoinRoleEnum'
+        role:
+          $ref: '#/components/schemas/SpaceMemberRoleEnum'
+      required:
+        - id
+        - name
+        - memberCount
+        - joinRole
+
+    JoinRoleEnum:
+      type: string
+      description: Role of people joining a discoverable space
+      enum:
+        - CONTRIBUTOR
+        - VIEWER
 
     CreateSpaceDto:
       properties:
@@ -1714,6 +1803,11 @@ components:
           type: string
         description:
           type: string
+        discoverable:
+          type: boolean
+          description: Unchanged when left out; changing it needs MANAGE_MEMBERS
+        joinRole:
+          $ref: '#/components/schemas/JoinRoleEnum'
       required:
         - name
 

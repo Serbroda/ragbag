@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { JoinRoleEnum } from './JoinRoleEnum';
+import {
+    JoinRoleEnumFromJSON,
+    JoinRoleEnumFromJSONTyped,
+    JoinRoleEnumToJSON,
+    JoinRoleEnumToJSONTyped,
+} from './JoinRoleEnum';
+
 /**
  * 
  * @export
@@ -27,7 +35,17 @@ export interface UpdateSpaceDto {
      * 
      */
     description?: string;
+    /**
+     * Unchanged when left out; changing it needs MANAGE_MEMBERS
+     */
+    discoverable?: boolean;
+    /**
+     * 
+     */
+    joinRole?: JoinRoleEnum;
 }
+
+
 
 /**
  * Check if a given object implements the UpdateSpaceDto interface.
@@ -49,6 +67,8 @@ export function UpdateSpaceDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
         
         'name': json['name'],
         'description': json['description'] == null ? undefined : json['description'],
+        'discoverable': json['discoverable'] == null ? undefined : json['discoverable'],
+        'joinRole': json['joinRole'] == null ? undefined : JoinRoleEnumFromJSON(json['joinRole']),
     };
 }
 
@@ -65,6 +85,8 @@ export function UpdateSpaceDtoToJSONTyped(value?: UpdateSpaceDto | null, ignoreD
         
         'name': value['name'],
         'description': value['description'],
+        'discoverable': value['discoverable'],
+        'joinRole': JoinRoleEnumToJSON(value['joinRole']),
     };
 }
 

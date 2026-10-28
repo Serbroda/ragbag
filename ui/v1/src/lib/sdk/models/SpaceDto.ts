@@ -27,6 +27,13 @@ import {
     SpacePermissionEnumToJSON,
     SpacePermissionEnumToJSONTyped,
 } from './SpacePermissionEnum';
+import type { JoinRoleEnum } from './JoinRoleEnum';
+import {
+    JoinRoleEnumFromJSON,
+    JoinRoleEnumFromJSONTyped,
+    JoinRoleEnumToJSON,
+    JoinRoleEnumToJSONTyped,
+} from './JoinRoleEnum';
 
 /**
  * 
@@ -58,6 +65,14 @@ export interface SpaceDto {
      * 
      */
     permissions?: Array<SpacePermissionEnum>;
+    /**
+     * Listed for every account of the instance, which can join without an invite
+     */
+    discoverable?: boolean;
+    /**
+     * 
+     */
+    joinRole?: JoinRoleEnum;
 }
 
 
@@ -87,6 +102,8 @@ export function SpaceDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'iconId': json['iconId'] == null ? undefined : json['iconId'],
         'role': json['role'] == null ? undefined : SpaceMemberRoleEnumFromJSON(json['role']),
         'permissions': json['permissions'] == null ? undefined : ((json['permissions'] as Array<any>).map(SpacePermissionEnumFromJSON)),
+        'discoverable': json['discoverable'] == null ? undefined : json['discoverable'],
+        'joinRole': json['joinRole'] == null ? undefined : JoinRoleEnumFromJSON(json['joinRole']),
     };
 }
 
@@ -107,6 +124,8 @@ export function SpaceDtoToJSONTyped(value?: SpaceDto | null, ignoreDiscriminator
         'iconId': value['iconId'],
         'role': SpaceMemberRoleEnumToJSON(value['role']),
         'permissions': value['permissions'] == null ? undefined : ((value['permissions'] as Array<any>).map(SpacePermissionEnumToJSON)),
+        'discoverable': value['discoverable'],
+        'joinRole': JoinRoleEnumToJSON(value['joinRole']),
     };
 }
 

@@ -19,6 +19,11 @@ import {
     CreateSpaceDtoToJSON,
 } from '../models/CreateSpaceDto';
 import {
+    type DiscoverableSpaceDto,
+    DiscoverableSpaceDtoFromJSON,
+    DiscoverableSpaceDtoToJSON,
+} from '../models/DiscoverableSpaceDto';
+import {
     type SpaceDto,
     SpaceDtoFromJSON,
     SpaceDtoToJSON,
@@ -53,6 +58,13 @@ export interface DeleteSpaceRequest {
     spaceId: string;
 }
 
+export interface DiscoverSpacesRequest {
+    /**
+     * Filters by name and description
+     */
+    q?: string;
+}
+
 export interface GetSpaceRequest {
     /**
      * 
@@ -61,6 +73,13 @@ export interface GetSpaceRequest {
 }
 
 export interface GetSpaceMembersRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
+export interface JoinSpaceRequest {
     /**
      * 
      */
@@ -246,6 +265,57 @@ export class SpaceApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for discoverSpaces without sending the request
+     */
+    async discoverSpacesRequestOpts(requestParameters: DiscoverSpacesRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['q'] != null) {
+            queryParameters['q'] = requestParameters['q'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/discover`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Every signed-in account sees them and can join with the space\'s join role.
+     * List the discoverable spaces of this instance
+     */
+    async discoverSpacesRaw(requestParameters: DiscoverSpacesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<DiscoverableSpaceDto>>> {
+        const requestOptions = await this.discoverSpacesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(DiscoverableSpaceDtoFromJSON));
+    }
+
+    /**
+     * Every signed-in account sees them and can join with the space\'s join role.
+     * List the discoverable spaces of this instance
+     */
+    async discoverSpaces(requestParameters: DiscoverSpacesRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<DiscoverableSpaceDto>> {
+        const response = await this.discoverSpacesRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getSpace without sending the request
      */
     async getSpaceRequestOpts(requestParameters: GetSpaceRequest): Promise<runtime.RequestOpts> {
@@ -393,6 +463,61 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async getSpaces(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SpaceDto>> {
         const response = await this.getSpacesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for joinSpace without sending the request
+     */
+    async joinSpaceRequestOpts(requestParameters: JoinSpaceRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling joinSpace().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/join`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * New members get the space\'s join role; existing memberships are kept as they are.
+     * Join a discoverable space
+     */
+    async joinSpaceRaw(requestParameters: JoinSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpaceDto>> {
+        const requestOptions = await this.joinSpaceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpaceDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * New members get the space\'s join role; existing memberships are kept as they are.
+     * Join a discoverable space
+     */
+    async joinSpace(requestParameters: JoinSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceDto> {
+        const response = await this.joinSpaceRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -130,6 +130,24 @@ func (e InviteRoleEnum) Valid() bool {
 	}
 }
 
+// Defines values for JoinRoleEnum.
+const (
+	JoinRoleEnumCONTRIBUTOR JoinRoleEnum = "CONTRIBUTOR"
+	JoinRoleEnumVIEWER      JoinRoleEnum = "VIEWER"
+)
+
+// Valid indicates whether the value is a known member of the JoinRoleEnum enum.
+func (e JoinRoleEnum) Valid() bool {
+	switch e {
+	case JoinRoleEnumCONTRIBUTOR:
+		return true
+	case JoinRoleEnumVIEWER:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SpaceMemberRoleEnum.
 const (
 	SpaceMemberRoleEnumADMIN       SpaceMemberRoleEnum = "ADMIN"
@@ -369,6 +387,23 @@ type DashboardSectionDto struct {
 // DashboardSectionTypeEnum LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
 type DashboardSectionTypeEnum string
 
+// DiscoverableSpaceDto defines model for DiscoverableSpaceDto.
+type DiscoverableSpaceDto struct {
+	Description *string `json:"description,omitempty"`
+
+	// IconId UUID
+	IconId *ID `json:"iconId,omitempty"`
+
+	// Id UUID
+	Id ID `json:"id"`
+
+	// JoinRole Role of people joining a discoverable space
+	JoinRole    JoinRoleEnum         `json:"joinRole"`
+	MemberCount int                  `json:"memberCount"`
+	Name        string               `json:"name"`
+	Role        *SpaceMemberRoleEnum `json:"role,omitempty"`
+}
+
 // Error defines model for Error.
 type Error struct {
 	Message *string `json:"message,omitempty"`
@@ -454,6 +489,9 @@ type InviteRoleEnum string
 // JWT JSON Web Token
 type JWT = string
 
+// JoinRoleEnum Role of people joining a discoverable space
+type JoinRoleEnum string
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Password string `json:"password"`
@@ -504,11 +542,17 @@ type ResetPasswordRequest struct {
 type SpaceDto struct {
 	Description *string `json:"description,omitempty"`
 
+	// Discoverable Listed for every account of the instance, which can join without an invite
+	Discoverable *bool `json:"discoverable,omitempty"`
+
 	// IconId UUID
 	IconId *ID `json:"iconId,omitempty"`
 
 	// Id UUID
-	Id          ID                     `json:"id"`
+	Id ID `json:"id"`
+
+	// JoinRole Role of people joining a discoverable space
+	JoinRole    *JoinRoleEnum          `json:"joinRole,omitempty"`
 	Name        string                 `json:"name"`
 	Permissions *[]SpacePermissionEnum `json:"permissions,omitempty"`
 	Role        *SpaceMemberRoleEnum   `json:"role,omitempty"`
@@ -572,7 +616,13 @@ type UpdateDashboardSectionDto struct {
 // UpdateSpaceDto defines model for UpdateSpaceDto.
 type UpdateSpaceDto struct {
 	Description *string `json:"description,omitempty"`
-	Name        string  `json:"name"`
+
+	// Discoverable Unchanged when left out; changing it needs MANAGE_MEMBERS
+	Discoverable *bool `json:"discoverable,omitempty"`
+
+	// JoinRole Role of people joining a discoverable space
+	JoinRole *JoinRoleEnum `json:"joinRole,omitempty"`
+	Name     string        `json:"name"`
 }
 
 // UpdateSpaceMemberDto defines model for UpdateSpaceMemberDto.
@@ -613,6 +663,12 @@ type ImportCollectionJSONBody = map[string]interface{}
 type ImportCollectionParams struct {
 	// Preview Only report what the import would do, without changing anything
 	Preview *bool `form:"preview,omitempty" json:"preview,omitempty"`
+}
+
+// DiscoverSpacesParams defines parameters for DiscoverSpaces.
+type DiscoverSpacesParams struct {
+	// Q Filters by name and description
+	Q *string `form:"q,omitempty" json:"q,omitempty"`
 }
 
 // GetRecentBookmarksParams defines parameters for GetRecentBookmarks.
@@ -790,6 +846,9 @@ type ServerInterface interface {
 	// CreateSpace Create a space (the current user becomes its owner)
 	// (POST /v1/spaces)
 	CreateSpace(ctx echo.Context) error
+	// DiscoverSpaces List the discoverable spaces of this instance
+	// (GET /v1/spaces/discover)
+	DiscoverSpaces(ctx echo.Context, params DiscoverSpacesParams) error
 	// DeleteSpace Delete a space
 	// (DELETE /v1/spaces/{spaceId})
 	DeleteSpace(ctx echo.Context, spaceId ID) error
@@ -832,6 +891,9 @@ type ServerInterface interface {
 	// GetSpaceInvites List the open invites of a space
 	// (GET /v1/spaces/{spaceId}/invites)
 	GetSpaceInvites(ctx echo.Context, spaceId ID) error
+	// JoinSpace Join a discoverable space
+	// (POST /v1/spaces/{spaceId}/join)
+	JoinSpace(ctx echo.Context, spaceId ID) error
 	// LeaveSpace Leave a space
 	// (POST /v1/spaces/{spaceId}/leave)
 	LeaveSpace(ctx echo.Context, spaceId ID) error
@@ -1359,6 +1421,24 @@ func (w *ServerInterfaceWrapper) CreateSpace(ctx echo.Context) error {
 	return err
 }
 
+// DiscoverSpaces converts echo context to params.
+func (w *ServerInterfaceWrapper) DiscoverSpaces(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params DiscoverSpacesParams
+	// ------------- Optional query parameter "q" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "q", ctx.QueryParams(), &params.Q, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter q: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DiscoverSpaces(ctx, params)
+	return err
+}
+
 // DeleteSpace converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteSpace(ctx echo.Context) error {
 	var err error
@@ -1601,6 +1681,22 @@ func (w *ServerInterfaceWrapper) GetSpaceInvites(ctx echo.Context) error {
 	return err
 }
 
+// JoinSpace converts echo context to params.
+func (w *ServerInterfaceWrapper) JoinSpace(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.JoinSpace(ctx, spaceId)
+	return err
+}
+
 // LeaveSpace converts echo context to params.
 func (w *ServerInterfaceWrapper) LeaveSpace(ctx echo.Context) error {
 	var err error
@@ -1777,6 +1873,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/spaces/:spaceId", wrapper.UpdateSpace, options.OperationMiddlewares["updateSpace"]...)
 	router.DELETE(options.BaseURL+"/v1/spaces/:spaceId/icon", wrapper.RemoveSpaceIcon, options.OperationMiddlewares["removeSpaceIcon"]...)
 	router.PUT(options.BaseURL+"/v1/spaces/:spaceId/icon", wrapper.SetSpaceIcon, options.OperationMiddlewares["setSpaceIcon"]...)
+	router.GET(options.BaseURL+"/v1/spaces/discover", wrapper.DiscoverSpaces, options.OperationMiddlewares["discoverSpaces"]...)
+	router.POST(options.BaseURL+"/v1/spaces/:spaceId/join", wrapper.JoinSpace, options.OperationMiddlewares["joinSpace"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/leave", wrapper.LeaveSpace, options.OperationMiddlewares["leaveSpace"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/members", wrapper.GetSpaceMembers, options.OperationMiddlewares["getSpaceMembers"]...)
 	router.DELETE(options.BaseURL+"/v1/spaces/:spaceId/members/:userId", wrapper.RemoveSpaceMember, options.OperationMiddlewares["removeSpaceMember"]...)

@@ -14,6 +14,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Spaces with members and roles: **owner**, **admin**, **contributor** (adds and edits links and collections)
   and **viewer**. A space bar like in Discord switches between them, `Ctrl/⌘ K` jumps anywhere.
 - **Invite links** with role, expiry and maximum uses – send them via any messenger.
+- **Public spaces** show up under *Discover spaces* for everybody on your instance, who can join with one click
+  as viewer or contributor.
 - Avatars for users and icons for spaces: upload an image or load it from an address.
 
 **Collections & links**
