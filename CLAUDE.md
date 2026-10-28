@@ -80,6 +80,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   everything below them (`hiddenCollections`). Hidden collections answer 404, and every list or query of bookmarks
   must exclude them. Parents with hidden children cannot be deleted; leaving a space deletes private collections
   nobody can see anymore.
+- **Discoverable spaces** (`discoverable`, `join_role` VIEWER or CONTRIBUTOR) are listed by `GET /spaces/discover`
+  for every account and joined via `POST /spaces/{id}/join`; other spaces answer 404 there. Joining never changes
+  an existing membership, and changing the setting needs `MANAGE_MEMBERS`.
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

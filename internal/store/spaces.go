@@ -2,20 +2,25 @@ package store
 
 import (
 	"context"
+	"strings"
 	"time"
 )
 
 type Space struct {
-	ID          string    `db:"id"`
-	Name        string    `db:"name"`
-	Description *string   `db:"description"`
-	IconImageID *string   `db:"icon_image_id"`
-	CreatedBy   string    `db:"created_by"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID          string  `db:"id"`
+	Name        string  `db:"name"`
+	Description *string `db:"description"`
+	IconImageID *string `db:"icon_image_id"`
+	// Discoverable spaces are listed for every account, which can join them with JoinRole
+	Discoverable bool      `db:"discoverable"`
+	JoinRole     string    `db:"join_role"`
+	CreatedBy    string    `db:"created_by"`
+	CreatedAt    time.Time `db:"created_at"`
+	UpdatedAt    time.Time `db:"updated_at"`
 }
 
-const spaceColumns = `s.id, s.name, s.description, s.icon_image_id, s.created_by, s.created_at, s.updated_at`
+const spaceColumns = `s.id, s.name, s.description, s.icon_image_id, s.discoverable, s.join_role, s.created_by, s.created_at,
+	s.updated_at`
 
 // SpaceWithRole is a space as one of its members sees it.
 type SpaceWithRole struct {
@@ -25,9 +30,11 @@ type SpaceWithRole struct {
 
 func (s *Store) CreateSpace(ctx context.Context, name string, description *string, createdBy string) (*Space, error) {
 	at := now()
-	space := &Space{ID: newID(), Name: name, Description: description, CreatedBy: createdBy, CreatedAt: at, UpdatedAt: at}
-	_, err := s.exec(ctx, `INSERT INTO spaces (id, name, description, icon_image_id, created_by, created_at, updated_at)
-		VALUES (?, ?, ?, NULL, ?, ?, ?)`, space.ID, space.Name, space.Description, space.CreatedBy, at, at)
+	space := &Space{ID: newID(), Name: name, Description: description, JoinRole: "VIEWER", CreatedBy: createdBy,
+		CreatedAt: at, UpdatedAt: at}
+	_, err := s.exec(ctx, `INSERT INTO spaces (id, name, description, icon_image_id, discoverable, join_role, created_by,
+		created_at, updated_at) VALUES (?, ?, ?, NULL, ?, ?, ?, ?, ?)`, space.ID, space.Name, space.Description, false,
+		space.JoinRole, space.CreatedBy, at, at)
 	return space, err
 }
 
@@ -39,6 +46,32 @@ func (s *Store) SpaceByID(ctx context.Context, id string) (*Space, error) {
 func (s *Store) UpdateSpace(ctx context.Context, id, name string, description *string) error {
 	_, err := s.exec(ctx, `UPDATE spaces SET name = ?, description = ?, updated_at = ? WHERE id = ?`, name, description, now(), id)
 	return err
+}
+
+func (s *Store) SetSpaceDiscoverable(ctx context.Context, id string, discoverable bool, joinRole string) error {
+	_, err := s.exec(ctx, `UPDATE spaces SET discoverable = ?, join_role = ?, updated_at = ? WHERE id = ?`,
+		discoverable, joinRole, now(), id)
+	return err
+}
+
+// DiscoverableSpace is a discoverable space as anybody sees it; Role is set if the user is a member already.
+type DiscoverableSpace struct {
+	Space
+	MemberCount int     `db:"member_count"`
+	Role        *string `db:"role"`
+}
+
+// DiscoverableSpaces lists the largest discoverable spaces matching the query (name or description).
+func (s *Store) DiscoverableSpaces(ctx context.Context, userID, query string, limit int) ([]DiscoverableSpace, error) {
+	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(strings.TrimSpace(query)))
+	pattern := "%" + escaped + "%"
+	var spaces []DiscoverableSpace
+	err := s.sel(ctx, &spaces, `SELECT `+spaceColumns+`,
+			(SELECT COUNT(*) FROM space_members a WHERE a.space_id = s.id) AS member_count, m.role
+		FROM spaces s LEFT JOIN space_members m ON m.space_id = s.id AND m.user_id = ?
+		WHERE s.discoverable = ? AND (LOWER(s.name) LIKE ? ESCAPE '\' OR LOWER(COALESCE(s.description, '')) LIKE ? ESCAPE '\')
+		ORDER BY member_count DESC, LOWER(s.name), s.id LIMIT ?`, userID, true, pattern, pattern, limit)
+	return spaces, err
 }
 
 func (s *Store) SetSpaceIcon(ctx context.Context, id string, imageID *string) error {

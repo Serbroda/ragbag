@@ -20,9 +20,13 @@ func spaceDto(space *store.Space, role Role) api.SpaceDto {
 			permissions = append(permissions, api.SpacePermissionEnum(p))
 		}
 	}
+	joinRole := api.JoinRoleEnum(space.JoinRole)
 	return api.SpaceDto{Id: space.ID, Name: space.Name, Description: space.Description, IconId: space.IconImageID,
-		Role: &apiRole, Permissions: &permissions}
+		Role: &apiRole, Permissions: &permissions, Discoverable: &space.Discoverable, JoinRole: &joinRole}
 }
+
+// maxDiscoverResults keeps the discover list short; the search narrows it down.
+const maxDiscoverResults = 100
 
 func memberDto(member store.Member) api.SpaceMemberDto {
 	return api.SpaceMemberDto{UserId: member.UserID, Username: member.Username, AvatarId: member.AvatarImageID,
@@ -119,7 +123,83 @@ func (s *Server) UpdateSpace(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
-	if err := s.store.UpdateSpace(ctxOf(c), spaceID, name, blankToNil(req.Description)); err != nil {
+	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		space, err := tx.SpaceByID(ctxOf(c), spaceID)
+		if err != nil {
+			return err
+		}
+		discoverable, joinRole := space.Discoverable, space.JoinRole
+		if req.Discoverable != nil {
+			discoverable = *req.Discoverable
+		}
+		if req.JoinRole != nil {
+			if !req.JoinRole.Valid() {
+				return badRequest("Unknown join role: %s", *req.JoinRole)
+			}
+			joinRole = string(*req.JoinRole)
+		}
+		if discoverable != space.Discoverable || joinRole != space.JoinRole {
+			// Letting everybody in is a membership decision
+			if !role.Has(PermManageMembers) {
+				return forbidden("Missing permission %s", PermManageMembers)
+			}
+			if err := tx.SetSpaceDiscoverable(ctxOf(c), spaceID, discoverable, joinRole); err != nil {
+				return err
+			}
+		}
+		return tx.UpdateSpace(ctxOf(c), spaceID, name, blankToNil(req.Description))
+	})
+	if err != nil {
+		return err
+	}
+	return s.spaceView(c, spaceID, role)
+}
+
+func (s *Server) DiscoverSpaces(c echo.Context, params api.DiscoverSpacesParams) error {
+	query := ""
+	if params.Q != nil {
+		query = *params.Q
+	}
+	spaces, err := s.store.DiscoverableSpaces(ctxOf(c), currentUser(c), query, maxDiscoverResults)
+	if err != nil {
+		return err
+	}
+	result := make([]api.DiscoverableSpaceDto, 0, len(spaces))
+	for _, space := range spaces {
+		dto := api.DiscoverableSpaceDto{Id: space.ID, Name: space.Name, Description: space.Description,
+			IconId: space.IconImageID, MemberCount: space.MemberCount, JoinRole: api.JoinRoleEnum(space.JoinRole)}
+		if space.Role != nil {
+			role := api.SpaceMemberRoleEnum(*space.Role)
+			dto.Role = &role
+		}
+		result = append(result, dto)
+	}
+	return c.JSON(http.StatusOK, result)
+}
+
+// JoinSpace lets anybody join a discoverable space. Other spaces answer 404, so their ids cannot be probed.
+func (s *Server) JoinSpace(c echo.Context, spaceID api.ID) error {
+	var role Role
+	err := s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		space, err := tx.SpaceByID(ctxOf(c), spaceID)
+		if err != nil {
+			return orNotFound(err, "Space not found: %s", spaceID)
+		}
+		current, err := tx.MemberRole(ctxOf(c), spaceID, currentUser(c))
+		if err == nil {
+			role = Role(current)
+			return nil
+		}
+		if !errors.Is(err, store.ErrNotFound) {
+			return err
+		}
+		if !space.Discoverable {
+			return notFound("Space not found: %s", spaceID)
+		}
+		role = Role(space.JoinRole)
+		return joinSpace(ctxOf(c), tx, spaceID, currentUser(c), role)
+	})
+	if err != nil {
 		return err
 	}
 	return s.spaceView(c, spaceID, role)

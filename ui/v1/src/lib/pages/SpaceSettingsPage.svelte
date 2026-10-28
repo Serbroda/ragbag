@@ -3,13 +3,14 @@
 	import type {
 		InviteDto,
 		InviteRoleEnum,
+		JoinRoleEnum,
 		SpaceDto,
 		SpaceMemberDto,
 		SpaceMemberRoleEnum,
 	} from 'ragbag-frontend-sdk';
 	import { getContext } from 'svelte';
-	import { Alert, Button, Input, Label, Modal, Select, Textarea } from 'flowbite-svelte';
-	import { apiConfig, appBase, errorMessage } from '../api/client';
+	import { Alert, Button, Input, Label, Modal, Select, Textarea, Toggle } from 'flowbite-svelte';
+	import { apiConfig, appBase, errorMessage, fetchFeatureFlags } from '../api/client';
 	import { navigate, route } from '../router';
 	import RoleBadge from '../components/RoleBadge.svelte';
 	import Avatar from '../components/Avatar.svelte';
@@ -74,6 +75,8 @@
 			currentUserId = me.id;
 			name = loadedSpace.name;
 			description = loadedSpace.description ?? '';
+			discoverable = loadedSpace.discoverable ?? false;
+			joinRole = loadedSpace.joinRole ?? 'VIEWER';
 			invites = loadedSpace.permissions?.includes('MANAGE_MEMBERS')
 				? await inviteApi.getSpaceInvites({ spaceId: id })
 				: [];
@@ -105,6 +108,41 @@
 			generalMessage = { color: 'red', text: await errorMessage(err, 'Failed to save.') };
 		} finally {
 			savingGeneral = false;
+		}
+	}
+
+	// --- Discovery ---
+	let discoverable = $state(false);
+	let joinRole = $state<JoinRoleEnum>('VIEWER');
+	let savingDiscovery = $state(false);
+	let discoveryMessage = $state<{ color: 'green' | 'red'; text: string } | null>(null);
+	/** With open registration, anybody who can reach the instance can create an account and join. */
+	let registrationOpen = $state(false);
+	const discoveryChanged = $derived(
+		discoverable !== (space?.discoverable ?? false) || joinRole !== (space?.joinRole ?? 'VIEWER'),
+	);
+
+	$effect(() => {
+		fetchFeatureFlags()
+			.then((flags) => (registrationOpen = flags['registration_enabled'] === 'true'))
+			.catch(() => (registrationOpen = false));
+	});
+
+	async function saveDiscovery(e: Event) {
+		e.preventDefault();
+		if (!space) return;
+		savingDiscovery = true;
+		discoveryMessage = null;
+		try {
+			space = await spaceApi.updateSpace({
+				spaceId,
+				updateSpaceDto: { name: space.name, description: space.description, discoverable, joinRole },
+			});
+			discoveryMessage = { color: 'green', text: discoverable ? 'Everybody can find this space now.' : 'Saved.' };
+		} catch (err) {
+			discoveryMessage = { color: 'red', text: await errorMessage(err, 'Failed to save.') };
+		} finally {
+			savingDiscovery = false;
 		}
 	}
 
@@ -354,6 +392,49 @@
 				{/each}
 			</ul>
 		</section>
+
+		<!-- Discovery -->
+		{#if canManageMembers}
+			<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+				<h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Discovery</h2>
+				<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
+					Who can join this space. Private collections stay private either way.
+				</p>
+				<form class="flex flex-col gap-4" onsubmit={saveDiscovery}>
+					<Toggle bind:checked={discoverable}>Public – listed under “Discover spaces”</Toggle>
+					<p class="-mt-2 text-sm text-gray-500 dark:text-gray-400">
+						{#if discoverable}
+							Everybody with an account on this Ragbag can find the space and join it without an invite.
+						{:else}
+							Only people with an invite link can join.
+						{/if}
+					</p>
+					{#if discoverable}
+						<div class="sm:w-64">
+							<Label for="join-role" class="mb-2">People who join become</Label>
+							<Select id="join-role" placeholder="" bind:value={joinRole}>
+								<option value="VIEWER">Viewers – they can read</option>
+								<option value="CONTRIBUTOR">Contributors – they can add links</option>
+							</Select>
+						</div>
+						{#if registrationOpen}
+							<Alert color="yellow">
+								Registration is open: if this Ragbag is reachable from the internet, anybody can create an
+								account and join. Set <code>REGISTRATION_ENABLED=false</code> to keep it to your people.
+							</Alert>
+						{/if}
+					{/if}
+					{#if discoveryMessage}
+						<Alert color={discoveryMessage.color}>{discoveryMessage.text}</Alert>
+					{/if}
+					<div class="flex justify-end">
+						<Button type="submit" disabled={savingDiscovery || !discoveryChanged}>
+							{savingDiscovery ? 'Saving...' : 'Save'}
+						</Button>
+					</div>
+				</form>
+			</section>
+		{/if}
 
 		<!-- Invites -->
 		{#if canManageMembers}
