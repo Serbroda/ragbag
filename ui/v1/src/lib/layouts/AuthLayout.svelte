@@ -12,7 +12,6 @@
 		FolderOutline,
 		FolderPlusSolid,
 		HomeSolid,
-		GlobeOutline,
 		PlusOutline,
 		SearchOutline,
 		StarSolid,
@@ -202,7 +201,6 @@
 	let userMenuOpen = $state(false);
 	let switcherOpen = $state(false);
 	let showCreateOrJoin = $state(false);
-	let createOrJoinStart = $state<'choose' | 'discover'>('choose');
 	let showInvite = $state(false);
 	let showProfile = $state(false);
 	let showAdminUsers = $state(false);
@@ -471,7 +469,7 @@
 					type="button"
 					aria-label="Create or join a space"
 					class="flex h-12 w-12 items-center justify-center rounded-3xl bg-gray-800 text-green-400 transition-all duration-200 hover:rounded-2xl hover:bg-green-600 hover:text-white"
-					onclick={() => ((createOrJoinStart = 'choose'), (showCreateOrJoin = true))}
+					onclick={() => (showCreateOrJoin = true)}
 				>
 					<PlusOutline class="h-6 w-6" />
 				</button>
@@ -479,22 +477,6 @@
 					class="pointer-events-none fixed left-[80px] z-50 hidden whitespace-nowrap rounded-md bg-gray-950 px-3 py-1.5 text-sm font-semibold text-white shadow-xl ring-1 ring-white/10 md:group-hover:block"
 				>
 					Create or join a space
-				</span>
-			</div>
-
-			<div class="group relative flex w-full items-center justify-center">
-				<button
-					type="button"
-					aria-label="Discover spaces"
-					class="flex h-12 w-12 items-center justify-center rounded-3xl bg-gray-800 text-green-400 transition-all duration-200 hover:rounded-2xl hover:bg-green-600 hover:text-white"
-					onclick={() => ((createOrJoinStart = 'discover'), (showCreateOrJoin = true))}
-				>
-					<GlobeOutline class="h-6 w-6" />
-				</button>
-				<span
-					class="pointer-events-none fixed left-[80px] z-50 hidden whitespace-nowrap rounded-md bg-gray-950 px-3 py-1.5 text-sm font-semibold text-white shadow-xl ring-1 ring-white/10 md:group-hover:block"
-				>
-					Discover spaces
 				</span>
 			</div>
 		</nav>
@@ -834,7 +816,7 @@
 	</div>
 </Modal>
 
-<CreateOrJoinSpaceModal bind:open={showCreateOrJoin} start={createOrJoinStart} ondone={handleSpaceDone} />
+<CreateOrJoinSpaceModal bind:open={showCreateOrJoin} ondone={handleSpaceDone} />
 
 {#if activeSpace}
 	<InvitePeopleModal

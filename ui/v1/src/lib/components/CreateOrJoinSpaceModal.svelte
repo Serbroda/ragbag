@@ -10,12 +10,9 @@
 
 	let {
 		open = $bindable(false),
-		start = 'choose',
 		ondone,
 	}: {
 		open?: boolean;
-		/** The step shown when the modal opens, e.g. 'discover' for the space bar's discover button. */
-		start?: Step;
 		/** Called with the id of the created or joined space. */
 		ondone: (spaceId: string) => void | Promise<void>;
 	} = $props();
@@ -29,7 +26,7 @@
 
 	$effect(() => {
 		if (open) {
-			step = start;
+			step = 'choose';
 			name = '';
 			description = '';
 			invite = '';
@@ -213,13 +210,11 @@
 					{/each}
 				</ul>
 			{/if}
-			{#if start !== 'discover'}
-				<div>
-					<Button color="light" onclick={() => ((step = 'choose'), (error = ''))}>
-						<ArrowLeftOutline class="me-1 h-4 w-4" /> Back
-					</Button>
-				</div>
-			{/if}
+			<div>
+				<Button color="light" onclick={() => ((step = 'choose'), (error = ''))}>
+					<ArrowLeftOutline class="me-1 h-4 w-4" /> Back
+				</Button>
+			</div>
 		</div>
 	{:else}
 		<form class="flex flex-col gap-4" onsubmit={submit}>
