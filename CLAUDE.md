@@ -20,7 +20,14 @@ make generate       # regenerate Go server interfaces + TypeScript client from o
 make docker         # container image ragbag:latest
 make install        # build and install/update as a systemd service (Linux, sudo)
 make build-linux    # bin/ragbag-linux-{amd64,arm64} to copy to a server
+make release-patch  # tag the next version on main (also release-minor/-major); push with git push origin main vX.Y.Z
 ```
+
+### Versions
+Git tags (`vX.Y.Z`) are the only place the version lives: builds take `git describe --tags --always --dirty`
+(e.g. `v1.2.0-3-gabc1234` after a release) into `main.version`, the server reports it in
+`GET /api/app/config/features` and the frontend shows it in the account menu. `scripts/release.sh` (behind the
+`release-*` targets) only tags clean `main`; pushing stays a separate step.
 
 ### systemd
 `scripts/install.sh` installs or updates the binary as a hardened systemd service (`DynamicUser`, state in

@@ -6,7 +6,8 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 CONTAINER ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/null)
 OPENAPI_GENERATOR := docker.io/openapitools/openapi-generator-cli:v7.26.0
 
-.PHONY: help build build-ui build-server build-linux install generate dev dev-ui test test-postgres check docker clean
+.PHONY: help build build-ui build-server build-linux install generate dev dev-ui test test-postgres check docker clean \
+	version release-patch release-minor release-major
 
 help: ## Show this help
 	@grep -E '^[a-z-]+:.*## ' $(MAKEFILE_LIST) | awk -F':.*## ' '{printf "  %-14s %s\n", $$1, $$2}'
@@ -56,6 +57,18 @@ check: ## Lint the Go code and type-check the frontend
 
 docker: ## Build the container image ragbag:latest
 	$(CONTAINER) build --build-arg VERSION=$(VERSION) -t ragbag:latest .
+
+version: ## Show the version builds get (from git describe)
+	@echo $(VERSION)
+
+release-patch: ## Tag the next patch version (v1.2.3 → v1.2.4) on main; pushing stays separate
+	@./scripts/release.sh patch
+
+release-minor: ## Tag the next minor version (v1.2.3 → v1.3.0)
+	@./scripts/release.sh minor
+
+release-major: ## Tag the next major version (v1.2.3 → v2.0.0)
+	@./scripts/release.sh major
 
 clean: ## Remove build output
 	rm -rf bin

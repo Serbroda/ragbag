@@ -9,6 +9,11 @@ import (
 	"github.com/stretchr/testify/require"
 )
 
+func TestFeatureFlagsReportTheVersion(t *testing.T) {
+	e := newEnv(t)
+	e.req("GET", "/api/app/config/features").expect(200).has("version", "test").has("registration_enabled", "true")
+}
+
 func TestLoginWithWrongPassword(t *testing.T) {
 	e := newEnv(t)
 	e.req("POST", "/api/auth/login").json(`{"username":"admin","password":"wrong"}`).expect(401).has("detail", "Invalid credentials")
