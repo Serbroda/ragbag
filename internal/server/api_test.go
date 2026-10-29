@@ -284,3 +284,41 @@ func TestSearchingForATagMatchesItExactly(t *testing.T) {
 	search("recipe").has("#", 3)
 	search("#").has("#", 0)
 }
+
+func TestCollectionsKeepAManualOrder(t *testing.T) {
+	e := newEnv(t)
+	owner, member := e.register(), e.register()
+	space := e.firstSpace(owner)
+	e.join(member, space, "CONTRIBUTOR", owner)
+	a := e.createCollection(owner, space, "A", "")
+	b := e.createCollection(owner, space, "B", "")
+	c := e.createCollection(owner, space, "C", "")
+	names := func(path string) string {
+		return e.req("GET", "/api/v1/spaces/%s/collections", space).as(member).expect(200).get(path).String()
+	}
+	move := func(id, body string) *request {
+		return e.req("POST", "/api/v1/collections/%s/move", id).as(owner).json(body)
+	}
+	require.Equal(t, `["A","B","C"]`, names("#.name"))
+
+	move(c, fmt.Sprintf(`{"parentId":null,"beforeId":%q}`, a)).expect(200)
+	require.Equal(t, `["C","A","B"]`, names("#.name"))
+	// Without beforeId it goes to the end
+	move(a, `{"parentId":null}`).expect(200)
+	require.Equal(t, `["C","B","A"]`, names("#.name"))
+
+	// Into another collection and in front of a child there, in one go
+	x := e.createCollection(owner, space, "X", c)
+	move(b, fmt.Sprintf(`{"parentId":%q,"beforeId":%q}`, c, x)).expect(200)
+	require.Equal(t, `["C","A"]`, names("#.name"))
+	require.Equal(t, `["B","X"]`, names("0.children.#.name"))
+	// New collections are appended
+	e.createCollection(owner, space, "Y", c)
+	require.Equal(t, `["B","X","Y"]`, names("0.children.#.name"))
+
+	// beforeId has to be below the target parent
+	move(a, fmt.Sprintf(`{"parentId":null,"beforeId":%q}`, x)).expect(400)
+	move(a, fmt.Sprintf(`{"parentId":null,"beforeId":%q}`, a)).expect(400)
+	// Ordering is editing
+	e.req("POST", "/api/v1/collections/%s/move", a).as(e.register()).json(`{"parentId":null}`).expect(403)
+}

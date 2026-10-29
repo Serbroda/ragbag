@@ -199,38 +199,70 @@ func (s *Server) MoveCollection(c echo.Context, collectionID api.ID) error {
 		return err
 	}
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
-		if req.ParentId == nil {
-			collection.ParentID = nil
-			return tx.MoveCollection(ctxOf(c), collectionID, nil)
-		}
-		if *req.ParentId == collectionID {
-			return badRequest("A collection cannot be its own parent")
-		}
-		parent, _, err := s.requireCollection(ctxOf(c), tx, *req.ParentId, currentUser(c), PermRead)
-		if err != nil {
-			return err
-		}
-		if parent.SpaceID != collection.SpaceID {
-			return badRequest("Parent collection belongs to a different space")
-		}
-		for ancestor := parent; ; {
-			if ancestor.ID == collectionID {
-				return badRequest("A collection cannot be moved into its own descendant")
+		var parentID *string
+		if req.ParentId != nil {
+			if *req.ParentId == collectionID {
+				return badRequest("A collection cannot be its own parent")
 			}
-			if ancestor.ParentID == nil {
-				break
-			}
-			if ancestor, err = tx.CollectionByID(ctxOf(c), *ancestor.ParentID); err != nil {
+			parent, _, err := s.requireCollection(ctxOf(c), tx, *req.ParentId, currentUser(c), PermRead)
+			if err != nil {
 				return err
 			}
+			if parent.SpaceID != collection.SpaceID {
+				return badRequest("Parent collection belongs to a different space")
+			}
+			for ancestor := parent; ; {
+				if ancestor.ID == collectionID {
+					return badRequest("A collection cannot be moved into its own descendant")
+				}
+				if ancestor.ParentID == nil {
+					break
+				}
+				if ancestor, err = tx.CollectionByID(ctxOf(c), *ancestor.ParentID); err != nil {
+					return err
+				}
+			}
+			parentID = &parent.ID
 		}
-		collection.ParentID = &parent.ID
-		return tx.MoveCollection(ctxOf(c), collectionID, &parent.ID)
+		collection.ParentID = parentID
+		if err := tx.MoveCollection(ctxOf(c), collectionID, parentID); err != nil {
+			return err
+		}
+		return s.placeCollection(c, tx, collection, req.BeforeId)
 	})
 	if err != nil {
 		return err
 	}
 	return c.JSON(http.StatusOK, collectionDto(collection))
+}
+
+// placeCollection puts the collection in front of beforeID among its siblings, or after the last one.
+func (s *Server) placeCollection(c echo.Context, tx *store.Store, collection *store.Collection, beforeID *string) error {
+	collections, err := tx.CollectionsBySpace(ctxOf(c), collection.SpaceID)
+	if err != nil {
+		return err
+	}
+	parent := func(other *store.Collection) string {
+		if other.ParentID == nil {
+			return ""
+		}
+		return *other.ParentID
+	}
+	siblings := []string{}
+	for i := range collections {
+		if collections[i].ID != collection.ID && parent(&collections[i]) == parent(collection) {
+			siblings = append(siblings, collections[i].ID)
+		}
+	}
+	order := append(siblings, collection.ID)
+	if beforeID != nil {
+		at := slices.Index(siblings, *beforeID)
+		if at < 0 {
+			return badRequest("The collection to place it in front of must be below the same parent")
+		}
+		order = slices.Insert(append([]string{}, siblings...), at, collection.ID)
+	}
+	return tx.OrderCollections(ctxOf(c), order)
 }
 
 func (s *Server) DeleteCollection(c echo.Context, collectionID api.ID) error {

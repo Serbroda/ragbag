@@ -2377,6 +2377,12 @@ components:
           $ref: '#/components/schemas/ID'
           nullable: true
           description: Target parent collection ID, or null to move to root
+        beforeId:
+          $ref: '#/components/schemas/ID'
+          nullable: true
+          description: >
+            A collection below the target parent to place it in front of; without one it goes to the end. The
+            order is the same for every member of the space.
 
     BookmarkDto:
       properties:

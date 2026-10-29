@@ -6,24 +6,33 @@ import (
 )
 
 type Collection struct {
-	ID          string    `db:"id"`
-	SpaceID     string    `db:"space_id"`
-	ParentID    *string   `db:"parent_id"`
-	Name        string    `db:"name"`
-	Description *string   `db:"description"`
-	Restricted  bool      `db:"restricted"`
-	CreatedBy   string    `db:"created_by"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	ID          string  `db:"id"`
+	SpaceID     string  `db:"space_id"`
+	ParentID    *string `db:"parent_id"`
+	Name        string  `db:"name"`
+	Description *string `db:"description"`
+	Restricted  bool    `db:"restricted"`
+	// Position orders collections below the same parent
+	Position  int       `db:"position"`
+	CreatedBy string    `db:"created_by"`
+	CreatedAt time.Time `db:"created_at"`
+	UpdatedAt time.Time `db:"updated_at"`
 }
 
-const collectionColumns = `id, space_id, parent_id, name, description, restricted, created_by, created_at, updated_at`
+const collectionColumns = `id, space_id, parent_id, name, description, restricted, position, created_by, created_at,
+	updated_at`
 
+// CreateCollection appends the collection after its future siblings.
 func (s *Store) CreateCollection(ctx context.Context, c *Collection, memberIDs []string) error {
 	at := now()
 	c.ID, c.CreatedAt, c.UpdatedAt = newID(), at, at
-	if _, err := s.exec(ctx, `INSERT INTO collections (`+collectionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.ID, c.SpaceID, c.ParentID, c.Name, c.Description, c.Restricted, c.CreatedBy, at, at); err != nil {
+	position, err := s.nextPosition(ctx, c.SpaceID, c.ParentID)
+	if err != nil {
+		return err
+	}
+	c.Position = position
+	if _, err := s.exec(ctx, `INSERT INTO collections (`+collectionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.ID, c.SpaceID, c.ParentID, c.Name, c.Description, c.Restricted, c.Position, c.CreatedBy, at, at); err != nil {
 		return err
 	}
 	return s.addCollectionMembers(ctx, c.ID, memberIDs)
@@ -36,7 +45,8 @@ func (s *Store) CollectionByID(ctx context.Context, id string) (*Collection, err
 
 func (s *Store) CollectionsBySpace(ctx context.Context, spaceID string) ([]Collection, error) {
 	var collections []Collection
-	err := s.sel(ctx, &collections, `SELECT `+collectionColumns+` FROM collections WHERE space_id = ? ORDER BY created_at, id`, spaceID)
+	err := s.sel(ctx, &collections, `SELECT `+collectionColumns+` FROM collections WHERE space_id = ?
+		ORDER BY position, created_at, id`, spaceID)
 	return collections, err
 }
 
@@ -63,9 +73,35 @@ func (s *Store) BookmarkCounts(ctx context.Context, spaceID string) (map[string]
 	return counts, nil
 }
 
+// nextPosition is the position after the last collection below the parent (nil: top level).
+func (s *Store) nextPosition(ctx context.Context, spaceID string, parentID *string) (int, error) {
+	var positions []int
+	var err error
+	if parentID == nil {
+		err = s.sel(ctx, &positions, `SELECT position FROM collections WHERE space_id = ? AND parent_id IS NULL`, spaceID)
+	} else {
+		err = s.sel(ctx, &positions, `SELECT position FROM collections WHERE space_id = ? AND parent_id = ?`, spaceID, *parentID)
+	}
+	next := 0
+	for _, position := range positions {
+		next = max(next, position+1)
+	}
+	return next, err
+}
+
 func (s *Store) MoveCollection(ctx context.Context, id string, parentID *string) error {
 	_, err := s.exec(ctx, `UPDATE collections SET parent_id = ?, updated_at = ? WHERE id = ?`, parentID, now(), id)
 	return err
+}
+
+// OrderCollections numbers the given collections (siblings) in this order.
+func (s *Store) OrderCollections(ctx context.Context, ids []string) error {
+	for position, id := range ids {
+		if _, err := s.exec(ctx, `UPDATE collections SET position = ? WHERE id = ?`, position, id); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 // DeleteCollection removes it with everything below (ON DELETE CASCADE).

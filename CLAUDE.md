@@ -90,6 +90,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Discoverable spaces** (`discoverable`, `join_role` VIEWER or CONTRIBUTOR) are listed by `GET /spaces/discover`
   for every account and joined via `POST /spaces/{id}/join`; other spaces answer 404 there. Joining never changes
   an existing membership, and changing the setting needs `MANAGE_MEMBERS`.
+- **Collection order** (`position`, per parent) is shared by all members; `POST /collections/{id}/move` takes the
+  new parent and optionally `beforeId` (a collection below that parent), otherwise the collection goes to the end.
+  In the sidebar the upper/lower quarter of a row drops in front of/behind it, the middle into it.
 - **Links** move between collections of the same space only (`collectionId` in the update, needs
   `CREATE_BOOKMARKS` on the target). A search for a single `#tag` matches that tag exactly.
 - **New links** (`activity.go`) are links *others* added after the user last looked at the collection

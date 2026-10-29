@@ -541,6 +541,9 @@ type LoginResponse struct {
 
 // MoveCollectionDto defines model for MoveCollectionDto.
 type MoveCollectionDto struct {
+	// BeforeId A collection below the target parent to place it in front of; without one it goes to the end. The order is the same for every member of the space.
+	BeforeId *ID `json:"beforeId,omitempty"`
+
 	// ParentId Target parent collection ID, or null to move to root
 	ParentId *ID `json:"parentId,omitempty"`
 }
