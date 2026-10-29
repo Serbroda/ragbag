@@ -117,6 +117,7 @@ func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 			return unauthorized("Token has been revoked")
 		}
 		c.Set(userIDKey, user.ID)
+		s.withUnlock(c, user)
 		return next(c)
 	}
 }

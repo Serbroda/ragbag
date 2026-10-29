@@ -45,6 +45,15 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
+	// Only listed while unlocked; marks the collections the user locked themselves
+	locks, err := s.store.LockedCollectionsOf(ctxOf(c), spaceID, currentUser(c))
+	if err != nil {
+		return err
+	}
+	locked := map[string]bool{}
+	for _, id := range locks {
+		locked[id] = true
+	}
 	byParent := map[string][]*store.Collection{}
 	for i := range collections {
 		collection := &collections[i]
@@ -64,8 +73,9 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 			node := collectionDto(collection)
 			children := build(collection.ID)
 			count, newCount := counts[collection.ID], newByCollection[collection.ID]
-			isShared := shared[collection.ID]
+			isShared, isLocked := shared[collection.ID], locked[collection.ID]
 			node.Children, node.BookmarkCount, node.NewCount, node.Shared = &children, &count, &newCount, &isShared
+			node.Locked = &isLocked
 			nodes = append(nodes, node)
 		}
 		return nodes
@@ -241,7 +251,7 @@ func (s *Server) DeleteCollection(c echo.Context, collectionID api.ID) error {
 			}
 			for _, id := range subtree {
 				if hidden[id] {
-					return conflict("This collection contains private collections of other members and cannot be deleted")
+					return conflict("This collection contains collections you cannot see (private or locked) and cannot be deleted")
 				}
 			}
 		}

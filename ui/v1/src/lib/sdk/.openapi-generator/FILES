@@ -44,6 +44,7 @@ models/PasswordResetPreviewDto.ts
 models/ReactionDto.ts
 models/RegisterRequest.ts
 models/ResetPasswordRequest.ts
+models/SetPinDto.ts
 models/SetReactionDto.ts
 models/SharedBookmarkDto.ts
 models/SharedCollectionDto.ts
@@ -54,6 +55,8 @@ models/SpaceDto.ts
 models/SpaceMemberDto.ts
 models/SpaceMemberRoleEnum.ts
 models/SpacePermissionEnum.ts
+models/UnlockDto.ts
+models/UnlockRequest.ts
 models/UpdateBookmarkDto.ts
 models/UpdateCollectionAccessDto.ts
 models/UpdateCollectionDto.ts

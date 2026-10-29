@@ -106,6 +106,12 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   members, authors, reactions or private collections; private collections cannot be shared, and a shared one that
   becomes private (or moves below one) answers 404 until it is public again. Every failure is the same 404.
   Managing the link needs `EDIT_COLLECTIONS`; only those see the token.
+- **Locked collections** (`locks.go`) are personal: a user hides a collection (and everything below) from their
+  own view; nobody else is affected. Locking needs a PIN (4–8 digits, BCrypt hash, set with the password; 5 wrong
+  PINs pause unlocking for 5 minutes). Until unlocked they are part of `hiddenCollections`, so every list, search,
+  counter and dashboard leaves them out. `POST /users/me/unlock` returns a 10 minute token (`type=UNLOCK`, carries
+  `token_version`) for the `X-Ragbag-Unlock` header; the frontend (`stores/lock.svelte.ts`) renews it on activity,
+  keeps it in sessionStorage and drops it to lock (account menu, ⌘⇧L, the "Unlocked" pill).
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

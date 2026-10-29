@@ -10,6 +10,9 @@
 		ChevronRightOutline,
 		CloseOutline,
 		CogSolid,
+		EyeOutline,
+		EyeSlashOutline,
+		LockOpenOutline,
 		FolderOutline,
 		FolderPlusSolid,
 		GlobeOutline,
@@ -50,6 +53,8 @@
 	} from '../stores/preferences.svelte';
 	import { pendingCollectionAction, type CollectionAction } from '../stores/collectionAction.svelte';
 	import { showToast } from '../stores/toast.svelte';
+	import { checkExpiry, keepUnlocked, lock, lockState, resetLock } from '../stores/lock.svelte';
+	import LockDialog from '../components/LockDialog.svelte';
 	import Toasts from '../components/Toasts.svelte';
 	import { copyText } from '../utils/clipboard';
 	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
@@ -287,6 +292,90 @@
 		}
 	}
 
+	// --- Locked collections (hidden from the own view until unlocked with the PIN) ---
+	let lockDialogOpen = $state(false);
+	let lockDialogMode = $state<'unlock' | 'setup'>('unlock');
+	let afterPinSetup: (() => void) | undefined;
+	const lockShortcut = isMac ? '⌘⇧L' : 'Ctrl+Shift+L';
+
+	function openUnlock() {
+		closeMenus();
+		afterPinSetup = undefined;
+		lockDialogMode = session.me?.hasPin ? 'unlock' : 'setup';
+		lockDialogOpen = true;
+	}
+
+	function toggleLock() {
+		if (lockState.unlocked) lock();
+		else openUnlock();
+	}
+
+	/** Collections the user locked, from the tree as it was before it reloads. */
+	function insideLocked(collectionId: string | null): boolean {
+		return !!collectionId && pathToNode(menuTree, collectionId).some((node) => node.locked);
+	}
+
+	// Locking or unlocking changes what every page may show: leave a locked collection, then reload everything
+	let seenLockVersion = lockState.version;
+	$effect(() => {
+		const version = lockState.version;
+		if (version === seenLockVersion) return;
+		seenLockVersion = version;
+		if (!lockState.unlocked && insideLocked(activeCollectionId) && activeSpaceId) {
+			navigate('/space/:spaceId', { params: { spaceId: activeSpaceId } });
+		}
+		if (activeSpaceId) loadCollections(activeSpaceId);
+		loadSpaces().catch(() => {});
+	});
+
+	// Activity keeps an unlock alive; idle tabs lock again when the server's token runs out
+	$effect(() => {
+		const timer = setInterval(checkExpiry, 15_000);
+		return () => clearInterval(timer);
+	});
+
+	async function lockCollection(collectionId: string, label: string) {
+		closeMenus();
+		if (!session.me?.hasPin) {
+			afterPinSetup = () => lockCollection(collectionId, label);
+			lockDialogMode = 'setup';
+			lockDialogOpen = true;
+			return;
+		}
+		try {
+			await collectionApi.lockCollection({ collectionId });
+		} catch (err) {
+			showToast(await errorMessage(err, 'Could not lock the collection.'));
+			return;
+		}
+		if (lockState.unlocked) {
+			showToast(`“${label}” is locked. It disappears when you lock (${lockShortcut}).`);
+		} else {
+			// Leave it right away when it is the open one (or inside it)
+			const path = activeCollectionId ? pathToNode(menuTree, activeCollectionId) : [];
+			if (path.some((node) => node.id === collectionId) && activeSpaceId) {
+				navigate('/space/:spaceId', { params: { spaceId: activeSpaceId } });
+			}
+			showToast(`“${label}” is hidden. Unlock with ${lockShortcut} or in the account menu.`);
+		}
+		if (activeSpaceId) loadCollections(activeSpaceId);
+		loadSpaces().catch(() => {});
+	}
+
+	async function unlockCollection(collectionId: string, label: string) {
+		closeMenus();
+		try {
+			await collectionApi.unlockCollection({ collectionId });
+			showToast(`“${label}” is no longer locked.`);
+			if (activeSpaceId) loadCollections(activeSpaceId);
+		} catch (err) {
+			showToast(await errorMessage(err, 'Could not change the collection.'));
+		}
+	}
+
+	setContext('lock-collection', lockCollection);
+	setContext('unlock-collection', unlockCollection);
+
 	async function copyCollectionLink(node: TreeNode) {
 		closeMenus();
 		const copied = await copyText(new URL(node.href!, window.location.origin).href);
@@ -294,7 +383,11 @@
 	}
 
 	function onWindowKeydown(e: KeyboardEvent) {
-		if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
+		keepUnlocked();
+		if ((e.ctrlKey || e.metaKey) && e.shiftKey && e.key.toLowerCase() === 'l') {
+			e.preventDefault();
+			toggleLock();
+		} else if ((e.ctrlKey || e.metaKey) && e.key.toLowerCase() === 'k') {
 			e.preventDefault();
 			switcherOpen = !switcherOpen;
 		} else if (e.key === 'Escape') {
@@ -358,6 +451,7 @@
 
 	async function handleLogout(everywhere = false) {
 		closeMenus();
+		resetLock();
 		await (everywhere ? logoutEverywhere() : logout()).catch(() => {});
 		resetSession();
 		navigate('/login');
@@ -482,7 +576,12 @@
 	}
 </script>
 
-<svelte:window onkeydown={onWindowKeydown} onclick={closeMenus} oncontextmenu={closeMenus} />
+<svelte:window
+	onkeydown={onWindowKeydown}
+	onclick={closeMenus}
+	oncontextmenu={closeMenus}
+	onpointerdown={keepUnlocked}
+/>
 
 <div class="flex h-dvh overflow-hidden bg-white text-gray-900 dark:bg-gray-850 dark:text-gray-100" class:select-none={isResizing}>
 	<!-- Mobile backdrop -->
@@ -621,6 +720,16 @@
 				{:else}
 					<div class="flex-1"></div>
 				{/if}
+				{#if lockState.unlocked}
+					<button
+						type="button"
+						class="flex shrink-0 items-center gap-1 rounded-md bg-amber-500/15 px-1.5 py-1 text-xs font-medium text-amber-700 ring-1 ring-inset ring-amber-500/30 hover:bg-amber-500/25 dark:text-amber-300"
+						title="Locked collections are visible. Click or press {lockShortcut} to lock."
+						onclick={(e) => (e.stopPropagation(), lock())}
+					>
+						<LockOpenOutline class="h-3.5 w-3.5" /> Unlocked
+					</button>
+				{/if}
 				<button
 					type="button"
 					title="Account"
@@ -657,6 +766,14 @@
 								Manage users <UsersOutline class="h-4 w-4" />
 							</button>
 						{/if}
+						<button
+							role="menuitem"
+							class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+							onclick={() => (closeMenus(), toggleLock())}
+						>
+							{lockState.unlocked ? 'Lock now' : 'Unlock…'}
+							<kbd class="font-sans text-xs opacity-60">{lockShortcut}</kbd>
+						</button>
 						<div class="my-1 h-px bg-gray-800"></div>
 						<button
 							role="menuitem"
@@ -813,7 +930,9 @@
 
 		<main class="flex-1 overflow-y-auto" data-scroll-root>
 			<div class="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
-				{@render children()}
+				{#key lockState.version}
+					{@render children()}
+				{/key}
 			</div>
 		</main>
 	</div>
@@ -942,6 +1061,24 @@
 		>
 			Share publicly <GlobeOutline class="h-4 w-4" />
 		</button>
+		{#if node.locked}
+			<button
+				role="menuitem"
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+				onclick={() => unlockCollection(node.id!, node.label)}
+			>
+				Don't lock for me <EyeOutline class="h-4 w-4" />
+			</button>
+		{:else}
+			<button
+				role="menuitem"
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+				title="Hide it from your view until you unlock with your PIN; nobody else is affected"
+				onclick={() => lockCollection(node.id!, node.label)}
+			>
+				Lock for me <EyeSlashOutline class="h-4 w-4" />
+			</button>
+		{/if}
 		<button
 			role="menuitem"
 			class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
@@ -961,6 +1098,16 @@
 		{/if}
 	</div>
 {/if}
+
+<LockDialog
+	bind:open={lockDialogOpen}
+	mode={lockDialogMode}
+	ondone={() => {
+		const next = afterPinSetup;
+		afterPinSetup = undefined;
+		next?.();
+	}}
+/>
 
 <Toasts />
 

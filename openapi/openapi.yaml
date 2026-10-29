@@ -258,6 +258,76 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /v1/users/me/pin:
+    put:
+      summary: Set or change the PIN that unlocks the user's locked collections (needs the account password)
+      operationId: setPin
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetPinDto'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/users/me/unlock:
+    post:
+      summary: >
+        Unlock the user's locked collections with the PIN. The token goes into the X-Ragbag-Unlock header of
+        later requests and expires after a few minutes unless renewed.
+      operationId: unlock
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/UnlockRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnlockDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          description: Too many wrong PINs, try again later
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
+  /v1/users/me/unlock/renew:
+    post:
+      summary: Extend a valid unlock (sent in X-Ragbag-Unlock) while the user is active
+      operationId: renewUnlock
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UnlockDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /v1/users/me/space-bar:
     get:
       summary: Personal order and folders of the space bar
@@ -1052,6 +1122,50 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SharedCollectionDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/lock:
+    put:
+      summary: Lock the collection (and everything below it) for the current user only; needs a PIN
+      operationId: lockCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Stop locking the collection for the current user (only possible while unlocked)
+      operationId: unlockCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
 
@@ -1900,10 +2014,42 @@ components:
         instanceAdmin:
           type: boolean
           description: Listed in ADMIN_USERS, may manage all users of this installation
+        hasPin:
+          type: boolean
+          description: Has a PIN to unlock locked collections
       required:
         - id
         - username
         - email
+
+    SetPinDto:
+      properties:
+        currentPassword:
+          type: string
+        pin:
+          type: string
+          description: 4 to 8 digits
+      required:
+        - currentPassword
+        - pin
+
+    UnlockRequest:
+      properties:
+        pin:
+          type: string
+      required:
+        - pin
+
+    UnlockDto:
+      properties:
+        token:
+          type: string
+        expiresAt:
+          type: string
+          format: date-time
+      required:
+        - token
+        - expiresAt
 
     SpaceDto:
       properties:
@@ -2095,6 +2241,9 @@ components:
         shared:
           type: boolean
           description: Has a public read-only link
+        locked:
+          type: boolean
+          description: Locked by the current user (only listed while unlocked); sub-collections inherit it
       required:
         - id
         - name

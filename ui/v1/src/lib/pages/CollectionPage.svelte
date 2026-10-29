@@ -42,6 +42,9 @@
 	const canImportExport = $derived(hasSpacePermission?.('IMPORT_EXPORT') ?? false);
 	const privateAncestor = getContext<((collectionId: string) => string | undefined) | undefined>('private-ancestor');
 	const collectionTree = getContext<(() => TreeNode[]) | undefined>('collection-tree');
+	type LockAction = (collectionId: string, label: string) => Promise<void>;
+	const lockForMe = getContext<LockAction | undefined>('lock-collection');
+	const unlockForMe = getContext<LockAction | undefined>('unlock-collection');
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
@@ -126,6 +129,7 @@
 
 	const tree = $derived(collectionTree?.() ?? []);
 	const subcollections = $derived(findNode(tree, collectionId)?.children ?? []);
+	const lockedForMe = $derived(findNode(tree, collectionId)?.locked ?? false);
 	/** Every other collection of the space, for "Move to…". */
 	const moveTargets = $derived(flattenTree(tree).filter((option) => option.id !== collectionId));
 
@@ -509,6 +513,16 @@
 									}}
 								>
 									Share publicly…
+								</button>
+								<button
+									class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+									title="Hide it from your view until you unlock with your PIN; nobody else is affected"
+									onclick={() => {
+										openHeaderMenu = false;
+										if (collection) (lockedForMe ? unlockForMe : lockForMe)?.(collectionId, collection.name);
+									}}
+								>
+									{lockedForMe ? "Don't lock for me" : 'Lock for me'}
 								</button>
 								{#if canEditCollections}
 									<button

@@ -20,7 +20,25 @@ function setAccessToken(token: string | null) {
 
 let refreshPromise: Promise<boolean> | null = null;
 
+/** Shows the user's locked collections while set; managed by stores/lock.svelte.ts. */
+let unlockToken: string | null = null;
+
+export function setUnlockToken(token: string | null) {
+	unlockToken = token;
+}
+
+/** Adds the unlock header at request time: API objects are created once and live longer than an unlock. */
+function withUnlock(headers: HeadersInit | undefined): HeadersInit | undefined {
+	if (!unlockToken) return headers;
+	const result = new Headers(headers);
+	result.set('X-Ragbag-Unlock', unlockToken);
+	return result;
+}
+
 const authMiddleware: Middleware = {
+	async pre(context) {
+		return { url: context.url, init: { ...context.init, headers: withUnlock(context.init.headers) } };
+	},
 	async post(context) {
 		if (context.response.status !== 401) return;
 
@@ -42,13 +60,9 @@ const authMiddleware: Middleware = {
 		}
 
 		// Retry original request with new token (raw fetch to avoid middleware loop)
-		const retryInit: RequestInit = {
-			...context.init,
-			headers: {
-				...context.init.headers,
-				Authorization: `Bearer ${accessToken}`,
-			},
-		};
+		const headers = new Headers(withUnlock(context.init.headers));
+		headers.set('Authorization', `Bearer ${accessToken}`);
+		const retryInit: RequestInit = { ...context.init, headers };
 		return fetch(context.url, retryInit);
 	},
 };
