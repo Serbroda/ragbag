@@ -65,9 +65,17 @@ func (s *Server) GetSpaces(c echo.Context) error {
 		}
 		return strings.ToLower(spaces[i].Name) < strings.ToLower(spaces[j].Name)
 	})
+	news, err := s.visibleNews(ctxOf(c), currentUser(c), "")
+	if err != nil {
+		return err
+	}
+	counts := newCounts(news, func(n store.NewBookmark) string { return n.SpaceID })
 	result := make([]api.SpaceDto, 0, len(spaces))
 	for _, space := range spaces {
-		result = append(result, spaceDto(&space.Space, Role(space.Role)))
+		dto := spaceDto(&space.Space, Role(space.Role))
+		count := counts[space.ID]
+		dto.NewCount = &count
+		result = append(result, dto)
 	}
 	return c.JSON(http.StatusOK, result)
 }

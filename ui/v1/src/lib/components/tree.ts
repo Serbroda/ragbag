@@ -14,6 +14,8 @@ export interface TreeNode {
 	restricted?: boolean;
 	/** Links directly in the collection. */
 	bookmarkCount?: number;
+	/** Links directly in the collection that others added since the user last looked. */
+	newCount?: number;
 	icon?: Component<{ class?: string }>;
 	children?: TreeNode[];
 }
@@ -27,6 +29,7 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 		icon: collection.restricted ? LockOutline : FolderOutline,
 		restricted: collection.restricted,
 		bookmarkCount: collection.bookmarkCount,
+		newCount: collection.newCount,
 		children: collection.children?.length
 			? collection.children.map((c) => collectionToTreeNode(c, spaceId))
 			: undefined,
@@ -51,6 +54,11 @@ export function removeNode(nodes: TreeNode[], target: TreeNode): boolean {
 		if (node.children && removeNode(node.children, target)) return true;
 	}
 	return false;
+}
+
+/** New links in the node and everything below it. */
+export function totalNewCount(node: TreeNode): number {
+	return (node.newCount ?? 0) + (node.children ?? []).reduce((sum, child) => sum + totalNewCount(child), 0);
 }
 
 /** Flatten a tree into a list of { id, label, depth } for use in select dropdowns. */

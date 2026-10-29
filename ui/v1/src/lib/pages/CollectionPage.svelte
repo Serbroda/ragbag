@@ -29,6 +29,7 @@
 	type SpacePermission = SpacePermissionEnum;
 
 	const reloadSidebar = getContext<() => void>('reload-collections');
+	const reloadSpaces = getContext<(() => Promise<void>) | undefined>('reload-spaces');
 	const hasSpacePermission = getContext<((permission: SpacePermission) => boolean) | null>(
 		'has-space-permission',
 	);
@@ -143,10 +144,22 @@
 			]);
 			collection = col;
 			bookmarks = bm;
+			// The links keep their "New" badge until the page is left; the counters go away right now
+			if (bm.some((b) => b.isNew)) markSeen(id);
 		} catch {
 			error = 'Failed to load collection.';
 		} finally {
 			loading = false;
+		}
+	}
+
+	async function markSeen(id: string) {
+		try {
+			await collectionApi.markCollectionSeen({ collectionId: id });
+			reloadSidebar();
+			await reloadSpaces?.();
+		} catch {
+			// Only the counters stay; the next visit tries again
 		}
 	}
 

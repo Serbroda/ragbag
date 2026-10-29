@@ -17,11 +17,13 @@ interface Preferences {
 	sidebarWidth: number;
 	/** Collections that are expanded in the sidebar tree. */
 	expanded: string[];
+	/** Folders that are open in the space bar. */
+	openFolders: string[];
 }
 
 export const SIDEBAR_WIDTH = { min: 200, max: 480, default: 256 };
 
-const DEFAULTS: Preferences = { linkView: 'cards', sidebarWidth: SIDEBAR_WIDTH.default, expanded: [] };
+const DEFAULTS: Preferences = { linkView: 'cards', sidebarWidth: SIDEBAR_WIDTH.default, expanded: [], openFolders: [] };
 
 export const preferences = $state<Preferences>({ ...DEFAULTS });
 
@@ -44,6 +46,9 @@ export function loadPreferences(userId: string) {
 	// Keeps what was expanded while the user was still loading (the open collection and its parents). Untracked:
 	// this runs inside an effect, which must not depend on what it writes.
 	preferences.expanded = [...new Set([...expanded, ...untrack(() => preferences.expanded)])];
+	preferences.openFolders = Array.isArray(stored.openFolders)
+		? stored.openFolders.filter((id) => typeof id === 'string')
+		: [];
 }
 
 export function setLinkView(view: LinkView) {
@@ -73,6 +78,18 @@ export function setExpanded(collectionId: string, expanded: boolean) {
 	preferences.expanded = expanded
 		? [...preferences.expanded, collectionId]
 		: preferences.expanded.filter((id) => id !== collectionId);
+	save();
+}
+
+export function isFolderOpen(folderId: string): boolean {
+	return preferences.openFolders.includes(folderId);
+}
+
+export function setFolderOpen(folderId: string, open: boolean) {
+	if (open === isFolderOpen(folderId)) return;
+	preferences.openFolders = open
+		? [...preferences.openFolders, folderId]
+		: preferences.openFolders.filter((id) => id !== folderId);
 	save();
 }
 

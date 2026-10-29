@@ -2,7 +2,7 @@
 	import { getContext } from 'svelte';
 	import { DotsHorizontalOutline } from 'flowbite-svelte-icons';
 	import type { TreeNode } from './tree';
-	import { isDescendantOrSelf } from './tree';
+	import { isDescendantOrSelf, totalNewCount } from './tree';
 	import TreeItem from './TreeItem.svelte';
 	import { route } from '../router';
 	import { DRAG_CTX_KEY, type DragContext } from './DraggableTreeList.svelte';
@@ -24,6 +24,8 @@
 	}
 
 	const hasChildren = $derived(node.children && node.children.length > 0);
+	/** A collapsed collection also counts what is new below it, so nothing gets lost in a closed branch. */
+	const newCount = $derived(expanded ? (node.newCount ?? 0) : totalNewCount(node));
 	const paddingLeft = $derived(`${depth * 1}rem`);
 
 	// Drag context — getContext must be called at top level, but we only use it when isDraggable
@@ -124,11 +126,19 @@
 		{#if node.href}
 			<a
 				href={node.href}
-				class="flex-1 truncate rounded-md px-2 py-1.5"
+				class="flex-1 truncate rounded-md px-2 py-1.5 {newCount > 0 && !isActive
+					? 'font-semibold text-gray-900 dark:text-white'
+					: ''}"
 				aria-current={isActive ? 'page' : undefined}
 			>
 				{node.label}
 			</a>
+			{#if newCount > 0}
+				<span
+					class="me-1 shrink-0 rounded-full bg-primary-500 px-1.5 text-[11px] font-bold leading-4 text-white"
+					title="{newCount} new link{newCount === 1 ? '' : 's'}">{newCount}</span
+				>
+			{/if}
 		{:else}
 			<button
 				type="button"

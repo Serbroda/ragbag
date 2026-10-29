@@ -73,6 +73,10 @@ export interface SpaceDto {
      * 
      */
     joinRole?: JoinRoleEnum;
+    /**
+     * Links other members added since the current user last looked; only set in the space list
+     */
+    newCount?: number;
 }
 
 
@@ -104,6 +108,7 @@ export function SpaceDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'permissions': json['permissions'] == null ? undefined : ((json['permissions'] as Array<any>).map(SpacePermissionEnumFromJSON)),
         'discoverable': json['discoverable'] == null ? undefined : json['discoverable'],
         'joinRole': json['joinRole'] == null ? undefined : JoinRoleEnumFromJSON(json['joinRole']),
+        'newCount': json['newCount'] == null ? undefined : json['newCount'],
     };
 }
 
@@ -126,6 +131,7 @@ export function SpaceDtoToJSONTyped(value?: SpaceDto | null, ignoreDiscriminator
         'permissions': value['permissions'] == null ? undefined : ((value['permissions'] as Array<any>).map(SpacePermissionEnumToJSON)),
         'discoverable': value['discoverable'],
         'joinRole': JoinRoleEnumToJSON(value['joinRole']),
+        'newCount': value['newCount'],
     };
 }
 

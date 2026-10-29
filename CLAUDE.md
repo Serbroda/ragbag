@@ -92,6 +92,15 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   an existing membership, and changing the setting needs `MANAGE_MEMBERS`.
 - **Links** move between collections of the same space only (`collectionId` in the update, needs
   `CREATE_BOOKMARKS` on the target). A search for a single `#tag` matches that tag exactly.
+- **New links** (`activity.go`) are links *others* added after the user last looked at the collection
+  (`collection_visits`, before the first visit the time they joined the space). They feed `newCount` in the space
+  list and the collection tree, `isNew` when listing a collection and `GET /spaces/{id}/news` (the bell in the header); hidden collections
+  never count. Listing does not mark anything as seen, `POST /collections/{id}/seen` does (the frontend calls it
+  after showing new links).
+- **Reactions** come from a fixed set of emojis (`reactionEmojis`, mirrored in `Reactions.svelte`); everybody who
+  can read a link may react. There are deliberately no comments (nothing to moderate).
+- **Space bar** order and folders are personal (`space_bars`, JSON of `SpaceBarDto`); the server drops spaces the
+  user is no longer a member of. Leaving a space removes the user's reactions and visits there.
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

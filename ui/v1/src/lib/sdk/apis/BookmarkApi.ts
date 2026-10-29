@@ -34,6 +34,16 @@ import {
     FetchMetadataRequestToJSON,
 } from '../models/FetchMetadataRequest';
 import {
+    type ReactionDto,
+    ReactionDtoFromJSON,
+    ReactionDtoToJSON,
+} from '../models/ReactionDto';
+import {
+    type SetReactionDto,
+    SetReactionDtoFromJSON,
+    SetReactionDtoToJSON,
+} from '../models/SetReactionDto';
+import {
     type UpdateBookmarkDto,
     UpdateBookmarkDtoFromJSON,
     UpdateBookmarkDtoToJSON,
@@ -123,6 +133,17 @@ export interface SearchBookmarksRequest {
      * Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
      */
     q: string;
+}
+
+export interface SetReactionRequest {
+    /**
+     * 
+     */
+    bookmarkId: string;
+    /**
+     * 
+     */
+    setReactionDto: SetReactionDto;
 }
 
 export interface UpdateBookmarkRequest {
@@ -700,6 +721,69 @@ export class BookmarkApi extends runtime.BaseAPI {
      */
     async searchBookmarks(requestParameters: SearchBookmarksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BookmarkDto>> {
         const response = await this.searchBookmarksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setReaction without sending the request
+     */
+    async setReactionRequestOpts(requestParameters: SetReactionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['bookmarkId'] == null) {
+            throw new runtime.RequiredError(
+                'bookmarkId',
+                'Required parameter "bookmarkId" was null or undefined when calling setReaction().'
+            );
+        }
+
+        if (requestParameters['setReactionDto'] == null) {
+            throw new runtime.RequiredError(
+                'setReactionDto',
+                'Required parameter "setReactionDto" was null or undefined when calling setReaction().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/bookmarks/{bookmarkId}/reactions`;
+        urlPath = urlPath.replace('{bookmarkId}', encodeURIComponent(String(requestParameters['bookmarkId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetReactionDtoToJSON(requestParameters['setReactionDto']),
+        };
+    }
+
+    /**
+     * Add or remove a reaction of the current user
+     */
+    async setReactionRaw(requestParameters: SetReactionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ReactionDto>>> {
+        const requestOptions = await this.setReactionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ReactionDtoFromJSON));
+    }
+
+    /**
+     * Add or remove a reaction of the current user
+     */
+    async setReaction(requestParameters: SetReactionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ReactionDto>> {
+        const response = await this.setReactionRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

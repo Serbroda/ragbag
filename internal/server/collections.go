@@ -36,6 +36,11 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
+	news, err := s.visibleNews(ctxOf(c), currentUser(c), spaceID)
+	if err != nil {
+		return err
+	}
+	newByCollection := newCounts(news, func(n store.NewBookmark) string { return n.CollectionID })
 	byParent := map[string][]*store.Collection{}
 	for i := range collections {
 		collection := &collections[i]
@@ -54,8 +59,8 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 		for _, collection := range byParent[parent] {
 			node := collectionDto(collection)
 			children := build(collection.ID)
-			count := counts[collection.ID]
-			node.Children, node.BookmarkCount = &children, &count
+			count, newCount := counts[collection.ID], newByCollection[collection.ID]
+			node.Children, node.BookmarkCount, node.NewCount = &children, &count, &newCount
 			nodes = append(nodes, node)
 		}
 		return nodes

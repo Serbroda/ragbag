@@ -154,6 +154,9 @@ func (s *Store) RemoveMember(ctx context.Context, spaceID, userID string) error 
 		`DELETE FROM dashboard_sections WHERE user_id = ? AND space_id = ?`,
 		`DELETE FROM bookmark_favorites WHERE user_id = ? AND bookmark_id IN (
 			SELECT b.id FROM bookmarks b JOIN collections c ON c.id = b.collection_id WHERE c.space_id = ?)`,
+		`DELETE FROM bookmark_reactions WHERE user_id = ? AND bookmark_id IN (
+			SELECT b.id FROM bookmarks b JOIN collections c ON c.id = b.collection_id WHERE c.space_id = ?)`,
+		`DELETE FROM collection_visits WHERE user_id = ? AND collection_id IN (SELECT id FROM collections WHERE space_id = ?)`,
 		`DELETE FROM collection_members WHERE user_id = ? AND collection_id IN (SELECT id FROM collections WHERE space_id = ?)`,
 		`DELETE FROM space_members WHERE user_id = ? AND space_id = ?`,
 	}

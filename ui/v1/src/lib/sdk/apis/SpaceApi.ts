@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type CollectionNewsDto,
+    CollectionNewsDtoFromJSON,
+    CollectionNewsDtoToJSON,
+} from '../models/CollectionNewsDto';
+import {
     type CreateSpaceDto,
     CreateSpaceDtoFromJSON,
     CreateSpaceDtoToJSON,
@@ -79,6 +84,13 @@ export interface GetSpaceMembersRequest {
     spaceId: string;
 }
 
+export interface GetSpaceNewsRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
 export interface JoinSpaceRequest {
     /**
      * 
@@ -87,6 +99,13 @@ export interface JoinSpaceRequest {
 }
 
 export interface LeaveSpaceRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
+export interface MarkSpaceSeenRequest {
     /**
      * 
      */
@@ -422,6 +441,59 @@ export class SpaceApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getSpaceNews without sending the request
+     */
+    async getSpaceNewsRequestOpts(requestParameters: GetSpaceNewsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling getSpaceNews().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/news`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Links other members added since the current user last looked, per collection
+     */
+    async getSpaceNewsRaw(requestParameters: GetSpaceNewsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<CollectionNewsDto>>> {
+        const requestOptions = await this.getSpaceNewsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(CollectionNewsDtoFromJSON));
+    }
+
+    /**
+     * Links other members added since the current user last looked, per collection
+     */
+    async getSpaceNews(requestParameters: GetSpaceNewsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<CollectionNewsDto>> {
+        const response = await this.getSpaceNewsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getSpaces without sending the request
      */
     async getSpacesRequestOpts(): Promise<runtime.RequestOpts> {
@@ -571,6 +643,58 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async leaveSpace(requestParameters: LeaveSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.leaveSpaceRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for markSpaceSeen without sending the request
+     */
+    async markSpaceSeenRequestOpts(requestParameters: MarkSpaceSeenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling markSpaceSeen().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/seen`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mark everything in the space as seen by the current user
+     */
+    async markSpaceSeenRaw(requestParameters: MarkSpaceSeenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.markSpaceSeenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Mark everything in the space as seen by the current user
+     */
+    async markSpaceSeen(requestParameters: MarkSpaceSeenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.markSpaceSeenRaw(requestParameters, initOverrides);
     }
 
     /**

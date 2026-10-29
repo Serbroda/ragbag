@@ -258,6 +258,48 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /v1/users/me/space-bar:
+    get:
+      summary: Personal order and folders of the space bar
+      operationId: getSpaceBar
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceBarDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+    put:
+      summary: Save the personal order and folders of the space bar
+      operationId: updateSpaceBar
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SpaceBarDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceBarDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+
   /v1/users/me/avatar:
     put:
       summary: Set the avatar of the current user from an uploaded file or a URL
@@ -568,6 +610,56 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/spaces/{spaceId}/news:
+    get:
+      summary: Links other members added since the current user last looked, per collection
+      operationId: getSpaceNews
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: Collections with new links, the most recent first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/CollectionNewsDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/seen:
+    post:
+      summary: Mark everything in the space as seen by the current user
+      operationId: markSpaceSeen
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/spaces/{spaceId}/leave:
     post:
       summary: Leave a space
@@ -858,6 +950,28 @@ paths:
           $ref: '#/components/responses/NoContent'
         '401':
           $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/collections/{collectionId}/seen:
+    post:
+      summary: Mark the links of the collection as seen by the current user
+      operationId: markCollectionSeen
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
         '403':
           $ref: '#/components/responses/Forbidden'
         '404':
@@ -1211,6 +1325,42 @@ paths:
                 $ref: '#/components/schemas/BookmarkDtoList'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /v1/bookmarks/{bookmarkId}/reactions:
+    put:
+      summary: Add or remove a reaction of the current user
+      operationId: setReaction
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetReactionDto'
+      responses:
+        '200':
+          description: All reactions of the bookmark after the change
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ReactionDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /v1/bookmarks/{bookmarkId}/favorite:
     put:
@@ -1676,6 +1826,9 @@ components:
           description: Listed for every account of the instance, which can join without an invite
         joinRole:
           $ref: '#/components/schemas/JoinRoleEnum'
+        newCount:
+          type: integer
+          description: Links other members added since the current user last looked; only set in the space list
       required:
         - id
         - name
@@ -1836,6 +1989,9 @@ components:
         bookmarkCount:
           type: integer
           description: Links directly in this collection; only set in the collection tree
+        newCount:
+          type: integer
+          description: Links directly in this collection that are new for the current user; only set in the tree
       required:
         - id
         - name
@@ -2001,9 +2157,96 @@ components:
         favorite:
           type: boolean
           description: Whether the current user marked this bookmark as favorite
+        isNew:
+          type: boolean
+          description: >
+            Added by another member since the current user last looked at the collection; only set when listing
+            a collection
+        reactions:
+          type: array
+          items:
+            $ref: '#/components/schemas/ReactionDto'
       required:
         - id
         - url
+
+    ReactionDto:
+      properties:
+        emoji:
+          type: string
+        count:
+          type: integer
+        reacted:
+          type: boolean
+          description: Whether the current user is one of them
+        users:
+          type: array
+          description: Usernames of everybody who reacted
+          items:
+            type: string
+      required:
+        - emoji
+        - count
+        - reacted
+        - users
+
+    SetReactionDto:
+      properties:
+        emoji:
+          type: string
+          description: One of 👍 ❤️ 😂 🔥 😮 🙏
+        reacted:
+          type: boolean
+          description: True adds the reaction, false removes it
+      required:
+        - emoji
+        - reacted
+
+    CollectionNewsDto:
+      properties:
+        collectionId:
+          $ref: '#/components/schemas/ID'
+        count:
+          type: integer
+        addedBy:
+          type: array
+          description: Usernames of the members who added them
+          items:
+            type: string
+        latestAt:
+          type: string
+          format: date-time
+      required:
+        - collectionId
+        - count
+        - addedBy
+        - latestAt
+
+    SpaceBarDto:
+      description: >
+        The space bar from top to bottom. Spaces missing here are shown after these items; spaces the user is
+        no longer a member of are dropped.
+      properties:
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/SpaceBarItemDto'
+      required:
+        - items
+
+    SpaceBarItemDto:
+      description: Either a single space (spaceId) or a folder (folderId, name, spaceIds)
+      properties:
+        spaceId:
+          $ref: '#/components/schemas/ID'
+        folderId:
+          type: string
+        name:
+          type: string
+        spaceIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ID'
 
     DashboardSectionTypeEnum:
       type: string

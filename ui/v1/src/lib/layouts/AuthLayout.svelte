@@ -31,7 +31,8 @@
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
 	import InvitePeopleModal from '../components/InvitePeopleModal.svelte';
 	import QuickSwitcher, { type SwitcherItem } from '../components/QuickSwitcher.svelte';
-	import Logo from '../components/Logo.svelte';
+	import SpaceRail from '../components/SpaceRail.svelte';
+	import NewsBell from '../components/NewsBell.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
@@ -51,7 +52,6 @@
 	import Toasts from '../components/Toasts.svelte';
 	import { copyText } from '../utils/clipboard';
 	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
-	import { initials } from '../utils/format';
 
 	let { children }: { children: Snippet } = $props();
 
@@ -141,6 +141,21 @@
 	setContext('has-space-permission', (permission: SpacePermissionEnum) => activePermissions.has(permission));
 
 	setContext('reload-spaces', loadSpaces);
+
+	// New links of others show up without reloading: refresh the counters every minute while the tab is visible
+	function refreshCounters() {
+		if (document.visibilityState !== 'visible') return;
+		loadSpaces().catch(() => {});
+		if (activeSpaceId) loadCollections(activeSpaceId);
+	}
+	$effect(() => {
+		const timer = setInterval(refreshCounters, 60_000);
+		document.addEventListener('visibilitychange', refreshCounters);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', refreshCounters);
+		};
+	});
 
 	setContext('open-invite', () => (showInvite = true));
 
@@ -482,72 +497,13 @@
 			: '-translate-x-full'}"
 	>
 		<!-- Space rail (always dark, like Discord) -->
-		<nav
-			class="flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-gray-950 py-3"
-			aria-label="Spaces"
-		>
-			<button
-				type="button"
-				title="Ragbag"
-				aria-label="Ragbag home"
-				class="transition-transform duration-200 hover:scale-105"
-				onclick={() => navigate('/')}
-			>
-				<Logo size={48} />
-			</button>
-			<div class="h-0.5 w-8 rounded bg-gray-800"></div>
-
-			{#each session.spaces as space (space.id)}
-				{@const active = activeSpaceId === space.id}
-				<div class="group relative flex w-full items-center justify-center">
-					<span
-						class="absolute left-0 w-1 rounded-r-full bg-white transition-all duration-200 {active
-							? 'h-10'
-							: 'h-0 group-hover:h-5'}"
-					></span>
-					<button
-						type="button"
-						aria-label={space.name}
-						aria-current={active ? 'page' : undefined}
-						class="h-12 w-12 shrink-0 overflow-hidden transition-all duration-200 {active
-							? 'rounded-2xl shadow-lg'
-							: 'rounded-3xl hover:rounded-2xl'}"
-						onclick={() => selectSpace(space.id)}
-					>
-						{#if space.iconId || active}
-							<Avatar name={space.name} imageId={space.iconId} class="h-full w-full text-sm" />
-						{:else}
-							<span
-								class="flex h-full w-full items-center justify-center bg-gray-800 text-sm font-semibold text-gray-300 transition-colors hover:bg-primary-500 hover:text-white"
-							>
-								{initials(space.name)}
-							</span>
-						{/if}
-					</button>
-					<span
-						class="pointer-events-none fixed left-[80px] z-50 hidden whitespace-nowrap rounded-md bg-gray-950 px-3 py-1.5 text-sm font-semibold text-white shadow-xl ring-1 ring-white/10 md:group-hover:block"
-					>
-						{space.name}
-					</span>
-				</div>
-			{/each}
-
-			<div class="group relative flex w-full items-center justify-center">
-				<button
-					type="button"
-					aria-label="Create or join a space"
-					class="flex h-12 w-12 items-center justify-center rounded-3xl bg-gray-800 text-green-400 transition-all duration-200 hover:rounded-2xl hover:bg-green-600 hover:text-white"
-					onclick={() => (showCreateOrJoin = true)}
-				>
-					<PlusOutline class="h-6 w-6" />
-				</button>
-				<span
-					class="pointer-events-none fixed left-[80px] z-50 hidden whitespace-nowrap rounded-md bg-gray-950 px-3 py-1.5 text-sm font-semibold text-white shadow-xl ring-1 ring-white/10 md:group-hover:block"
-				>
-					Create or join a space
-				</span>
-			</div>
-		</nav>
+		<SpaceRail
+			{activeSpaceId}
+			onselect={selectSpace}
+			onhome={() => navigate('/')}
+			oncreate={() => (showCreateOrJoin = true)}
+			onseen={(spaceId) => spaceId === activeSpaceId && loadCollections(spaceId)}
+		/>
 
 		<!-- Sidebar -->
 		<aside
@@ -805,6 +761,7 @@
 					</div>
 				{/if}
 				{#if activeSpaceId}
+					<NewsBell spaceId={activeSpaceId} />
 					<button
 						type="button"
 						aria-label="Search"
