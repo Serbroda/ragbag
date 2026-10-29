@@ -82,7 +82,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 // publicPaths can be used without being signed in.
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
-	"/api/auth/password-reset/*", "/api/v1/images/*",
+	"/api/auth/password-reset/*", "/api/v1/images/*", "/api/v1/shares/*",
 }
 
 func isPublic(requestPath string) bool {
@@ -173,6 +173,10 @@ func (s *Server) serveFrontend(e *echo.Echo, frontend fs.FS) {
 	e.GET("/app", func(c echo.Context) error { return c.Redirect(http.StatusFound, "/app/") })
 	e.GET("/app/*", func(c echo.Context) error {
 		name := strings.TrimPrefix(c.Request().URL.Path, "/app/")
+		if strings.HasPrefix(name, "share/") {
+			// Public links are meant for the people they are sent to, not for search engines
+			c.Response().Header().Set("X-Robots-Tag", "noindex, nofollow")
+		}
 		if name != "" {
 			if info, err := fs.Stat(frontend, name); err == nil && !info.IsDir() {
 				if strings.HasPrefix(name, "assets/") {

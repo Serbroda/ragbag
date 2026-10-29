@@ -1,6 +1,6 @@
 import type { Component } from 'svelte';
 import type { CollectionDto } from 'ragbag-frontend-sdk';
-import { FolderOutline, LockOutline } from 'flowbite-svelte-icons';
+import { FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
 import { p } from '../router';
 
 export interface TreeNode {
@@ -25,8 +25,8 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 	return {
 		id: collection.id,
 		label: collection.name,
-		// Private collections are only visible to selected members
-		icon: collection.restricted ? LockOutline : FolderOutline,
+		// Private collections are only visible to selected members, shared ones to anybody with the link
+		icon: collection.restricted ? LockOutline : collection.shared ? GlobeOutline : FolderOutline,
 		restricted: collection.restricted,
 		bookmarkCount: collection.bookmarkCount,
 		newCount: collection.newCount,

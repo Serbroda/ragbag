@@ -325,6 +325,9 @@ type CollectionDto struct {
 
 	// Restricted Only the members listed in the collection's access can see it (and everything inside)
 	Restricted *bool `json:"restricted,omitempty"`
+
+	// Shared Has a public read-only link
+	Shared *bool `json:"shared,omitempty"`
 }
 
 // CollectionDtoList defines model for CollectionDtoList.
@@ -339,6 +342,15 @@ type CollectionNewsDto struct {
 	CollectionId ID        `json:"collectionId"`
 	Count        int       `json:"count"`
 	LatestAt     time.Time `json:"latestAt"`
+}
+
+// CollectionShareDto defines model for CollectionShareDto.
+type CollectionShareDto struct {
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+	Shared    bool       `json:"shared"`
+
+	// Token The secret part of the link /app/share/{token}; only set if shared
+	Token *string `json:"token,omitempty"`
 }
 
 // CollectionVisibilityDto defines model for CollectionVisibilityDto.
@@ -579,6 +591,44 @@ type SetReactionDto struct {
 	Reacted bool `json:"reacted"`
 }
 
+// SharedBookmarkDto defines model for SharedBookmarkDto.
+type SharedBookmarkDto struct {
+	CreatedAt   *time.Time `json:"createdAt,omitempty"`
+	Description *string    `json:"description,omitempty"`
+	Favicon     *string    `json:"favicon,omitempty"`
+
+	// Id UUID
+	Id      ID       `json:"id"`
+	OgImage *string  `json:"ogImage,omitempty"`
+	Tags    []string `json:"tags"`
+	Title   *string  `json:"title,omitempty"`
+	Url     string   `json:"url"`
+}
+
+// SharedCollectionDto What a public link shows: the collection, its links and its sub-collections. Nothing about the space, its members or private collections.
+type SharedCollectionDto struct {
+	Bookmarks   []SharedBookmarkDto      `json:"bookmarks"`
+	Children    []SharedCollectionRefDto `json:"children"`
+	Description *string                  `json:"description,omitempty"`
+
+	// Id UUID
+	Id   ID     `json:"id"`
+	Name string `json:"name"`
+
+	// Path From the shared collection down to this one (inclusive), for the breadcrumb
+	Path []SharedCollectionRefDto `json:"path"`
+}
+
+// SharedCollectionRefDto defines model for SharedCollectionRefDto.
+type SharedCollectionRefDto struct {
+	BookmarkCount int `json:"bookmarkCount"`
+	ChildCount    int `json:"childCount"`
+
+	// Id UUID
+	Id   ID     `json:"id"`
+	Name string `json:"name"`
+}
+
 // SpaceBarDto The space bar from top to bottom. Spaces missing here are shown after these items; spaces the user is no longer a member of are dropped.
 type SpaceBarDto struct {
 	Items []SpaceBarItemDto `json:"items"`
@@ -726,6 +776,12 @@ type ImportCollectionJSONBody = map[string]interface{}
 type ImportCollectionParams struct {
 	// Preview Only report what the import would do, without changing anything
 	Preview *bool `form:"preview,omitempty" json:"preview,omitempty"`
+}
+
+// GetSharedCollectionParams defines parameters for GetSharedCollection.
+type GetSharedCollectionParams struct {
+	// CollectionId A sub-collection of the shared one; the shared collection itself if omitted
+	CollectionId *ID `form:"collectionId,omitempty" json:"collectionId,omitempty"`
 }
 
 // DiscoverSpacesParams defines parameters for DiscoverSpaces.
@@ -897,6 +953,15 @@ type ServerInterface interface {
 	// MarkCollectionSeen Mark the links of the collection as seen by the current user
 	// (POST /v1/collections/{collectionId}/seen)
 	MarkCollectionSeen(ctx echo.Context, collectionId ID) error
+	// UnshareCollection Revoke the public link
+	// (DELETE /v1/collections/{collectionId}/share)
+	UnshareCollection(ctx echo.Context, collectionId ID) error
+	// GetCollectionShare The public read-only link of the collection, if it has one
+	// (GET /v1/collections/{collectionId}/share)
+	GetCollectionShare(ctx echo.Context, collectionId ID) error
+	// ShareCollection Create a public read-only link, replacing an existing one (the old link stops working)
+	// (PUT /v1/collections/{collectionId}/share)
+	ShareCollection(ctx echo.Context, collectionId ID) error
 	// GetImage Get an avatar or space icon (public, ids are unguessable and change with every upload)
 	// (GET /v1/images/{imageId})
 	GetImage(ctx echo.Context, imageId ID) error
@@ -915,6 +980,9 @@ type ServerInterface interface {
 	// AcceptInvite Accept an invite
 	// (POST /v1/invites/{token})
 	AcceptInvite(ctx echo.Context, token string) error
+	// GetSharedCollection A shared collection or one of its sub-collections, for anybody with the link (no account needed)
+	// (GET /v1/shares/{token})
+	GetSharedCollection(ctx echo.Context, token string, params GetSharedCollectionParams) error
 	// GetSpaces Get all spaces
 	// (GET /v1/spaces)
 	GetSpaces(ctx echo.Context) error
@@ -1440,6 +1508,54 @@ func (w *ServerInterfaceWrapper) MarkCollectionSeen(ctx echo.Context) error {
 	return err
 }
 
+// UnshareCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) UnshareCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UnshareCollection(ctx, collectionId)
+	return err
+}
+
+// GetCollectionShare converts echo context to params.
+func (w *ServerInterfaceWrapper) GetCollectionShare(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetCollectionShare(ctx, collectionId)
+	return err
+}
+
+// ShareCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) ShareCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ShareCollection(ctx, collectionId)
+	return err
+}
+
 // GetImage converts echo context to params.
 func (w *ServerInterfaceWrapper) GetImage(ctx echo.Context) error {
 	var err error
@@ -1519,6 +1635,31 @@ func (w *ServerInterfaceWrapper) AcceptInvite(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.AcceptInvite(ctx, token)
+	return err
+}
+
+// GetSharedCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSharedCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", ctx.Param("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter token: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetSharedCollectionParams
+	// ------------- Optional query parameter "collectionId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "collectionId", ctx.QueryParams(), &params.CollectionId, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSharedCollection(ctx, token, params)
 	return err
 }
 
@@ -2058,6 +2199,10 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.DELETE(options.BaseURL+"/v1/collections/:collectionId", wrapper.DeleteCollection, options.OperationMiddlewares["deleteCollection"]...)
 	router.GET(options.BaseURL+"/v1/collections/:collectionId", wrapper.GetCollection, options.OperationMiddlewares["getCollection"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId", wrapper.UpdateCollection, options.OperationMiddlewares["updateCollection"]...)
+	router.DELETE(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.UnshareCollection, options.OperationMiddlewares["unshareCollection"]...)
+	router.GET(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.GetCollectionShare, options.OperationMiddlewares["getCollectionShare"]...)
+	router.PUT(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.ShareCollection, options.OperationMiddlewares["shareCollection"]...)
+	router.GET(options.BaseURL+"/v1/shares/:token", wrapper.GetSharedCollection, options.OperationMiddlewares["getSharedCollection"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/seen", wrapper.MarkCollectionSeen, options.OperationMiddlewares["markCollectionSeen"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/move", wrapper.MoveCollection, options.OperationMiddlewares["moveCollection"]...)
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/access", wrapper.GetCollectionAccess, options.OperationMiddlewares["getCollectionAccess"]...)

@@ -1,5 +1,5 @@
-import { AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError } from 'ragbag-frontend-sdk';
-import type { BookmarkDto, Middleware } from 'ragbag-frontend-sdk';
+import { AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError, ShareApi } from 'ragbag-frontend-sdk';
+import type { BookmarkDto, Middleware, SharedCollectionDto } from 'ragbag-frontend-sdk';
 
 const STORAGE_KEY = 'access_token';
 // Production builds are served by the backend itself, so the API lives on the same origin
@@ -89,6 +89,16 @@ export async function changePassword(currentPassword: string, newPassword: strin
 		changePasswordRequest: { currentPassword, newPassword },
 	});
 	setAccessToken(response.accessToken);
+}
+
+/** A collection shared by a public link (or one of its sub-collections); works without being signed in. */
+export async function getSharedCollection(token: string, collectionId?: string): Promise<SharedCollectionDto> {
+	return new ShareApi(anonConfig()).getSharedCollection({ token, collectionId });
+}
+
+/** The public link of a shared collection, e.g. https://ragbag.example/app/share/abc… */
+export function shareLink(token: string): string {
+	return `${window.location.origin}${appBase()}/share/${token}`;
 }
 
 /** Who a password reset link belongs to; works without being signed in. */

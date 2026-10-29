@@ -155,7 +155,7 @@
 				class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 opacity-0 hover:text-gray-600 focus:opacity-100 group-hover:opacity-100 dark:text-gray-500 dark:hover:text-gray-300 {hasChildren
 					? ''
 					: 'me-1'}"
-				aria-label="Collection actions"
+				aria-label="Actions for {node.label}"
 				aria-haspopup="menu"
 				onclick={(e) => {
 					e.stopPropagation();
