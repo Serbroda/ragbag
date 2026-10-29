@@ -2,6 +2,7 @@ package server
 
 import (
 	"context"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -105,8 +106,10 @@ func (s *Server) Unlock(c echo.Context) error {
 			return err
 		}
 		if until != nil {
+			audit(c, slog.LevelWarn, "unlocking paused after too many wrong PINs")
 			return tooManyRequests("Too many wrong PINs, try again in a few minutes")
 		}
+		audit(c, slog.LevelWarn, "wrong PIN")
 		return badRequest("Wrong PIN")
 	}
 	if state.Failures > 0 || state.BlockedUntil != nil {

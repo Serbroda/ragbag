@@ -24,6 +24,7 @@ const (
 	refreshCookie     = "refresh_token"
 	refreshCookiePath = "/api/auth/refresh"
 	userIDKey         = "userID"
+	usernameKey       = "username"
 )
 
 type Server struct {
@@ -59,6 +60,10 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 	e.HideBanner = true
 	e.HidePort = true
 	e.HTTPErrorHandler = errorHandler
+	// The client IP (logs): X-Forwarded-For only counts when it comes from a proxy in the own network (nginx
+	// proxy manager & co.), otherwise anybody could put a fake address into the logs, e.g. to fool fail2ban
+	e.IPExtractor = echo.ExtractIPFromXFFHeader()
+	e.Use(s.logRequests)
 	e.Use(middleware.Recover())
 	// Uploads are limited to 5 MB, imports can be larger
 	e.Use(middleware.BodyLimit("25M"))
@@ -117,6 +122,7 @@ func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 			return unauthorized("Token has been revoked")
 		}
 		c.Set(userIDKey, user.ID)
+		c.Set(usernameKey, user.Username)
 		s.withUnlock(c, user)
 		return next(c)
 	}

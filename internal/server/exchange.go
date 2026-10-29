@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -179,6 +180,10 @@ func (s *Server) ImportCollection(c echo.Context, collectionID api.ID, params ap
 	})
 	if err != nil {
 		return err
+	}
+	if !preview {
+		audit(c, slog.LevelInfo, "collection imported", "collection", collectionID, "links", counter.imported,
+			"skipped", counter.skipped, "invalid", counter.invalid)
 	}
 	appVersion := file.AppVersion
 	return c.JSON(http.StatusOK, api.ImportResultDto{

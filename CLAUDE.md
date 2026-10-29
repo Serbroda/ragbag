@@ -45,7 +45,8 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`. Values that still look like
+`REGISTRATION_ENABLED`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+(rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
 
@@ -72,6 +73,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - `internal/server` — HTTP handlers and business rules, one file per domain (auth, users, spaces, collections,
   bookmarks, dashboard, invites, exchange). Errors are RFC 9457 problem details (`badRequest`, `forbidden`,
   `notFound`, `conflict`); the frontend shows `detail`
+- `internal/logging` — slog setup: stdout or a rotating file (lumberjack), text or JSON. `server/logging.go` logs
+  one line per request (secrets in paths masked, no query strings) and `audit()` the events worth troubleshooting
+  (logins, failed logins as WARN, memberships, deletions); never log tokens, passwords or PINs
 - `internal/auth` — JWTs (HS256) and BCrypt passwords (8 characters to 72 bytes)
 - `internal/fetch` — SSRF-guarded fetching of user supplied URLs (every redirect and the dialed IP are checked;
   loopback/link-local always refused, private networks unless `ALLOW_PRIVATE_HOSTS`) and the page metadata parser

@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"log/slog"
 	"net/http"
 	"sort"
 	"strings"
@@ -99,6 +100,7 @@ func (s *Server) CreateSpace(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "space created", "space", space.ID, "name", space.Name)
 	return c.JSON(http.StatusCreated, spaceDto(space, RoleOwner))
 }
 
@@ -210,6 +212,7 @@ func (s *Server) JoinSpace(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "joined space", "space", spaceID, "role", string(role))
 	return s.spaceView(c, spaceID, role)
 }
 
@@ -230,6 +233,7 @@ func (s *Server) DeleteSpace(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "space deleted", "space", spaceID)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -299,6 +303,7 @@ func (s *Server) LeaveSpace(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "left space", "space", spaceID)
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -386,6 +391,7 @@ func (s *Server) RemoveSpaceMember(c echo.Context, spaceID api.ID, userID api.ID
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "member removed", "space", spaceID, "member", userID)
 	return c.NoContent(http.StatusNoContent)
 }
 

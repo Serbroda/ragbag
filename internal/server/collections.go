@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"slices"
 	"sort"
@@ -292,6 +293,7 @@ func (s *Server) DeleteCollection(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "collection deleted", "collection", collection.Name, "space", collection.SpaceID)
 	return c.NoContent(http.StatusNoContent)
 }
 
