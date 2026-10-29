@@ -7,6 +7,7 @@
 	import { isFolderOpen, setFolderOpen } from '../stores/preferences.svelte';
 	import { loadSpaces, session } from '../stores/spaces.svelte';
 	import { initials } from '../utils/format';
+	import { localId } from '../utils/id';
 	import Avatar from './Avatar.svelte';
 	import Logo from './Logo.svelte';
 
@@ -157,15 +158,10 @@
 		save(items);
 	}
 
-	function newFolderId(): string {
-		// crypto.randomUUID() needs a secure context, which self-hosted instances on plain http lack
-		return 'f' + Date.now().toString(36) + Math.random().toString(36).slice(2, 8);
-	}
-
 	function createFolder(spaceId: string, name: string) {
 		const items = draft();
 		const at = detach(items, spaceId);
-		const folderId = newFolderId();
+		const folderId = localId();
 		items.splice(Math.min(at, items.length), 0, { folderId, name, spaceIds: [spaceId] });
 		setFolderOpen(folderId, true);
 		save(items);

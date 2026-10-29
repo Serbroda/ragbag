@@ -22,6 +22,7 @@
 	import FavoriteButton from '../components/FavoriteButton.svelte';
 	import { dashboardApi } from '../stores/dashboard';
 	import { session } from '../stores/spaces.svelte';
+	import { localId } from '../utils/id';
 
 	const FLIP_MS = 180;
 
@@ -91,7 +92,7 @@
 	let pickerOpen = $state(false);
 	let showReset = $state(false);
 
-	const uid = () => crypto.randomUUID();
+	const uid = localId;
 
 	function startEditing() {
 		if (!dashboard) return;
