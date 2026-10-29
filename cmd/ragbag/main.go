@@ -13,6 +13,7 @@ import (
 
 	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/Serbroda/ragbag/internal/db"
+	"github.com/Serbroda/ragbag/internal/logging"
 	"github.com/Serbroda/ragbag/internal/server"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/Serbroda/ragbag/ui"
@@ -37,6 +38,15 @@ func run() error {
 	if err != nil {
 		return err
 	}
+	if cfg.Log.File != "" {
+		// The last line on stdout (e.g. in the journal) says where to look
+		slog.Info("logging to file", "file", cfg.Log.File, "level", cfg.Log.Level.String())
+	}
+	logs, err := logging.Setup(cfg.Log)
+	if err != nil {
+		return err
+	}
+	defer logs.Close()
 	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
 	defer stop()
 
@@ -60,7 +70,9 @@ func run() error {
 	}
 	errs := make(chan error, 1)
 	go func() {
-		slog.Info("ragbag started", "version", version, "addr", cfg.Addr, "database", string(dialect))
+		slog.Info("ragbag started", "version", version, "addr", cfg.Addr, "database", string(dialect),
+			"log_level", cfg.Log.Level.String(), "registration", cfg.RegistrationOpen, "admins", len(cfg.AdminUsers),
+			"private_hosts", cfg.AllowPrivateHosts)
 		errs <- httpServer.ListenAndServe()
 	}()
 

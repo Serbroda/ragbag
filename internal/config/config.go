@@ -11,6 +11,8 @@ import (
 	"strconv"
 	"strings"
 	"time"
+
+	"github.com/Serbroda/ragbag/internal/logging"
 )
 
 type Config struct {
@@ -29,6 +31,7 @@ type Config struct {
 	AllowPrivateHosts  bool
 	AdminUsers         []string
 	CORSAllowedOrigins []string
+	Log                logging.Config
 }
 
 // Load reads RAGBAG_* and the documented short variables (see .env.example).
@@ -45,6 +48,22 @@ func Load() (Config, error) {
 		AllowPrivateHosts:  envBool("ALLOW_PRIVATE_HOSTS", false),
 		AdminUsers:         envList("ADMIN_USERS"),
 		CORSAllowedOrigins: envList("CORS_ALLOWED_ORIGINS"),
+	}
+
+	level, err := logging.ParseLevel(env("LOG_LEVEL", "info"))
+	if err != nil {
+		return cfg, err
+	}
+	format := strings.ToLower(strings.TrimSpace(env("LOG_FORMAT", "text")))
+	if format != "text" && format != "json" {
+		return cfg, fmt.Errorf("LOG_FORMAT must be text or json, not %q", format)
+	}
+	cfg.Log = logging.Config{
+		Level:     level,
+		JSON:      format == "json",
+		File:      strings.TrimSpace(env("LOG_FILE", "")),
+		MaxSizeMB: envInt("LOG_MAX_SIZE_MB", 10),
+		MaxFiles:  envInt("LOG_MAX_FILES", 5),
 	}
 
 	secret := os.Getenv("JWT_SECRET")

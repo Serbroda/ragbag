@@ -2,6 +2,7 @@ package server
 
 import (
 	"errors"
+	"log/slog"
 	"net/http"
 	"time"
 
@@ -152,6 +153,7 @@ func (s *Server) AcceptInvite(c echo.Context, token string) error {
 	if invite, err = s.store.InviteByToken(ctxOf(c), token); err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "invite accepted", "space", invite.TargetID, "role", invite.Role)
 	return s.invitePreview(c, invite)
 }
 

@@ -140,6 +140,10 @@ Everything is configured with environment variables. For local runs the server a
 | `CORS_ALLOWED_ORIGINS`  | Comma-separated origins of frontends served elsewhere (dev server)   | –                       |
 | `ACCESS_TOKEN_MINUTES`  | Lifetime of access tokens                                            | `15`                    |
 | `REFRESH_TOKEN_MINUTES` | How long you stay signed in                                          | `20160` (14 days)       |
+| `LOG_LEVEL`             | `debug`, `info`, `warn` or `error`; `debug` also logs the frontend's requests | `info`     |
+| `LOG_FILE`              | Log into this file instead of stdout, e.g. `/var/log/ragbag/ragbag.log` (rotated) | – (stdout) |
+| `LOG_FORMAT`            | `text` or `json` (one object per line, for log shippers)             | `text`                  |
+| `LOG_MAX_SIZE_MB`, `LOG_MAX_FILES` | Rotation of `LOG_FILE`: size per file, compressed old files kept | `10`, `5`       |
 | `RAGBAG_DEV`            | Development mode: demo account `admin`/`test123`, no secret required. Never in production | `false` |
 
 ### Reverse proxy
@@ -147,6 +151,19 @@ Everything is configured with environment variables. For local runs the server a
 Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything to port 8080; the app lives under
 `/app`, the API under `/api`. When the proxy terminates HTTPS and sends `X-Forwarded-Proto: https`, the login cookie
 is marked `Secure` automatically.
+
+### Logs
+
+Ragbag logs one line per API request (method, path, status, duration, IP, user), logins and failed logins (`WARN`,
+with the IP, usable for fail2ban), wrong PINs, changes to spaces and memberships, imports and deletions, and server
+errors with their cause. Secrets never end up there: share, invite and reset links are masked (`/share/***`), search
+terms and other query parameters are left out, passwords and PINs anyway.
+
+By default the lines go to stdout, i.e. `docker logs ragbag` or `journalctl -u ragbag -f`. With `LOG_FILE` they go to
+a file instead, which is rotated (`LOG_MAX_SIZE_MB`, `LOG_MAX_FILES`, old files gzipped). The systemd service may
+only write `/var/log/ragbag/` (created for it), so use `LOG_FILE=/var/log/ragbag/ragbag.log` there; in Docker put
+the file into the data volume, e.g. `/data/logs/ragbag.log`. `LOG_LEVEL=debug` adds the requests for the app's files
+and images, `LOG_FORMAT=json` suits Loki, Graylog & co.
 
 ### Troubleshooting
 

@@ -113,6 +113,12 @@ REGISTRATION_ENABLED=true
 
 # Let "Fetch details" load pages from your own network (192.168.x.x)
 ALLOW_PRIVATE_HOSTS=false
+
+# Logs go to the journal (journalctl -u $APP); set a file to log there instead (rotated at 10 MB, 5 kept).
+# /var/log/$APP is created by systemd for the service; other places are not writable for it.
+#LOG_FILE=/var/log/$APP/$APP.log
+# debug, info, warn or error; debug also logs every request of the frontend
+#LOG_LEVEL=info
 ENV
 	echo "Created $ENV_FILE with a random JWT_SECRET"
 }
@@ -131,6 +137,8 @@ EnvironmentFile=$ENV_FILE
 # systemd creates a throwaway unprivileged user and $DATA_DIR owned by it
 DynamicUser=yes
 StateDirectory=$APP
+# /var/log/$APP, writable for the service (for LOG_FILE)
+LogsDirectory=$APP
 WorkingDirectory=$DATA_DIR
 Restart=on-failure
 RestartSec=5

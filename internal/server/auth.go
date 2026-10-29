@@ -6,6 +6,7 @@ import (
 	"encoding/base64"
 	"encoding/hex"
 	"errors"
+	"log/slog"
 	"net/http"
 	"strconv"
 	"strings"
@@ -43,6 +44,8 @@ func (s *Server) Register(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	c.Set(usernameKey, user.Username)
+	audit(c, slog.LevelInfo, "account registered")
 	return c.JSON(http.StatusOK, s.userDto(user))
 }
 
@@ -99,8 +102,12 @@ func (s *Server) Login(c echo.Context) error {
 		if err != nil && !errors.Is(err, store.ErrNotFound) {
 			return err
 		}
+		// WARN with the IP: what fail2ban and the like look for
+		audit(c, slog.LevelWarn, "login failed", "login", req.Username)
 		return unauthorized("Invalid credentials")
 	}
+	c.Set(usernameKey, user.Username)
+	audit(c, slog.LevelInfo, "login")
 	return s.issueTokens(c, user)
 }
 
@@ -133,6 +140,7 @@ func (s *Server) LogoutAll(c echo.Context) error {
 	if err := s.store.BumpTokenVersion(ctxOf(c), currentUser(c)); err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "logged out on all devices")
 	c.SetCookie(s.cookie(c, "", 0))
 	return c.NoContent(http.StatusNoContent)
 }
@@ -164,6 +172,7 @@ func (s *Server) ChangePassword(c echo.Context) error {
 	if user, err = s.store.UserByID(ctxOf(c), user.ID); err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "password changed")
 	return s.issueTokens(c, user)
 }
 
@@ -203,6 +212,7 @@ func (s *Server) ResetPassword(c echo.Context, token string) error {
 	if err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "password reset with a reset link")
 	return c.NoContent(http.StatusNoContent)
 }
 
@@ -232,6 +242,7 @@ func (s *Server) CreatePasswordReset(c echo.Context, userID api.ID) error {
 	}); err != nil {
 		return err
 	}
+	audit(c, slog.LevelInfo, "password reset link created", "for_user", userID)
 	return c.JSON(http.StatusOK, api.PasswordResetDto{Token: token, ExpiresAt: expiresAt})
 }
 

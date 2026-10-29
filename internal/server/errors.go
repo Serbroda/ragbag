@@ -3,7 +3,6 @@ package server
 import (
 	"errors"
 	"fmt"
-	"log/slog"
 	"net/http"
 
 	"github.com/Serbroda/ragbag/internal/store"
@@ -74,7 +73,7 @@ func errorHandler(err error, c echo.Context) {
 			p.Detail = message
 		}
 	default:
-		slog.Error("unhandled error", "method", c.Request().Method, "path", c.Request().URL.Path, "error", err)
+		// Logged with its cause by logRequests
 		p.Status, p.Title = http.StatusInternalServerError, "Internal Server Error"
 	}
 	c.Response().Header().Set(echo.HeaderContentType, "application/problem+json")

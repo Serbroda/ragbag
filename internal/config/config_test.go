@@ -68,3 +68,25 @@ func TestMissingDotenvFilesAreFine(t *testing.T) {
 		t.Fatal(err)
 	}
 }
+
+func TestLogSettings(t *testing.T) {
+	t.Setenv("JWT_SECRET", "0123456789abcdef0123456789abcdef")
+	t.Setenv("LOG_LEVEL", "debug")
+	t.Setenv("LOG_FORMAT", "JSON")
+	t.Setenv("LOG_FILE", " /var/log/ragbag/ragbag.log ")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.Log.Level.String() != "DEBUG" || !cfg.Log.JSON || cfg.Log.File != "/var/log/ragbag/ragbag.log" ||
+		cfg.Log.MaxSizeMB != 10 || cfg.Log.MaxFiles != 5 {
+		t.Fatalf("unexpected log config: %+v", cfg.Log)
+	}
+	for key, value := range map[string]string{"LOG_LEVEL": "loud", "LOG_FORMAT": "xml"} {
+		t.Setenv(key, value)
+		if _, err := Load(); err == nil {
+			t.Fatalf("expected an error for %s=%s", key, value)
+		}
+		t.Setenv(key, "")
+	}
+}
