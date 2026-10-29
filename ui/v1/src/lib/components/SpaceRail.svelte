@@ -192,6 +192,21 @@
 		save(items);
 	}
 
+	// --- Scrolling --------------------------------------------------------------
+
+	let scroller = $state<HTMLElement | null>(null);
+	let scrolled = $state(false);
+
+	// Many spaces scroll below the logo; keep the open one in view (e.g. after picking it in the quick switcher)
+	$effect(() => {
+		// Also once the spaces have loaded, which happens after the first render
+		if (!activeSpaceId || !scroller || railItems.length === 0) return;
+		const id = activeSpaceId;
+		requestAnimationFrame(() =>
+			scroller?.querySelector(`[data-space-id="${id}"]`)?.scrollIntoView({ block: 'nearest' }),
+		);
+	});
+
 	// --- Drag & drop ----------------------------------------------------------
 
 	let dragging = $state<{ kind: 'space' | 'folder'; id: string } | null>(null);
@@ -320,7 +335,10 @@
 			draggable="true"
 			aria-label={unread ? `${space.name}, ${space.newCount} new links` : space.name}
 			aria-current={active ? 'page' : undefined}
-			class="relative h-12 w-12 shrink-0 transition-all duration-200 {active ? 'rounded-2xl shadow-lg' : 'rounded-3xl hover:rounded-2xl'}"
+			data-space-id={space.id}
+			class="relative h-12 w-12 shrink-0 transition-all duration-200 hover:-translate-y-0.5 hover:shadow-lg hover:shadow-black/40 {active
+				? 'rounded-2xl shadow-lg'
+				: 'rounded-3xl hover:rounded-2xl'}"
 			onclick={() => onselect(space.id)}
 			oncontextmenu={(e) => openMenu(e, { spaceId: space.id })}
 			ondragstart={(e) => dragStart('space', space.id, e)}
@@ -329,7 +347,11 @@
 			ondragleave={() => (dropKey = null)}
 			ondrop={(e) => drop({ before: space.id }, e)}
 		>
-			<span class="block h-full w-full overflow-hidden {active ? 'rounded-2xl' : 'rounded-[inherit]'}">
+			<span
+				class="block h-full w-full overflow-hidden transition-[filter] duration-200 group-hover:brightness-110 {active
+					? 'rounded-2xl'
+					: 'rounded-[inherit]'}"
+			>
 				{#if space.iconId || active}
 					<Avatar name={space.name} imageId={space.iconId} class="h-full w-full text-sm" />
 				{:else}
@@ -352,17 +374,30 @@
 	</div>
 {/snippet}
 
-<nav class="flex w-[72px] shrink-0 flex-col items-center gap-2 overflow-y-auto bg-gray-950 py-3" aria-label="Spaces">
-	<button
-		type="button"
-		title="Ragbag"
-		aria-label="Ragbag home"
-		class="transition-transform duration-200 hover:scale-105"
-		onclick={onhome}
+<nav class="flex w-[72px] shrink-0 flex-col bg-gray-950" aria-label="Spaces">
+	<!-- The logo stays put, the spaces below it scroll -->
+	<div
+		class="relative z-10 flex shrink-0 flex-col items-center gap-2 pb-2 pt-3 transition-shadow {scrolled
+			? 'shadow-[0_6px_8px_-4px_rgba(0,0,0,0.6)]'
+			: ''}"
 	>
-		<Logo size={48} />
-	</button>
-	<div class="h-0.5 w-8 shrink-0 rounded bg-gray-800"></div>
+		<button
+			type="button"
+			title="Ragbag"
+			aria-label="Ragbag home"
+			class="transition-transform duration-200 hover:scale-105"
+			onclick={onhome}
+		>
+			<Logo size={48} />
+		</button>
+		<div class="h-0.5 w-8 rounded bg-gray-800"></div>
+	</div>
+
+	<div
+		bind:this={scroller}
+		class="flex min-h-0 flex-1 flex-col items-center gap-2 overflow-y-auto overflow-x-hidden pb-3 pt-1 [scrollbar-width:none] [&::-webkit-scrollbar]:hidden"
+		onscroll={() => (scrolled = (scroller?.scrollTop ?? 0) > 0)}
+	>
 
 	{#each railItems as item (item.kind === 'space' ? item.space.id : item.folder.folderId)}
 		{#if item.kind === 'space'}
@@ -441,6 +476,7 @@
 			<PlusOutline class="h-6 w-6" />
 		</button>
 		{@render tooltip('Create or join a space')}
+	</div>
 	</div>
 </nav>
 
