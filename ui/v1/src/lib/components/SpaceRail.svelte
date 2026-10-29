@@ -348,9 +348,11 @@
 			ondrop={(e) => drop({ before: space.id }, e)}
 		>
 			<span
-				class="block h-full w-full overflow-hidden transition-[filter] duration-200 group-hover:brightness-110 {active
+				class="block h-full w-full overflow-hidden transition-[filter,box-shadow] duration-200 group-hover:brightness-110 {active
 					? 'rounded-2xl'
-					: 'rounded-[inherit]'}"
+					: 'rounded-[inherit]'} {space.iconId
+					? 'ring-1 ring-white/15 group-hover:ring-white/30'
+					: ''}"
 			>
 				{#if space.iconId || active}
 					<Avatar name={space.name} imageId={space.iconId} class="h-full w-full text-sm" />
@@ -437,7 +439,11 @@
 						{:else}
 							<span class="grid h-full w-full grid-cols-2 grid-rows-2 gap-1">
 								{#each item.spaces.slice(0, 4) as space (space.id)}
-									<Avatar name={space.name} imageId={space.iconId} class="h-full w-full rounded-md text-[8px]" />
+									<Avatar
+										name={space.name}
+										imageId={space.iconId}
+										class="h-full w-full rounded-md text-[8px] {space.iconId ? 'ring-1 ring-white/15' : ''}"
+									/>
 								{/each}
 							</span>
 							{#if unread > 0}

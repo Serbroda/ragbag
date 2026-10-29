@@ -5,6 +5,9 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
+	import LinkSortSelect from '../components/LinkSortSelect.svelte';
+	import { filterByTags, sortLinks } from '../utils/links';
+	import TagFilter from '../components/TagFilter.svelte';
 	import { linkListClass, preferences } from '../stores/preferences.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
@@ -48,6 +51,9 @@
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
+	/** Tags picked above the links; a link has to have all of them. */
+	let selectedTags = $state<string[]>([]);
+	const visibleBookmarks = $derived(sortLinks(filterByTags(bookmarks, selectedTags), preferences.linkSort));
 	let loading = $state(true);
 	let error = $state('');
 	/** Errors of individual actions; unlike `error` they don't replace the page. */
@@ -150,7 +156,12 @@
 		}
 	});
 
+	/** Plain variable on purpose: loadData runs inside an effect, which must not depend on what it loads. */
+	let loadedId = '';
+
 	async function loadData(id: string) {
+		if (id !== loadedId) selectedTags = [];
+		loadedId = id;
 		loading = true;
 		error = '';
 		try {
@@ -475,7 +486,6 @@
 				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
-				<div class="me-auto sm:me-0"><LinkViewToggle /></div>
 				{#if canCreateBookmarks}
 					<Button size="sm" onclick={openAddModal} title="Or paste a URL anywhere on this page">+ Add Link</Button>
 				{/if}
@@ -618,6 +628,18 @@
 			</div>
 		{/if}
 
+		{#if bookmarks.length > 0}
+			<div class="mb-4 flex flex-wrap items-start gap-2">
+				<div class="min-w-0 flex-1 basis-full sm:basis-0">
+					<TagFilter links={bookmarks} bind:selected={selectedTags} />
+				</div>
+				<div class="ms-auto flex items-center gap-2">
+					<LinkSortSelect />
+					<LinkViewToggle />
+				</div>
+			</div>
+		{/if}
+
 		<!-- Bookmark list -->
 		{#if bookmarks.length === 0}
 			{#if subcollections.length === 0}
@@ -632,8 +654,11 @@
 				</div>
 			{/if}
 		{:else}
+			{#if visibleBookmarks.length === 0}
+				<p class="text-sm text-gray-500 dark:text-gray-400">No links have all of the selected tags.</p>
+			{/if}
 			<div class={linkListClass(preferences.linkView)}>
-				{#each bookmarks as bookmark (bookmark.id)}
+				{#each visibleBookmarks as bookmark (bookmark.id)}
 					<BookmarkCard
 						{bookmark}
 						ondragstart={canEditBookmarks ? (e) => startBookmarkDrag(bookmark, e) : undefined}
