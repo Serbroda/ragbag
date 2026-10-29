@@ -8,13 +8,18 @@
 		BarsOutline,
 		ChevronDownOutline,
 		ChevronRightOutline,
+		CloseOutline,
 		CogSolid,
 		FolderOutline,
 		FolderPlusSolid,
 		HomeSolid,
+		LinkOutline,
+		LockOutline,
+		PenOutline,
 		PlusOutline,
 		SearchOutline,
 		StarSolid,
+		TrashBinOutline,
 		UserAddSolid,
 		UserCircleOutline,
 		UsersOutline,
@@ -31,10 +36,20 @@
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
 	import AdminUsersModal from '../components/AdminUsersModal.svelte';
-	import { collectionsToTree, expandToNode, flattenTree, pathToNode, type TreeNode } from '../components/tree';
+	import { collectionsToTree, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
-	import { loadPreferences } from '../stores/preferences.svelte';
+	import {
+		loadPreferences,
+		preferences,
+		saveSidebarWidth,
+		setExpanded,
+		setSidebarWidth,
+	} from '../stores/preferences.svelte';
+	import { pendingCollectionAction, type CollectionAction } from '../stores/collectionAction.svelte';
+	import { showToast } from '../stores/toast.svelte';
+	import Toasts from '../components/Toasts.svelte';
+	import { copyText } from '../utils/clipboard';
 	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
 	import { initials } from '../utils/format';
 
@@ -60,11 +75,7 @@
 		try {
 			const collections = await collectionApi.getCollections({ spaceId });
 			if (spaceId !== activeSpaceId) return;
-			const tree = collectionsToTree(collections, spaceId);
-			if (activeCollectionId) {
-				expandToNode(tree, activeCollectionId);
-			}
-			menuTree = tree;
+			menuTree = collectionsToTree(collections, spaceId);
 		} catch {
 			// Access was revoked or the space was deleted meanwhile
 			menuTree = [];
@@ -94,6 +105,19 @@
 		}
 	});
 
+	// Opening a collection (click, quick switcher, breadcrumb, link) shows it with its children in the tree.
+	// Only once per opened collection: reloading the tree must not reopen what the user collapsed.
+	let expandedFor: string | null = null;
+	$effect(() => {
+		if (!activeCollectionId || activeCollectionId === expandedFor) return;
+		const path = pathToNode(menuTree, activeCollectionId);
+		if (path.length === 0) return;
+		expandedFor = activeCollectionId;
+		for (const node of path) {
+			if (node.children?.length) setExpanded(node.id!, true);
+		}
+	});
+
 	// Leave spaces the user is no longer a member of (removed, deleted, bad link)
 	$effect(() => {
 		if (!spacesReady || !activeSpaceId) return;
@@ -117,6 +141,9 @@
 	const isMac = /mac/i.test(navigator.platform || navigator.userAgent);
 
 	setContext('collection-name', (collectionId: string) => findLabel(menuTree, collectionId));
+
+	/** The collection tree of the sidebar, e.g. for sub-collections and move targets on the collection page. */
+	setContext('collection-tree', () => menuTree);
 
 	// Visibility is inherited: below a private collection only its members see anything
 	setContext('private-ancestor', (collectionId: string) =>
@@ -145,12 +172,21 @@
 	let searchQuery = $state('');
 	let searchTimeout: ReturnType<typeof setTimeout> | undefined;
 
+	/** Phones have no room for the search box in the header; it opens as a row below it. */
+	let mobileSearchOpen = $state(false);
+
 	// Reset the search box when switching spaces; prefill it on the search page
 	$effect(() => {
 		activeSpaceId;
 		const q = route.search.q;
-		searchQuery = route.pathname.endsWith('/search') && typeof q === 'string' ? q : '';
+		const onSearchPage = route.pathname.endsWith('/search');
+		searchQuery = onSearchPage && typeof q === 'string' ? q : '';
+		if (!onSearchPage) mobileSearchOpen = false;
 	});
+
+	function focusOnMount(element: HTMLElement) {
+		element.focus();
+	}
 
 	function doSearch(value: string) {
 		if (!activeSpaceId || !value.trim()) return;
@@ -171,11 +207,7 @@
 
 	// --- Resize ---
 	const SPACE_BAR_WIDTH = 72;
-	const MIN_WIDTH = 200;
-	const MAX_WIDTH = 480;
-	const DEFAULT_WIDTH = 256;
 
-	let sidebarWidth = $state(DEFAULT_WIDTH);
 	let isResizing = $state(false);
 
 	function startResize(e: MouseEvent) {
@@ -183,11 +215,12 @@
 		isResizing = true;
 
 		const onMouseMove = (e: MouseEvent) => {
-			sidebarWidth = Math.min(MAX_WIDTH, Math.max(MIN_WIDTH, e.clientX - SPACE_BAR_WIDTH));
+			setSidebarWidth(e.clientX - SPACE_BAR_WIDTH);
 		};
 
 		const onMouseUp = () => {
 			isResizing = false;
+			saveSidebarWidth();
 			document.removeEventListener('mousemove', onMouseMove);
 			document.removeEventListener('mouseup', onMouseUp);
 		};
@@ -208,6 +241,34 @@
 	function closeMenus() {
 		spaceMenuOpen = false;
 		userMenuOpen = false;
+		collectionMenu = null;
+	}
+
+	// --- Collection context menu (right click or ⋯ in the tree) ---
+	let collectionMenu = $state<{ node: TreeNode; x: number; y: number } | null>(null);
+	const canDeleteCollections = $derived(activePermissions.has('DELETE_COLLECTIONS'));
+
+	setContext('collection-menu', (node: TreeNode, x: number, y: number) => {
+		spaceMenuOpen = false;
+		userMenuOpen = false;
+		// Keep the menu (w-52, up to six items) inside the window
+		collectionMenu = { node, x: Math.min(x, window.innerWidth - 216), y: Math.min(y, window.innerHeight - 240) };
+	});
+
+	function runCollectionAction(node: TreeNode, action: CollectionAction) {
+		closeMenus();
+		pendingCollectionAction.current = { collectionId: node.id!, action };
+		if (activeCollectionId !== node.id) {
+			navigate('/space/:spaceId/collections/:collectionId', {
+				params: { spaceId: activeSpaceId!, collectionId: node.id! },
+			});
+		}
+	}
+
+	async function copyCollectionLink(node: TreeNode) {
+		closeMenus();
+		const copied = await copyText(new URL(node.href!, window.location.origin).href);
+		showToast(copied ? 'Link copied' : 'Could not copy the link');
 	}
 
 	function onWindowKeydown(e: KeyboardEvent) {
@@ -216,6 +277,7 @@
 			switcherOpen = !switcherOpen;
 		} else if (e.key === 'Escape') {
 			closeMenus();
+			mobileSearchOpen = false;
 		}
 	}
 
@@ -297,12 +359,12 @@
 
 	const parentOptions = $derived(flattenTree(menuTree));
 
-	function openAddModal() {
+	function openAddModal(parentId = activeCollectionId) {
 		if (!canCreateCollections) return;
 		closeMenus();
 		newCollectionName = '';
 		// Default to the collection the user is currently looking at
-		newCollectionParentId = activeCollectionId ?? '';
+		newCollectionParentId = parentId ?? '';
 		createError = '';
 		creating = false;
 		newCollectionPrivate = false;
@@ -398,7 +460,7 @@
 	}
 </script>
 
-<svelte:window onkeydown={onWindowKeydown} onclick={closeMenus} />
+<svelte:window onkeydown={onWindowKeydown} onclick={closeMenus} oncontextmenu={closeMenus} />
 
 <div class="flex h-dvh overflow-hidden bg-white text-gray-900 dark:bg-gray-850 dark:text-gray-100" class:select-none={isResizing}>
 	<!-- Mobile backdrop -->
@@ -484,7 +546,7 @@
 		<!-- Sidebar -->
 		<aside
 			class="relative flex h-full flex-col bg-gray-50 dark:bg-gray-900"
-			style:width="{sidebarWidth}px"
+			style:width="{preferences.sidebarWidth}px"
 			aria-label="Space navigation"
 		>
 			<!-- Space header with menu -->
@@ -529,7 +591,7 @@
 								<button
 									role="menuitem"
 									class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
-									onclick={openAddModal}
+									onclick={() => openAddModal()}
 								>
 									Create collection <FolderPlusSolid class="h-4 w-4" />
 								</button>
@@ -730,9 +792,21 @@
 						<SearchOutline class="absolute left-2.5 top-2 h-4 w-4 text-gray-500" />
 					</div>
 				{/if}
+				{#if activeSpaceId}
+					<button
+						type="button"
+						aria-label="Search"
+						aria-expanded={mobileSearchOpen}
+						class="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 sm:hidden dark:hover:bg-gray-800"
+						onclick={() => (mobileSearchOpen = !mobileSearchOpen)}
+					>
+						<SearchOutline class="h-5 w-5" />
+					</button>
+				{/if}
+				<!-- The quick switcher is a keyboard feature; phones have the navigation drawer -->
 				<button
 					type="button"
-					class="flex items-center gap-2 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-500 transition-colors hover:text-gray-800 dark:bg-gray-950/70 dark:text-gray-400 dark:hover:text-gray-200"
+					class="hidden items-center gap-2 rounded-md bg-gray-100 px-2.5 py-1.5 text-xs text-gray-500 transition-colors hover:text-gray-800 sm:flex dark:bg-gray-950/70 dark:text-gray-400 dark:hover:text-gray-200"
 					onclick={() => (switcherOpen = true)}
 					title="Quick switcher"
 				>
@@ -741,6 +815,31 @@
 				</button>
 			</div>
 		</header>
+		{#if mobileSearchOpen && activeSpaceId}
+			<div class="flex shrink-0 items-center gap-2 border-b border-gray-200 px-3 py-2 sm:hidden dark:border-gray-950/60">
+				<div class="relative flex-1">
+					<input
+						type="search"
+						enterkeyhint="search"
+						placeholder="Search {activeSpace?.name ?? 'bookmarks'}"
+						class="w-full rounded-md border-0 bg-gray-100 py-2 pl-8 pr-3 text-base text-gray-900 placeholder:text-gray-500 focus:ring-2 focus:ring-primary-500 dark:bg-gray-950/70 dark:text-white"
+						bind:value={searchQuery}
+						oninput={handleSearchInput}
+						onkeydown={handleSearchKeydown}
+						{@attach focusOnMount}
+					/>
+					<SearchOutline class="absolute left-2.5 top-3 h-4 w-4 text-gray-500" />
+				</div>
+				<button
+					type="button"
+					aria-label="Close search"
+					class="rounded-md p-1.5 text-gray-500 hover:bg-gray-100 dark:hover:bg-gray-800"
+					onclick={() => (mobileSearchOpen = false)}
+				>
+					<CloseOutline class="h-5 w-5" />
+				</button>
+			</div>
+		{/if}
 
 		<main class="flex-1 overflow-y-auto" data-scroll-root>
 			<div class="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
@@ -828,6 +927,65 @@
 {/if}
 
 <QuickSwitcher bind:open={switcherOpen} items={switcherItems} />
+
+{#if collectionMenu}
+	{@const node = collectionMenu.node}
+	<!-- svelte-ignore a11y_click_events_have_key_events -->
+	<div
+		role="menu"
+		tabindex="-1"
+		class="fixed z-50 w-52 rounded-lg bg-gray-950 p-1.5 text-sm text-gray-200 shadow-2xl ring-1 ring-white/10"
+		style:left="{collectionMenu.x}px"
+		style:top="{collectionMenu.y}px"
+		onclick={(e) => e.stopPropagation()}
+	>
+		<p class="truncate px-2 pb-1 pt-0.5 text-xs font-semibold text-gray-400">{node.label}</p>
+		{#if canCreateCollections}
+			<button
+				role="menuitem"
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+				onclick={() => openAddModal(node.id)}
+			>
+				New sub-collection <FolderPlusSolid class="h-4 w-4" />
+			</button>
+		{/if}
+		{#if canEditCollections}
+			<button
+				role="menuitem"
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+				onclick={() => runCollectionAction(node, 'edit')}
+			>
+				Edit collection <PenOutline class="h-4 w-4" />
+			</button>
+		{/if}
+		<button
+			role="menuitem"
+			class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+			onclick={() => runCollectionAction(node, 'access')}
+		>
+			Who can see this <LockOutline class="h-4 w-4" />
+		</button>
+		<button
+			role="menuitem"
+			class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+			onclick={() => copyCollectionLink(node)}
+		>
+			Copy link <LinkOutline class="h-4 w-4" />
+		</button>
+		{#if canDeleteCollections}
+			<div class="my-1 h-px bg-gray-800"></div>
+			<button
+				role="menuitem"
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 text-red-400 hover:bg-red-600 hover:text-white"
+				onclick={() => runCollectionAction(node, 'delete')}
+			>
+				Delete collection <TrashBinOutline class="h-4 w-4" />
+			</button>
+		{/if}
+	</div>
+{/if}
+
+<Toasts />
 
 <ProfileModal bind:open={showProfile} />
 

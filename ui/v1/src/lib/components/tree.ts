@@ -10,9 +10,10 @@ export interface TreeNode {
 	href?: string;
 	/** Route path without the base, used to detect the active item */
 	path?: string;
-	expanded?: boolean;
 	/** Private collection (only its members see it and everything below). */
 	restricted?: boolean;
+	/** Links directly in the collection. */
+	bookmarkCount?: number;
 	icon?: Component<{ class?: string }>;
 	children?: TreeNode[];
 }
@@ -25,6 +26,7 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 		// Private collections are only visible to selected members
 		icon: collection.restricted ? LockOutline : FolderOutline,
 		restricted: collection.restricted,
+		bookmarkCount: collection.bookmarkCount,
 		children: collection.children?.length
 			? collection.children.map((c) => collectionToTreeNode(c, spaceId))
 			: undefined,
@@ -95,18 +97,6 @@ export function collectSubtreeIds(node: TreeNode): Set<string> {
 		}
 	}
 	return ids;
-}
-
-/** Expand all ancestors of the node with the given ID. Returns true if found. */
-export function expandToNode(nodes: TreeNode[], id: string): boolean {
-	for (const node of nodes) {
-		if (node.id === id) return true;
-		if (node.children && expandToNode(node.children, id)) {
-			node.expanded = true;
-			return true;
-		}
-	}
-	return false;
 }
 
 /** Check if `target` is the same as or a descendant of `ancestor`. */

@@ -159,6 +159,17 @@ func (s *Server) UpdateBookmark(c echo.Context, bookmarkID api.ID) error {
 	if err != nil {
 		return badRequest("%s", err.Error())
 	}
+	if req.CollectionId != nil && *req.CollectionId != bookmark.CollectionID {
+		// Moving adds the link to the target, so it needs the same permission as creating it there
+		target, _, err := s.requireCollection(ctxOf(c), s.store, *req.CollectionId, currentUser(c), PermCreateBookmarks)
+		if err != nil {
+			return err
+		}
+		if target.SpaceID != bookmark.SpaceID {
+			return badRequest("Links can only be moved within their space")
+		}
+		bookmark.CollectionID = target.ID
+	}
 	urlChanged := url != bookmark.URL
 	bookmark.URL = url
 	bookmark.Title = ptr(truncate(firstNonEmpty(deref(req.Title), deref(bookmark.Title)), maxTitleLength))

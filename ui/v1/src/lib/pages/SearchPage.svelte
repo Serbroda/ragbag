@@ -16,6 +16,8 @@
 
 	const spaceId = $derived(route.params.spaceId ?? '');
 	const query = $derived(typeof route.search.q === 'string' ? route.search.q : String(route.search.q ?? ''));
+	/** "#tag" (from clicking a tag) only matches that exact tag. */
+	const isTag = $derived(/^#\S+$/.test(query.trim()));
 
 	$effect(() => {
 		if (spaceId && query.trim()) {
@@ -44,7 +46,9 @@
 <div>
 	<div class="mb-6 flex items-start justify-between gap-3">
 		<div class="min-w-0">
-			<h1 class="truncate text-2xl font-bold tracking-tight">Results for “{query}”</h1>
+			<h1 class="truncate text-2xl font-bold tracking-tight">
+				{isTag ? `Links tagged ${query}` : `Results for “${query}”`}
+			</h1>
 			{#if !loading}
 				<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
 					{bookmarks.length} result{bookmarks.length !== 1 ? 's' : ''} found

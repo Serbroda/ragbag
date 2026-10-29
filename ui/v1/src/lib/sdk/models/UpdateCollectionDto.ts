@@ -23,6 +23,10 @@ export interface UpdateCollectionDto {
      * 
      */
     name: string;
+    /**
+     * Omitted keeps the description, an empty string removes it
+     */
+    description?: string;
 }
 
 /**
@@ -44,6 +48,7 @@ export function UpdateCollectionDtoFromJSONTyped(json: any, ignoreDiscriminator:
     return {
         
         'name': json['name'],
+        'description': json['description'] == null ? undefined : json['description'],
     };
 }
 
@@ -59,6 +64,7 @@ export function UpdateCollectionDtoToJSONTyped(value?: UpdateCollectionDto | nul
     return {
         
         'name': value['name'],
+        'description': value['description'],
     };
 }
 

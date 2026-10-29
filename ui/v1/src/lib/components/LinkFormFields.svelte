@@ -36,7 +36,7 @@
 		}
 	});
 
-	async function fetchMetadata() {
+	export async function fetchMetadata() {
 		if (!url.trim() || fetching) return;
 		fetching = true;
 		status = null;

@@ -214,3 +214,68 @@ func TestMalformedBodiesAreBadRequests(t *testing.T) {
 	e.req("POST", "/api/v1/spaces").as(user).json(`{"name":`).expect(400).has("detail", "Malformed request body")
 	e.req("GET", "/api/v1/nothing-here").as(user).expect(404)
 }
+
+func TestCollectionDescriptionAndBookmarkCounts(t *testing.T) {
+	e := newEnv(t)
+	user := e.register()
+	space := e.firstSpace(user)
+	parent := e.createCollection(user, space, "Parent", "")
+	child := e.createCollection(user, space, "Child", parent)
+	e.createBookmark(user, child)
+	e.createBookmark(user, child)
+
+	e.req("GET", "/api/v1/spaces/%s/collections", space).as(user).expect(200).
+		has("0.bookmarkCount", 0).has("0.children.0.bookmarkCount", 2)
+
+	e.req("PUT", "/api/v1/collections/%s", parent).as(user).json(`{"name":"Parent","description":" Things "}`).
+		expect(200).has("description", "Things")
+	// Without a description it is kept, an empty one removes it
+	e.req("PUT", "/api/v1/collections/%s", parent).as(user).json(`{"name":"Renamed"}`).expect(200).has("description", "Things")
+	e.req("PUT", "/api/v1/collections/%s", parent).as(user).json(`{"name":"Renamed","description":""}`).expect(200)
+	require.False(t, e.req("GET", "/api/v1/collections/%s", parent).as(user).expect(200).get("description").Exists())
+	e.req("PUT", "/api/v1/collections/%s", parent).as(user).
+		json(fmt.Sprintf(`{"name":"Renamed","description":%q}`, strings.Repeat("x", 501))).expect(400)
+}
+
+func TestMovingBookmarks(t *testing.T) {
+	e := newEnv(t)
+	owner, viewer := e.register(), e.register()
+	space := e.firstSpace(owner)
+	from := e.createCollection(owner, space, "From", "")
+	to := e.createCollection(owner, space, "To", "")
+	bookmark := e.createBookmark(owner, from)
+	move := func(s *session, target string) *request {
+		return e.req("PUT", "/api/v1/bookmarks/%s", bookmark).as(s).
+			json(fmt.Sprintf(`{"url":"http://127.0.0.1/page","title":"Example","tags":["a"],"collectionId":%q}`, target))
+	}
+
+	move(owner, to).expect(200).has("collectionId", to).has("title", "Example").has("tags", `["a"]`)
+	e.req("GET", "/api/v1/collections/%s/bookmarks", from).as(owner).expect(200).has("#", 0)
+	e.req("GET", "/api/v1/collections/%s/bookmarks", to).as(owner).expect(200).has("#", 1)
+
+	// Only within the space, and only with the permissions of the user
+	other := e.req("POST", "/api/v1/spaces").as(owner).json(`{"name":"Other"}`).expect(201).str("id")
+	move(owner, e.createCollection(owner, other, "Elsewhere", "")).expect(400)
+	e.join(viewer, space, "VIEWER", owner)
+	move(viewer, from).expect(403)
+}
+
+func TestSearchingForATagMatchesItExactly(t *testing.T) {
+	e := newEnv(t)
+	user := e.register()
+	space := e.firstSpace(user)
+	collection := e.createCollection(user, space, "Links", "")
+	for _, body := range []string{
+		`{"url":"http://127.0.0.1/1","title":"Recipe collection","tags":["food"]}`,
+		`{"url":"http://127.0.0.1/2","title":"Pie","tags":["Recipe"]}`,
+		`{"url":"http://127.0.0.1/3","title":"Other","tags":["recipes"]}`,
+	} {
+		e.req("POST", "/api/v1/collections/%s/bookmarks", collection).as(user).json(body).expect(200)
+	}
+	search := func(q string) *response {
+		return e.req("GET", "/api/v1/spaces/%s/bookmarks/search", space).as(user).query("q", q).expect(200)
+	}
+	search("#recipe").has("#", 1).has("0.title", "Pie")
+	search("recipe").has("#", 3)
+	search("#").has("#", 0)
+}

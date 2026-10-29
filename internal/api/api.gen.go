@@ -304,8 +304,10 @@ type CollectionAccessMemberDto struct {
 
 // CollectionDto defines model for CollectionDto.
 type CollectionDto struct {
-	Children    *[]CollectionDto `json:"children,omitempty"`
-	Description *string          `json:"description,omitempty"`
+	// BookmarkCount Links directly in this collection; only set in the collection tree
+	BookmarkCount *int             `json:"bookmarkCount,omitempty"`
+	Children      *[]CollectionDto `json:"children,omitempty"`
+	Description   *string          `json:"description,omitempty"`
 
 	// Id UUID
 	Id   ID     `json:"id"`
@@ -580,10 +582,12 @@ type SpacePermissionEnum string
 
 // UpdateBookmarkDto defines model for UpdateBookmarkDto.
 type UpdateBookmarkDto struct {
-	Description *string   `json:"description,omitempty"`
-	Tags        *[]string `json:"tags,omitempty"`
-	Title       *string   `json:"title,omitempty"`
-	Url         string    `json:"url"`
+	// CollectionId Moves the link to another collection of the same space
+	CollectionId *ID       `json:"collectionId,omitempty"`
+	Description  *string   `json:"description,omitempty"`
+	Tags         *[]string `json:"tags,omitempty"`
+	Title        *string   `json:"title,omitempty"`
+	Url          string    `json:"url"`
 }
 
 // UpdateCollectionAccessDto defines model for UpdateCollectionAccessDto.
@@ -595,7 +599,9 @@ type UpdateCollectionAccessDto struct {
 
 // UpdateCollectionDto defines model for UpdateCollectionDto.
 type UpdateCollectionDto struct {
-	Name string `json:"name"`
+	// Description Omitted keeps the description, an empty string removes it
+	Description *string `json:"description,omitempty"`
+	Name        string  `json:"name"`
 }
 
 // UpdateDashboardDto defines model for UpdateDashboardDto.
@@ -678,7 +684,7 @@ type GetRecentBookmarksParams struct {
 
 // SearchBookmarksParams defines parameters for SearchBookmarks.
 type SearchBookmarksParams struct {
-	// Q Search query - matches title, URL, description, and tags
+	// Q Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
 	Q string `form:"q" json:"q"`
 }
 

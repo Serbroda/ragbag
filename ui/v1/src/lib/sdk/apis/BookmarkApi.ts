@@ -120,7 +120,7 @@ export interface SearchBookmarksRequest {
      */
     spaceId: string;
     /**
-     * Search query - matches title, URL, description, and tags
+     * Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
      */
     q: string;
 }
