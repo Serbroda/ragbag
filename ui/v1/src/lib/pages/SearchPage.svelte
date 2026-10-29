@@ -6,11 +6,16 @@
 	import { p, route } from '../router';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
+	import LinkSortSelect from '../components/LinkSortSelect.svelte';
+	import { filterByTags, sortLinks } from '../utils/links';
+	import TagFilter from '../components/TagFilter.svelte';
 	import { linkListClass, preferences } from '../stores/preferences.svelte';
 
 	const collectionName = getContext<((id: string) => string | undefined) | undefined>('collection-name');
 
 	let bookmarks = $state<BookmarkDto[]>([]);
+	/** Narrows the results to links with all of these tags. */
+	let selectedTags = $state<string[]>([]);
 	let loading = $state(false);
 	let error = $state('');
 
@@ -20,6 +25,7 @@
 	const isTag = $derived(/^#\S+$/.test(query.trim()));
 
 	$effect(() => {
+		selectedTags = [];
 		if (spaceId && query.trim()) {
 			doSearch(spaceId, query);
 		} else {
@@ -55,7 +61,10 @@
 				</p>
 			{/if}
 		</div>
-		<LinkViewToggle />
+		<div class="flex shrink-0 items-center gap-2">
+			<LinkSortSelect />
+			<LinkViewToggle />
+		</div>
 	</div>
 
 	{#if loading}
@@ -69,8 +78,9 @@
 			<p class="text-gray-500 dark:text-gray-400">No bookmarks found matching your search.</p>
 		</div>
 	{:else}
+		<div class="mb-4"><TagFilter links={bookmarks} bind:selected={selectedTags} /></div>
 		<div class={linkListClass(preferences.linkView)}>
-			{#each bookmarks as bookmark (bookmark.id)}
+			{#each sortLinks(filterByTags(bookmarks, selectedTags), preferences.linkSort) as bookmark (bookmark.id)}
 				<BookmarkCard
 					{bookmark}
 					collectionName={bookmark.collectionId ? collectionName?.(bookmark.collectionId) : undefined}

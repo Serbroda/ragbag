@@ -12,8 +12,18 @@ export const LINK_VIEWS: { value: LinkView; label: string; description: string }
 	{ value: 'list', label: 'List', description: 'One line per link' },
 ];
 
+export type LinkSort = 'newest' | 'oldest' | 'name' | 'domain';
+
+export const LINK_SORTS: { value: LinkSort; label: string }[] = [
+	{ value: 'newest', label: 'Newest first' },
+	{ value: 'oldest', label: 'Oldest first' },
+	{ value: 'name', label: 'Name A–Z' },
+	{ value: 'domain', label: 'Domain' },
+];
+
 interface Preferences {
 	linkView: LinkView;
+	linkSort: LinkSort;
 	sidebarWidth: number;
 	/** Collections that are expanded in the sidebar tree. */
 	expanded: string[];
@@ -23,7 +33,13 @@ interface Preferences {
 
 export const SIDEBAR_WIDTH = { min: 200, max: 480, default: 256 };
 
-const DEFAULTS: Preferences = { linkView: 'cards', sidebarWidth: SIDEBAR_WIDTH.default, expanded: [], openFolders: [] };
+const DEFAULTS: Preferences = {
+	linkView: 'cards',
+	linkSort: 'newest',
+	sidebarWidth: SIDEBAR_WIDTH.default,
+	expanded: [],
+	openFolders: [],
+};
 
 export const preferences = $state<Preferences>({ ...DEFAULTS });
 
@@ -40,6 +56,7 @@ export function loadPreferences(userId: string) {
 	}
 	const linkView = LINK_VIEWS.some((view) => view.value === stored.linkView) ? stored.linkView! : DEFAULTS.linkView;
 	preferences.linkView = linkView;
+	preferences.linkSort = LINK_SORTS.some((sort) => sort.value === stored.linkSort) ? stored.linkSort! : DEFAULTS.linkSort;
 	preferences.sidebarWidth =
 		typeof stored.sidebarWidth === 'number' ? clampSidebarWidth(stored.sidebarWidth) : DEFAULTS.sidebarWidth;
 	const expanded = Array.isArray(stored.expanded) ? stored.expanded.filter((id) => typeof id === 'string') : [];
@@ -53,6 +70,11 @@ export function loadPreferences(userId: string) {
 
 export function setLinkView(view: LinkView) {
 	preferences.linkView = view;
+	save();
+}
+
+export function setLinkSort(sort: LinkSort) {
+	preferences.linkSort = sort;
 	save();
 }
 

@@ -5,13 +5,19 @@
 	import { p, route } from '../router';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
+	import LinkSortSelect from '../components/LinkSortSelect.svelte';
+	import { filterByTags, filterLinks, sortLinks } from '../utils/links';
+	import TagFilter from '../components/TagFilter.svelte';
 	import Logo from '../components/Logo.svelte';
-	import { linkListClass, preferences } from '../stores/preferences.svelte';
+	import { linkListClass, loadPreferences, preferences } from '../stores/preferences.svelte';
 
 	/**
 	 * What a public link shows: the shared collection like in the app, without sidebar, spaces or anything
 	 * personal. Sub-collections open within the shared view.
 	 */
+	// Visitors have no account: their display and sort choices are kept for this browser
+	loadPreferences('public');
+
 	const token = $derived(route.params.token ?? '');
 	const collectionId = $derived(route.params.collectionId);
 
@@ -28,6 +34,7 @@
 		loading = true;
 		error = '';
 		filter = '';
+		selectedTags = [];
 		try {
 			const result = await getSharedCollection(t, id);
 			if (t === token && id === collectionId) shared = result;
@@ -45,13 +52,10 @@
 			: p('/share/:token/:collectionId', { params: { token, collectionId: id } });
 	}
 
-	const bookmarks = $derived.by(() => {
-		const query = filter.trim().toLowerCase();
-		if (!shared || !query) return shared?.bookmarks ?? [];
-		return shared.bookmarks.filter((b) =>
-			[b.title, b.url, b.description, ...b.tags].some((value) => value?.toLowerCase().includes(query)),
-		);
-	});
+	let selectedTags = $state<string[]>([]);
+	const bookmarks = $derived(
+		sortLinks(filterByTags(filterLinks(shared?.bookmarks ?? [], filter), selectedTags), preferences.linkSort),
+	);
 </script>
 
 <svelte:head>
@@ -117,6 +121,7 @@
 							<SearchOutline class="absolute left-2.5 top-2 h-4 w-4 text-gray-500" />
 						</div>
 					{/if}
+					<LinkSortSelect />
 					<LinkViewToggle />
 				</div>
 			</div>
@@ -145,14 +150,16 @@
 				</div>
 			{/if}
 
+			<div class="mb-4"><TagFilter links={shared.bookmarks} bind:selected={selectedTags} /></div>
+
 			{#if bookmarks.length > 0}
 				<div class={linkListClass(preferences.linkView)}>
 					{#each bookmarks as bookmark (bookmark.id)}
 						<BookmarkCard {bookmark} publicView />
 					{/each}
 				</div>
-			{:else if filter.trim()}
-				<p class="text-sm text-gray-500 dark:text-gray-400">No links match “{filter.trim()}”.</p>
+			{:else if filter.trim() || selectedTags.length > 0}
+				<p class="text-sm text-gray-500 dark:text-gray-400">No links match the filter.</p>
 			{:else if shared.children.length === 0}
 				<p class="text-sm text-gray-500 dark:text-gray-400">No links here yet.</p>
 			{/if}
