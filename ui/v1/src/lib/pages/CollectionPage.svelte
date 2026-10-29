@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { BookmarkApi, CollectionApi } from 'ragbag-frontend-sdk';
 	import type { BookmarkDto, CollectionDto, SpacePermissionEnum } from 'ragbag-frontend-sdk';
-	import { getContext } from 'svelte';
+	import { getContext, tick } from 'svelte';
 	import { apiConfig, errorMessage } from '../api/client';
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
@@ -10,10 +10,19 @@
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
 	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
 	import ImportCollectionModal from '../components/ImportCollectionModal.svelte';
-	import { DotsVerticalOutline, LockOutline } from 'flowbite-svelte-icons';
+	import { DotsVerticalOutline, FolderOutline, LockOutline } from 'flowbite-svelte-icons';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
-	import { collectionsToTree, flattenTree, findNode, collectSubtreeIds } from '../components/tree';
+	import {
+		collectionsToTree,
+		flattenTree,
+		findNode,
+		collectSubtreeIds,
+		type TreeNode,
+	} from '../components/tree';
+	import { bookmarkDrag } from '../stores/bookmarkDrag.svelte';
+	import { pendingCollectionAction } from '../stores/collectionAction.svelte';
+	import { showToast } from '../stores/toast.svelte';
 
 	const bookmarkApi = new BookmarkApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
@@ -30,6 +39,7 @@
 	const canDeleteCollections = $derived(hasSpacePermission?.('DELETE_COLLECTIONS') ?? false);
 	const canImportExport = $derived(hasSpacePermission?.('IMPORT_EXPORT') ?? false);
 	const privateAncestor = getContext<((collectionId: string) => string | undefined) | undefined>('private-ancestor');
+	const collectionTree = getContext<(() => TreeNode[]) | undefined>('collection-tree');
 
 	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
@@ -55,18 +65,24 @@
 	let editTitle = $state('');
 	let editDescription = $state('');
 	let editTags = $state('');
+	let addLinkForm = $state<LinkFormFields | null>(null);
+	let bookmarkToMove = $state<BookmarkDto | null>(null);
+	let moveTargetId = $state('');
 	let openMenuId = $state<string | null>(null);
 	let openHeaderMenu = $state(false);
 
 	// Edit collection
 	let showEditCollectionModal = $state(false);
 	let editCollectionName = $state('');
+	let editCollectionDescription = $state('');
 	let editCollectionParentId = $state('');
 	let editCollectionError = $state('');
 	let editCollectionSaving = $state(false);
 	let allCollectionOptions = $state<{ id: string; label: string; depth: number }[]>([]);
 
 	let showAccessModal = $state(false);
+	/** Sub-collection tile a dragged link is over. */
+	let dropTargetId = $state<string | null>(null);
 	let showImportModal = $state(false);
 
 	async function exportCollection() {
@@ -95,6 +111,21 @@
 	const spaceId = $derived(route.params.spaceId ?? '');
 	/** Name of the nearest private collection above this one: its members are the only ones who see this one. */
 	const privateVia = $derived(collectionId ? privateAncestor?.(collectionId) : undefined);
+
+	const tree = $derived(collectionTree?.() ?? []);
+	const subcollections = $derived(findNode(tree, collectionId)?.children ?? []);
+	/** Every other collection of the space, for "Move to…". */
+	const moveTargets = $derived(flattenTree(tree).filter((option) => option.id !== collectionId));
+
+	// Dialogs requested from the sidebar's context menu
+	$effect(() => {
+		const pending = pendingCollectionAction.current;
+		if (!pending || pending.collectionId !== collectionId || collection?.id !== collectionId) return;
+		pendingCollectionAction.current = null;
+		if (pending.action === 'edit') openEditCollectionModal();
+		else if (pending.action === 'delete') openDeleteCollectionModal();
+		else showAccessModal = true;
+	});
 
 	$effect(() => {
 		if (collectionId) {
@@ -135,6 +166,7 @@
 				},
 			});
 			bookmarks = [created, ...bookmarks];
+			reloadSidebar();
 			newUrl = '';
 			newTitle = '';
 			newDescription = '';
@@ -187,6 +219,7 @@
 		try {
 			await bookmarkApi.deleteBookmark({ bookmarkId: bookmark.id });
 			bookmarks = bookmarks.filter((b) => b.id !== bookmark.id);
+			reloadSidebar();
 		} catch (err) {
 			actionError = await errorMessage(err, 'Failed to delete link.');
 		} finally {
@@ -198,6 +231,66 @@
 	function requestDelete(bookmark: BookmarkDto, event: MouseEvent) {
 		if (event.shiftKey) deleteBookmark(bookmark);
 		else bookmarkToDelete = bookmark;
+	}
+
+	/** Moves a link to another collection of the space; the toast offers to move it back. */
+	async function moveBookmark(bookmark: BookmarkDto, targetId: string, undo = false) {
+		if (!canEditBookmarks || targetId === bookmark.collectionId) return;
+		actionError = '';
+		try {
+			const moved = await bookmarkApi.updateBookmark({
+				bookmarkId: bookmark.id,
+				updateBookmarkDto: {
+					url: bookmark.url,
+					title: bookmark.title,
+					description: bookmark.description,
+					tags: bookmark.tags,
+					collectionId: targetId,
+				},
+			});
+			if (targetId === collectionId) {
+				bookmarks = [moved, ...bookmarks.filter((b) => b.id !== moved.id)].sort(
+					(a, b) => (b.createdAt?.getTime() ?? 0) - (a.createdAt?.getTime() ?? 0),
+				);
+			} else {
+				bookmarks = bookmarks.filter((b) => b.id !== bookmark.id);
+			}
+			reloadSidebar();
+			if (!undo) {
+				const name = findNode(tree, targetId)?.label ?? 'collection';
+				const from = bookmark.collectionId!;
+				showToast(`Moved to ${name}`, { label: 'Undo', run: () => moveBookmark(moved, from, true) });
+			}
+		} catch (err) {
+			actionError = await errorMessage(err, 'Failed to move link.');
+		}
+	}
+
+	function startBookmarkDrag(bookmark: BookmarkDto, event: DragEvent) {
+		if (event.dataTransfer) event.dataTransfer.effectAllowed = 'copyMove';
+		bookmarkDrag.current = {
+			collectionId: bookmark.collectionId ?? collectionId,
+			drop: (targetId) => moveBookmark(bookmark, targetId),
+		};
+	}
+
+	function endBookmarkDrag() {
+		bookmarkDrag.current = null;
+	}
+
+	/** Like dropping a link into a chat: pasting a URL anywhere on the page (outside fields) starts adding it. */
+	async function handlePaste(event: ClipboardEvent) {
+		if (!canCreateBookmarks || !collection) return;
+		const target = event.target instanceof Element ? event.target : null;
+		if (target?.closest('input, textarea, select, [contenteditable]')) return;
+		if (document.querySelector('dialog[open], [role=dialog]')) return;
+		const text = event.clipboardData?.getData('text/plain').trim() ?? '';
+		if (!/^https?:\/\/\S+$/i.test(text)) return;
+		event.preventDefault();
+		openAddModal();
+		newUrl = text;
+		await tick();
+		addLinkForm?.fetchMetadata();
 	}
 
 	function openAddModal() {
@@ -215,6 +308,7 @@
 		if (!canEditCollections) return;
 		if (!collection) return;
 		editCollectionName = collection.name;
+		editCollectionDescription = collection.description ?? '';
 		editCollectionParentId = collection.parentId ?? '';
 		editCollectionError = '';
 		editCollectionSaving = false;
@@ -244,11 +338,11 @@
 		editCollectionSaving = true;
 
 		try {
-			// Update name if changed
-			if (name !== collection.name) {
+			const description = editCollectionDescription.trim();
+			if (name !== collection.name || description !== (collection.description ?? '')) {
 				await collectionApi.updateCollection({
 					collectionId,
-					updateCollectionDto: { name },
+					updateCollectionDto: { name, description },
 				});
 			}
 
@@ -310,7 +404,7 @@
 	}
 </script>
 
-<svelte:window onclick={() => ((openMenuId = null), (openHeaderMenu = false))} />
+<svelte:window onclick={() => ((openMenuId = null), (openHeaderMenu = false))} onpaste={handlePaste} />
 
 <div>
 	{#if loading}
@@ -345,7 +439,7 @@
 			<div class="flex shrink-0 items-center gap-2">
 				<div class="me-auto sm:me-0"><LinkViewToggle /></div>
 				{#if canCreateBookmarks}
-					<Button size="sm" onclick={openAddModal}>+ Add Link</Button>
+					<Button size="sm" onclick={openAddModal} title="Or paste a URL anywhere on this page">+ Add Link</Button>
 				{/if}
 				<div class="relative">
 						<Button
@@ -358,7 +452,7 @@
 							}}
 							aria-label="Collection actions"
 						>
-							&#x22EE;
+							<DotsVerticalOutline class="h-4 w-4" />
 						</Button>
 						{#if openHeaderMenu}
 							<div
@@ -427,22 +521,67 @@
 			<Alert color="red" dismissable class="mb-4" onclose={() => (actionError = '')}>{actionError}</Alert>
 		{/if}
 
+		{#if subcollections.length > 0}
+			<div class="mb-6 grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-2">
+				{#each subcollections as sub (sub.id)}
+					{@const Icon = sub.restricted ? LockOutline : FolderOutline}
+					{@const childCount = sub.children?.length ?? 0}
+					<!-- svelte-ignore a11y_no_static_element_interactions -->
+					<a
+						href={sub.href}
+						class="flex items-center gap-3 rounded-lg border px-3 py-2.5 transition-colors {dropTargetId === sub.id
+							? 'border-primary-500 bg-primary-500/10'
+							: 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:hover:border-gray-700 dark:hover:bg-gray-800/60'}"
+						ondragover={(e) => {
+							if (!bookmarkDrag.current) return;
+							e.preventDefault();
+							dropTargetId = sub.id!;
+						}}
+						ondragleave={() => (dropTargetId = null)}
+						ondrop={(e) => {
+							e.preventDefault();
+							dropTargetId = null;
+							bookmarkDrag.current?.drop(sub.id!);
+						}}
+					>
+						<Icon class="h-5 w-5 shrink-0 text-gray-400" />
+						<span class="min-w-0">
+							<span class="block truncate text-sm font-medium">{sub.label}</span>
+							<span class="block truncate text-xs text-gray-500">
+								{[
+									`${sub.bookmarkCount ?? 0} link${sub.bookmarkCount === 1 ? '' : 's'}`,
+									childCount > 0 ? `${childCount} collection${childCount === 1 ? '' : 's'}` : '',
+								]
+									.filter(Boolean)
+									.join(' · ')}
+							</span>
+						</span>
+					</a>
+				{/each}
+			</div>
+		{/if}
+
 		<!-- Bookmark list -->
 		{#if bookmarks.length === 0}
-			<div
-				class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 py-12 dark:border-gray-600"
-			>
-				<p class="mb-2 text-gray-500 dark:text-gray-400">No links yet</p>
-				{#if canCreateBookmarks}
-					<Button size="sm" color="light" onclick={openAddModal}
-						>Add your first link</Button
-					>
-				{/if}
-			</div>
+			{#if subcollections.length === 0}
+				<div
+					class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-12 text-center dark:border-gray-600"
+				>
+					<p class="mb-2 text-gray-500 dark:text-gray-400">No links yet</p>
+					{#if canCreateBookmarks}
+						<Button size="sm" color="light" onclick={openAddModal}>Add your first link</Button>
+						<p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Tip: paste a URL anywhere on this page</p>
+					{/if}
+				</div>
+			{/if}
 		{:else}
 			<div class={linkListClass(preferences.linkView)}>
 				{#each bookmarks as bookmark (bookmark.id)}
-					<BookmarkCard {bookmark}>
+					<BookmarkCard
+						{bookmark}
+						ondragstart={canEditBookmarks ? (e) => startBookmarkDrag(bookmark, e) : undefined}
+						ondragend={endBookmarkDrag}
+					>
 						{#snippet actions()}
 							<button
 								type="button"
@@ -477,6 +616,17 @@
 										>
 											Edit
 										</button>
+										<button
+											class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+											title="Or drag the link onto a collection in the sidebar"
+											onclick={() => {
+												bookmarkToMove = bookmark;
+												moveTargetId = '';
+												openMenuId = null;
+											}}
+										>
+											Move to…
+										</button>
 									{/if}
 									{#if canDeleteBookmarks}
 										<button
@@ -510,6 +660,7 @@
 		class="flex flex-col gap-4"
 	>
 		<LinkFormFields
+			bind:this={addLinkForm}
 			{collectionId}
 			idPrefix="add-link"
 			bind:url={newUrl}
@@ -572,6 +723,17 @@
 		<div>
 			<Label for="edit-col-name" class="mb-2">Name</Label>
 			<Input id="edit-col-name" type="text" bind:value={editCollectionName} required maxlength={80} />
+		</div>
+		<div>
+			<Label for="edit-col-description" class="mb-2">Description</Label>
+			<Textarea
+				id="edit-col-description"
+				rows={2}
+				class="w-full"
+				maxlength={500}
+				placeholder="Optional – shown below the name"
+				bind:value={editCollectionDescription}
+			/>
 		</div>
 		<div>
 			<Label for="edit-col-parent" class="mb-2">Parent Collection</Label>
@@ -638,6 +800,35 @@
 		}}
 	/>
 {/if}
+
+<!-- Move Bookmark Modal -->
+<Modal title="Move link" open={bookmarkToMove !== null} size="sm" autoclose={false} onclose={() => (bookmarkToMove = null)}>
+	<form
+		class="flex flex-col gap-4"
+		onsubmit={(e) => {
+			e.preventDefault();
+			if (bookmarkToMove && moveTargetId) moveBookmark(bookmarkToMove, moveTargetId);
+			bookmarkToMove = null;
+		}}
+	>
+		<p class="truncate text-sm text-gray-600 dark:text-gray-400">
+			<strong>{bookmarkToMove?.title || bookmarkToMove?.url}</strong>
+		</p>
+		<div>
+			<Label for="move-target" class="mb-2">Collection</Label>
+			<Select id="move-target" placeholder="Choose a collection" bind:value={moveTargetId} required>
+				{#each moveTargets as option (option.id)}
+					<option value={option.id}>{'─'.repeat(option.depth)} {option.label}</option>
+				{/each}
+			</Select>
+		</div>
+		<p class="text-xs text-gray-500 dark:text-gray-400">Tip: you can also drag links onto a collection in the sidebar.</p>
+		<div class="flex justify-end gap-2">
+			<Button color="light" onclick={() => (bookmarkToMove = null)}>Cancel</Button>
+			<Button type="submit" disabled={!moveTargetId}>Move</Button>
+		</div>
+	</form>
+</Modal>
 
 <!-- Delete Bookmark Modal -->
 <Modal title="Delete link" open={bookmarkToDelete !== null} size="sm" onclose={() => (bookmarkToDelete = null)}>

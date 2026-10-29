@@ -35,6 +35,10 @@ export interface UpdateBookmarkDto {
      * 
      */
     tags?: Array<string>;
+    /**
+     * Moves the link to another collection of the same space
+     */
+    collectionId?: string;
 }
 
 /**
@@ -59,6 +63,7 @@ export function UpdateBookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'title': json['title'] == null ? undefined : json['title'],
         'description': json['description'] == null ? undefined : json['description'],
         'tags': json['tags'] == null ? undefined : json['tags'],
+        'collectionId': json['collectionId'] == null ? undefined : json['collectionId'],
     };
 }
 
@@ -77,6 +82,7 @@ export function UpdateBookmarkDtoToJSONTyped(value?: UpdateBookmarkDto | null, i
         'title': value['title'],
         'description': value['description'],
         'tags': value['tags'],
+        'collectionId': value['collectionId'],
     };
 }
 

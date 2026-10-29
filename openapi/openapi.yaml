@@ -1083,7 +1083,7 @@ paths:
           required: true
           schema:
             type: string
-          description: Search query - matches title, URL, description, and tags
+          description: Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
       responses:
         '200':
           description: OK
@@ -1833,6 +1833,9 @@ components:
           type: array
           items:
             $ref: '#/components/schemas/CollectionDto'
+        bookmarkCount:
+          type: integer
+          description: Links directly in this collection; only set in the collection tree
       required:
         - id
         - name
@@ -1953,6 +1956,9 @@ components:
       properties:
         name:
           type: string
+        description:
+          type: string
+          description: Omitted keeps the description, an empty string removes it
       required:
         - name
 
@@ -2129,6 +2135,9 @@ components:
           type: array
           items:
             type: string
+        collectionId:
+          $ref: '#/components/schemas/ID'
+          description: Moves the link to another collection of the same space
       required:
         - url
 

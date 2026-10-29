@@ -5,11 +5,14 @@ import (
 	"net/http"
 	"slices"
 	"sort"
+	"strings"
 
 	"github.com/Serbroda/ragbag/internal/api"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/labstack/echo/v4"
 )
+
+const maxDescriptionLength = 500
 
 func collectionDto(c *store.Collection) api.CollectionDto {
 	restricted := c.Restricted
@@ -26,6 +29,10 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 		return err
 	}
 	hidden, err := s.hiddenCollections(ctxOf(c), s.store, spaceID, currentUser(c))
+	if err != nil {
+		return err
+	}
+	counts, err := s.store.BookmarkCounts(ctxOf(c), spaceID)
 	if err != nil {
 		return err
 	}
@@ -47,7 +54,8 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 		for _, collection := range byParent[parent] {
 			node := collectionDto(collection)
 			children := build(collection.ID)
-			node.Children = &children
+			count := counts[collection.ID]
+			node.Children, node.BookmarkCount = &children, &count
 			nodes = append(nodes, node)
 		}
 		return nodes
@@ -140,7 +148,14 @@ func (s *Server) UpdateCollection(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return err
 	}
-	if err := s.store.RenameCollection(ctxOf(c), collectionID, name); err != nil {
+	if req.Description != nil {
+		description := strings.TrimSpace(*req.Description)
+		if len([]rune(description)) > maxDescriptionLength {
+			return badRequest("Collection description must be at most %d characters", maxDescriptionLength)
+		}
+		collection.Description = nilIfEmpty(description)
+	}
+	if err := s.store.UpdateCollection(ctxOf(c), collectionID, name, collection.Description); err != nil {
 		return err
 	}
 	collection.Name = name

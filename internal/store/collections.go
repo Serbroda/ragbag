@@ -40,9 +40,27 @@ func (s *Store) CollectionsBySpace(ctx context.Context, spaceID string) ([]Colle
 	return collections, err
 }
 
-func (s *Store) RenameCollection(ctx context.Context, id, name string) error {
-	_, err := s.exec(ctx, `UPDATE collections SET name = ?, updated_at = ? WHERE id = ?`, name, now(), id)
+func (s *Store) UpdateCollection(ctx context.Context, id, name string, description *string) error {
+	_, err := s.exec(ctx, `UPDATE collections SET name = ?, description = ?, updated_at = ? WHERE id = ?`,
+		name, description, now(), id)
 	return err
+}
+
+// BookmarkCounts maps the collections of the space to the number of links directly in them (none: missing).
+func (s *Store) BookmarkCounts(ctx context.Context, spaceID string) (map[string]int, error) {
+	var rows []struct {
+		CollectionID string `db:"collection_id"`
+		Count        int    `db:"n"`
+	}
+	if err := s.sel(ctx, &rows, `SELECT b.collection_id, COUNT(*) AS n FROM bookmarks b
+		JOIN collections c ON c.id = b.collection_id WHERE c.space_id = ? GROUP BY b.collection_id`, spaceID); err != nil {
+		return nil, err
+	}
+	counts := make(map[string]int, len(rows))
+	for _, row := range rows {
+		counts[row.CollectionID] = row.Count
+	}
+	return counts, nil
 }
 
 func (s *Store) MoveCollection(ctx context.Context, id string, parentID *string) error {

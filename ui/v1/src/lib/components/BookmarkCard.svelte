@@ -5,6 +5,7 @@
 	import { getDomain, safeUrl, timeAgo } from '../utils/format';
 	import { preferences, type LinkView } from '../stores/preferences.svelte';
 	import FavoriteButton from './FavoriteButton.svelte';
+	import { p, route } from '../router';
 
 	let {
 		bookmark,
@@ -13,6 +14,8 @@
 		collectionHref,
 		actions,
 		onfavoritechange,
+		ondragstart,
+		ondragend,
 	}: {
 		bookmark: BookmarkDto;
 		/** Defaults to the user's link display preference. */
@@ -22,7 +25,12 @@
 		collectionHref?: string;
 		actions?: Snippet;
 		onfavoritechange?: (favorite: boolean) => void;
+		/** Makes the card draggable, e.g. onto a collection in the sidebar. */
+		ondragstart?: (event: DragEvent) => void;
+		ondragend?: (event: DragEvent) => void;
 	} = $props();
+
+	const spaceId = $derived(route.params.spaceId);
 
 	const view = $derived(viewOverride ?? preferences.linkView);
 
@@ -90,16 +98,22 @@
 
 {#snippet tags(limit: number)}
 	{#each (bookmark.tags ?? []).slice(0, limit) as tag (tag)}
-		<span
-			class="rounded-full bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 dark:text-primary-300"
+		<!-- Lifted above the title link that covers the card -->
+		<a
+			href={spaceId ? p('/space/:spaceId/search', { params: { spaceId }, search: { q: `#${tag}` } }) : undefined}
+			title="Show all links tagged #{tag}"
+			class="relative z-10 rounded-full bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-500/25 dark:text-primary-300"
 		>
 			#{tag}
-		</span>
+		</a>
 	{/each}
 {/snippet}
 
 {#if view === 'list'}
 	<article
+		draggable={ondragstart ? 'true' : undefined}
+		{ondragstart}
+		{ondragend}
 		class="group relative flex items-center gap-3 px-3 py-2 transition-colors focus-within:z-20 first:rounded-t-xl last:rounded-b-xl hover:bg-gray-50 dark:hover:bg-gray-800/60"
 	>
 		{@render faviconIcon('h-5 w-5')}
@@ -127,6 +141,9 @@
 	</article>
 {:else}
 	<article
+		draggable={ondragstart ? 'true' : undefined}
+		{ondragstart}
+		{ondragend}
 		class="group relative flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
 	>
 		<div

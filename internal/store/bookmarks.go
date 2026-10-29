@@ -48,9 +48,9 @@ func (s *Store) CreateBookmark(ctx context.Context, b *Bookmark) error {
 }
 
 func (s *Store) UpdateBookmark(ctx context.Context, b *Bookmark) error {
-	if _, err := s.exec(ctx, `UPDATE bookmarks SET url = ?, title = ?, description = ?, og_image = ?, favicon = ?,
-		canonical = ?, updated_at = ? WHERE id = ?`,
-		b.URL, b.Title, b.Description, b.OgImage, b.Favicon, b.Canonical, now(), b.ID); err != nil {
+	if _, err := s.exec(ctx, `UPDATE bookmarks SET collection_id = ?, url = ?, title = ?, description = ?, og_image = ?,
+		favicon = ?, canonical = ?, updated_at = ? WHERE id = ?`,
+		b.CollectionID, b.URL, b.Title, b.Description, b.OgImage, b.Favicon, b.Canonical, now(), b.ID); err != nil {
 		return err
 	}
 	return s.setTags(ctx, b.ID, b.Tags)
@@ -118,15 +118,24 @@ func (s *Store) RecentBookmarks(ctx context.Context, spaceID string, hidden []st
 	return bookmarks, s.loadTags(ctx, bookmarks)
 }
 
-// SearchBookmarks matches title, URL, description and tags case-insensitively.
+// SearchBookmarks matches title, URL, description and tags case-insensitively. A single "#tag" only matches
+// links with exactly that tag.
 func (s *Store) SearchBookmarks(ctx context.Context, spaceID, query string, hidden []string) ([]Bookmark, error) {
-	// Treat LIKE wildcards in user input literally
-	escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(query))
-	pattern := "%" + escaped + "%"
-	sqlQuery, args := bookmarkSelect+` WHERE c.space_id = ? AND (
+	var sqlQuery string
+	var args []any
+	if tag, ok := strings.CutPrefix(query, "#"); ok && tag != "" && !strings.ContainsAny(tag, " \t") {
+		sqlQuery, args = bookmarkSelect+` WHERE c.space_id = ? AND EXISTS (
+			SELECT 1 FROM bookmark_tags t WHERE t.bookmark_id = b.id AND LOWER(t.tag) = ?)`,
+			[]any{spaceID, strings.ToLower(tag)}
+	} else {
+		// Treat LIKE wildcards in user input literally
+		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(query))
+		pattern := "%" + escaped + "%"
+		sqlQuery, args = bookmarkSelect+` WHERE c.space_id = ? AND (
 		LOWER(b.title) LIKE ? ESCAPE '\' OR LOWER(b.url) LIKE ? ESCAPE '\' OR LOWER(b.description) LIKE ? ESCAPE '\'
 		OR EXISTS (SELECT 1 FROM bookmark_tags t WHERE t.bookmark_id = b.id AND LOWER(t.tag) LIKE ? ESCAPE '\'))`,
-		[]any{spaceID, pattern, pattern, pattern, pattern}
+			[]any{spaceID, pattern, pattern, pattern, pattern}
+	}
 	sqlQuery, args = excludeCollections(sqlQuery, args, hidden)
 	var bookmarks []Bookmark
 	if err := s.selIn(ctx, &bookmarks, sqlQuery+` ORDER BY b.created_at DESC, b.id LIMIT 200`, args...); err != nil {

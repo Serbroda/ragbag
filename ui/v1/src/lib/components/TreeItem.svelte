@@ -1,10 +1,13 @@
 <script lang="ts">
 	import { getContext } from 'svelte';
+	import { DotsHorizontalOutline } from 'flowbite-svelte-icons';
 	import type { TreeNode } from './tree';
 	import { isDescendantOrSelf } from './tree';
 	import TreeItem from './TreeItem.svelte';
 	import { route } from '../router';
 	import { DRAG_CTX_KEY, type DragContext } from './DraggableTreeList.svelte';
+	import { isExpanded, setExpanded } from '../stores/preferences.svelte';
+	import { bookmarkDrag } from '../stores/bookmarkDrag.svelte';
 
 	let {
 		node,
@@ -12,12 +15,13 @@
 		draggable: isDraggable = false,
 	}: { node: TreeNode; depth?: number; draggable?: boolean } = $props();
 
-	let expanded = $state(false);
 	let isDropTarget = $state(false);
 
-	$effect(() => {
-		if (node.expanded) expanded = true;
-	});
+	const expanded = $derived(!!node.id && isExpanded(node.id));
+
+	function toggle() {
+		if (node.id) setExpanded(node.id, !expanded);
+	}
 
 	const hasChildren = $derived(node.children && node.children.length > 0);
 	const paddingLeft = $derived(`${depth * 1}rem`);
@@ -25,6 +29,13 @@
 	// Drag context — getContext must be called at top level, but we only use it when isDraggable
 	const dragCtx = getContext<DragContext | undefined>(DRAG_CTX_KEY);
 	const dropHandler = getContext<((target: TreeNode) => void) | undefined>('tree-drop');
+	const openMenu = getContext<((node: TreeNode, x: number, y: number) => void) | undefined>('collection-menu');
+
+	/** A link dragged from a collection page can be dropped on any other collection. */
+	const acceptsBookmark = $derived(
+		!!node.id && !!bookmarkDrag.current && bookmarkDrag.current.collectionId !== node.id,
+	);
+	let expandTimer: ReturnType<typeof setTimeout> | undefined;
 
 	function handleDragStart(e: DragEvent) {
 		if (!dragCtx) return;
@@ -35,6 +46,14 @@
 	}
 
 	function handleDragOver(e: DragEvent) {
+		if (acceptsBookmark) {
+			e.preventDefault();
+			if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
+			isDropTarget = true;
+			// Hovering a collapsed parent opens it, so links can be dropped into its children
+			if (hasChildren && !expanded && !expandTimer) expandTimer = setTimeout(toggle, 600);
+			return;
+		}
 		if (!dragCtx?.draggedNode) return;
 		if (dragCtx.draggedNode === node) return;
 		if (isDescendantOrSelf(dragCtx.draggedNode, node)) return;
@@ -45,12 +64,25 @@
 
 	function handleDragLeave() {
 		isDropTarget = false;
+		clearTimeout(expandTimer);
+		expandTimer = undefined;
 	}
 
 	function handleDrop(e: DragEvent) {
 		e.preventDefault();
-		isDropTarget = false;
+		handleDragLeave();
+		if (acceptsBookmark) {
+			bookmarkDrag.current!.drop(node.id!);
+			return;
+		}
 		dropHandler?.(node);
+	}
+
+	function handleContextMenu(e: MouseEvent) {
+		if (!node.id || !openMenu) return;
+		e.preventDefault();
+		e.stopPropagation();
+		openMenu(node, e.clientX, e.clientY);
 	}
 
 	function handleDragEnd() {
@@ -76,10 +108,11 @@
 		style:padding-left={paddingLeft}
 		draggable={isDraggable ? 'true' : undefined}
 		ondragstart={isDraggable ? handleDragStart : undefined}
-		ondragover={isDraggable ? handleDragOver : undefined}
-		ondragleave={isDraggable ? handleDragLeave : undefined}
-		ondrop={isDraggable ? handleDrop : undefined}
+		ondragover={isDraggable || node.id ? handleDragOver : undefined}
+		ondragleave={isDraggable || node.id ? handleDragLeave : undefined}
+		ondrop={isDraggable || node.id ? handleDrop : undefined}
 		ondragend={isDraggable ? handleDragEnd : undefined}
+		oncontextmenu={node.id ? handleContextMenu : undefined}
 	>
 		<!-- Icon -->
 		{#if node.icon}
@@ -100,9 +133,27 @@
 			<button
 				type="button"
 				class="flex-1 truncate rounded-md px-2 py-1.5 text-left"
-				onclick={() => hasChildren && (expanded = !expanded)}
+				onclick={() => hasChildren && toggle()}
 			>
 				{node.label}
+			</button>
+		{/if}
+
+		{#if node.id && openMenu}
+			<button
+				type="button"
+				class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 opacity-0 hover:text-gray-600 focus:opacity-100 group-hover:opacity-100 dark:text-gray-500 dark:hover:text-gray-300 {hasChildren
+					? ''
+					: 'me-1'}"
+				aria-label="Collection actions"
+				aria-haspopup="menu"
+				onclick={(e) => {
+					e.stopPropagation();
+					const rect = e.currentTarget.getBoundingClientRect();
+					openMenu(node, rect.left, rect.bottom + 4);
+				}}
+			>
+				<DotsHorizontalOutline class="h-4 w-4" />
 			</button>
 		{/if}
 
@@ -112,7 +163,7 @@
 				type="button"
 				class="flex h-6 w-6 shrink-0 items-center justify-center rounded text-gray-400 hover:text-gray-600 me-1 dark:text-gray-500 dark:hover:text-gray-300"
 				aria-label={expanded ? 'Collapse' : 'Expand'}
-				onclick={() => (expanded = !expanded)}
+				onclick={toggle}
 			>
 				<svg
 					class="h-3.5 w-3.5 transition-transform duration-150"

@@ -83,6 +83,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Discoverable spaces** (`discoverable`, `join_role` VIEWER or CONTRIBUTOR) are listed by `GET /spaces/discover`
   for every account and joined via `POST /spaces/{id}/join`; other spaces answer 404 there. Joining never changes
   an existing membership, and changing the setting needs `MANAGE_MEMBERS`.
+- **Links** move between collections of the same space only (`collectionId` in the update, needs
+  `CREATE_BOOKMARKS` on the target). A search for a single `#tag` matches that tag exactly.
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

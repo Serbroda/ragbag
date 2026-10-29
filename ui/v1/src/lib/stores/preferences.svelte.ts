@@ -1,3 +1,5 @@
+import { untrack } from 'svelte';
+
 /**
  * Personal display settings. They live in localStorage per user and device on purpose: a compact list may suit
  * the phone while the desktop shows cards with thumbnails.
@@ -12,9 +14,14 @@ export const LINK_VIEWS: { value: LinkView; label: string; description: string }
 
 interface Preferences {
 	linkView: LinkView;
+	sidebarWidth: number;
+	/** Collections that are expanded in the sidebar tree. */
+	expanded: string[];
 }
 
-const DEFAULTS: Preferences = { linkView: 'cards' };
+export const SIDEBAR_WIDTH = { min: 200, max: 480, default: 256 };
+
+const DEFAULTS: Preferences = { linkView: 'cards', sidebarWidth: SIDEBAR_WIDTH.default, expanded: [] };
 
 export const preferences = $state<Preferences>({ ...DEFAULTS });
 
@@ -31,10 +38,45 @@ export function loadPreferences(userId: string) {
 	}
 	const linkView = LINK_VIEWS.some((view) => view.value === stored.linkView) ? stored.linkView! : DEFAULTS.linkView;
 	preferences.linkView = linkView;
+	preferences.sidebarWidth =
+		typeof stored.sidebarWidth === 'number' ? clampSidebarWidth(stored.sidebarWidth) : DEFAULTS.sidebarWidth;
+	const expanded = Array.isArray(stored.expanded) ? stored.expanded.filter((id) => typeof id === 'string') : [];
+	// Keeps what was expanded while the user was still loading (the open collection and its parents). Untracked:
+	// this runs inside an effect, which must not depend on what it writes.
+	preferences.expanded = [...new Set([...expanded, ...untrack(() => preferences.expanded)])];
 }
 
 export function setLinkView(view: LinkView) {
 	preferences.linkView = view;
+	save();
+}
+
+export function clampSidebarWidth(width: number): number {
+	return Math.min(SIDEBAR_WIDTH.max, Math.max(SIDEBAR_WIDTH.min, Math.round(width)));
+}
+
+/** Applies the width right away; call saveSidebarWidth() once dragging ends. */
+export function setSidebarWidth(width: number) {
+	preferences.sidebarWidth = clampSidebarWidth(width);
+}
+
+export function saveSidebarWidth() {
+	save();
+}
+
+export function isExpanded(collectionId: string): boolean {
+	return preferences.expanded.includes(collectionId);
+}
+
+export function setExpanded(collectionId: string, expanded: boolean) {
+	if (expanded === isExpanded(collectionId)) return;
+	preferences.expanded = expanded
+		? [...preferences.expanded, collectionId]
+		: preferences.expanded.filter((id) => id !== collectionId);
+	save();
+}
+
+function save() {
 	if (!storageKey) return;
 	try {
 		localStorage.setItem(storageKey, JSON.stringify({ ...preferences }));
