@@ -24,7 +24,7 @@
 		UserCircleOutline,
 		UsersOutline,
 	} from 'flowbite-svelte-icons';
-	import { apiConfig, errorMessage, logout, logoutEverywhere } from '../api/client';
+	import { apiConfig, errorMessage, fetchFeatureFlags, logout, logoutEverywhere } from '../api/client';
 	import { navigate, p, route } from '../router';
 	import TreeItem from '../components/TreeItem.svelte';
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
@@ -94,6 +94,12 @@
 		.then(() => (spacesReady = true))
 		.catch(() => {});
 	loadMe().catch(() => {});
+
+	/** Version of the running server, e.g. v1.2.0 or v1.2.0-3-gabc1234 for a build after that release. */
+	let appVersion = $state('');
+	fetchFeatureFlags()
+		.then((flags) => (appVersion = flags['version'] ?? ''))
+		.catch(() => {});
 
 	$effect(() => {
 		if (session.me) loadPreferences(session.me.id);
@@ -709,6 +715,12 @@
 						>
 							Log out on all devices
 						</button>
+						{#if appVersion}
+							<div class="my-1 h-px bg-gray-800"></div>
+							<p class="truncate px-2 pb-0.5 pt-1 text-xs text-gray-500" title="Version of this ragbag server">
+								Ragbag {appVersion}
+							</p>
+						{/if}
 					</div>
 				{/if}
 			</div>

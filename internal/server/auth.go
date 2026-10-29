@@ -20,8 +20,12 @@ import (
 
 const passwordResetValidity = 24 * time.Hour
 
+// FeatureFlags also reports the version, which the frontend shows in the account menu.
 func (s *Server) FeatureFlags(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{"registration_enabled": strconv.FormatBool(s.cfg.RegistrationOpen)})
+	return c.JSON(http.StatusOK, map[string]string{
+		"registration_enabled": strconv.FormatBool(s.cfg.RegistrationOpen),
+		"version":              s.version,
+	})
 }
 
 func (s *Server) Register(c echo.Context) error {

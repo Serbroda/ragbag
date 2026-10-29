@@ -32,7 +32,7 @@ type Server struct {
 	tokens *auth.Tokens
 	fetch  *fetch.Client
 	admins map[string]bool
-	// version is written into exports
+	// version is written into exports and shown in the frontend
 	version string
 }
 
