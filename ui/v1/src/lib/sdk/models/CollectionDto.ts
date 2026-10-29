@@ -51,6 +51,10 @@ export interface CollectionDto {
      * Links directly in this collection that are new for the current user; only set in the tree
      */
     newCount?: number;
+    /**
+     * Has a public read-only link
+     */
+    shared?: boolean;
 }
 
 /**
@@ -80,6 +84,7 @@ export function CollectionDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'children': json['children'] == null ? undefined : ((json['children'] as Array<any>).map(CollectionDtoFromJSON)),
         'bookmarkCount': json['bookmarkCount'] == null ? undefined : json['bookmarkCount'],
         'newCount': json['newCount'] == null ? undefined : json['newCount'],
+        'shared': json['shared'] == null ? undefined : json['shared'],
     };
 }
 
@@ -102,6 +107,7 @@ export function CollectionDtoToJSONTyped(value?: CollectionDto | null, ignoreDis
         'children': value['children'] == null ? undefined : ((value['children'] as Array<any>).map(CollectionDtoToJSON)),
         'bookmarkCount': value['bookmarkCount'],
         'newCount': value['newCount'],
+        'shared': value['shared'],
     };
 }
 

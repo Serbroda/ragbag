@@ -43,6 +43,15 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/LoginPage.svelte'),
 		meta: { public: true },
 	},
+	// Public read-only links to a collection, viewable without an account
+	'/share/:token': {
+		'/': () => import('./pages/SharePage.svelte'),
+		meta: { public: true },
+	},
+	'/share/:token/:collectionId': {
+		'/': () => import('./pages/SharePage.svelte'),
+		meta: { public: true },
+	},
 	'/reset-password/:token': {
 		'/': () => import('./pages/ResetPasswordPage.svelte'),
 		meta: { public: true },

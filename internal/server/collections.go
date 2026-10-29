@@ -41,6 +41,10 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 		return err
 	}
 	newByCollection := newCounts(news, func(n store.NewBookmark) string { return n.CollectionID })
+	shared, err := s.store.SharedCollections(ctxOf(c), spaceID)
+	if err != nil {
+		return err
+	}
 	byParent := map[string][]*store.Collection{}
 	for i := range collections {
 		collection := &collections[i]
@@ -60,7 +64,8 @@ func (s *Server) GetCollections(c echo.Context, spaceID api.ID) error {
 			node := collectionDto(collection)
 			children := build(collection.ID)
 			count, newCount := counts[collection.ID], newByCollection[collection.ID]
-			node.Children, node.BookmarkCount, node.NewCount = &children, &count, &newCount
+			isShared := shared[collection.ID]
+			node.Children, node.BookmarkCount, node.NewCount, node.Shared = &children, &count, &newCount, &isShared
 			nodes = append(nodes, node)
 		}
 		return nodes
@@ -73,7 +78,14 @@ func (s *Server) GetCollection(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, collectionDto(collection))
+	dto := collectionDto(collection)
+	_, err = s.store.ShareOf(ctxOf(c), collectionID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+	isShared := err == nil
+	dto.Shared = &isShared
+	return c.JSON(http.StatusOK, dto)
 }
 
 func (s *Server) CreateCollection(c echo.Context, spaceID api.ID) error {

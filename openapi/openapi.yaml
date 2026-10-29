@@ -955,6 +955,106 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/collections/{collectionId}/share:
+    get:
+      summary: The public read-only link of the collection, if it has one
+      operationId: getCollectionShare
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionShareDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: Create a public read-only link, replacing an existing one (the old link stops working)
+      operationId: shareCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/CollectionShareDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Revoke the public link
+      operationId: unshareCollection
+      tags:
+        - Collection
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: collectionId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/shares/{token}:
+    get:
+      summary: A shared collection or one of its sub-collections, for anybody with the link (no account needed)
+      operationId: getSharedCollection
+      tags:
+        - Share
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+        - in: query
+          name: collectionId
+          required: false
+          description: A sub-collection of the shared one; the shared collection itself if omitted
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SharedCollectionDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/collections/{collectionId}/seen:
     post:
       summary: Mark the links of the collection as seen by the current user
@@ -1992,6 +2092,9 @@ components:
         newCount:
           type: integer
           description: Links directly in this collection that are new for the current user; only set in the tree
+        shared:
+          type: boolean
+          description: Has a public read-only link
       required:
         - id
         - name
@@ -2201,6 +2304,92 @@ components:
       required:
         - emoji
         - reacted
+
+    CollectionShareDto:
+      properties:
+        shared:
+          type: boolean
+        token:
+          type: string
+          description: The secret part of the link /app/share/{token}; only set if shared
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - shared
+
+    SharedCollectionDto:
+      description: >
+        What a public link shows: the collection, its links and its sub-collections. Nothing about the space, its
+        members or private collections.
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        description:
+          type: string
+        path:
+          type: array
+          description: From the shared collection down to this one (inclusive), for the breadcrumb
+          items:
+            $ref: '#/components/schemas/SharedCollectionRefDto'
+        children:
+          type: array
+          items:
+            $ref: '#/components/schemas/SharedCollectionRefDto'
+        bookmarks:
+          type: array
+          items:
+            $ref: '#/components/schemas/SharedBookmarkDto'
+      required:
+        - id
+        - name
+        - path
+        - children
+        - bookmarks
+
+    SharedCollectionRefDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        bookmarkCount:
+          type: integer
+        childCount:
+          type: integer
+      required:
+        - id
+        - name
+        - bookmarkCount
+        - childCount
+
+    SharedBookmarkDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        url:
+          type: string
+        title:
+          type: string
+        description:
+          type: string
+        tags:
+          type: array
+          items:
+            type: string
+        ogImage:
+          type: string
+        favicon:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - id
+        - url
+        - tags
 
     CollectionNewsDto:
       properties:

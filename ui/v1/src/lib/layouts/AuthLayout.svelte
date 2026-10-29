@@ -12,6 +12,7 @@
 		CogSolid,
 		FolderOutline,
 		FolderPlusSolid,
+		GlobeOutline,
 		HomeSolid,
 		LinkOutline,
 		LockOutline,
@@ -933,6 +934,13 @@
 			onclick={() => runCollectionAction(node, 'access')}
 		>
 			Who can see this <LockOutline class="h-4 w-4" />
+		</button>
+		<button
+			role="menuitem"
+			class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+			onclick={() => runCollectionAction(node, 'share')}
+		>
+			Share publicly <GlobeOutline class="h-4 w-4" />
 		</button>
 		<button
 			role="menuitem"

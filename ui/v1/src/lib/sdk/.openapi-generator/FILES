@@ -6,6 +6,7 @@ apis/CollectionApi.ts
 apis/DashboardApi.ts
 apis/ImageApi.ts
 apis/InviteApi.ts
+apis/ShareApi.ts
 apis/SpaceApi.ts
 apis/UserApi.ts
 apis/index.ts
@@ -18,6 +19,7 @@ models/CollectionAccessDto.ts
 models/CollectionAccessMemberDto.ts
 models/CollectionDto.ts
 models/CollectionNewsDto.ts
+models/CollectionShareDto.ts
 models/CollectionVisibilityDto.ts
 models/CreateBookmarkDto.ts
 models/CreateCollectionDto.ts
@@ -43,6 +45,9 @@ models/ReactionDto.ts
 models/RegisterRequest.ts
 models/ResetPasswordRequest.ts
 models/SetReactionDto.ts
+models/SharedBookmarkDto.ts
+models/SharedCollectionDto.ts
+models/SharedCollectionRefDto.ts
 models/SpaceBarDto.ts
 models/SpaceBarItemDto.ts
 models/SpaceDto.ts

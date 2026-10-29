@@ -10,7 +10,8 @@
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
 	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
 	import ImportCollectionModal from '../components/ImportCollectionModal.svelte';
-	import { DotsVerticalOutline, FolderOutline, LockOutline } from 'flowbite-svelte-icons';
+	import ShareCollectionModal from '../components/ShareCollectionModal.svelte';
+	import { DotsVerticalOutline, FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
 	import { route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import {
@@ -82,6 +83,7 @@
 	let allCollectionOptions = $state<{ id: string; label: string; depth: number }[]>([]);
 
 	let showAccessModal = $state(false);
+	let showShareModal = $state(false);
 	/** Sub-collection tile a dragged link is over. */
 	let dropTargetId = $state<string | null>(null);
 	let showImportModal = $state(false);
@@ -113,6 +115,15 @@
 	/** Name of the nearest private collection above this one: its members are the only ones who see this one. */
 	const privateVia = $derived(collectionId ? privateAncestor?.(collectionId) : undefined);
 
+	/** Private collections (or those inside one) cannot be shared by a public link. */
+	const privateReason = $derived(
+		collection?.restricted
+			? 'Private collections cannot be shared publicly.'
+			: privateVia
+				? `This collection is inside the private collection “${privateVia}”, so it cannot be shared publicly.`
+				: undefined,
+	);
+
 	const tree = $derived(collectionTree?.() ?? []);
 	const subcollections = $derived(findNode(tree, collectionId)?.children ?? []);
 	/** Every other collection of the space, for "Move to…". */
@@ -125,6 +136,7 @@
 		pendingCollectionAction.current = null;
 		if (pending.action === 'edit') openEditCollectionModal();
 		else if (pending.action === 'delete') openDeleteCollectionModal();
+		else if (pending.action === 'share') showShareModal = true;
 		else showAccessModal = true;
 	});
 
@@ -443,6 +455,15 @@
 							<LockOutline class="h-3.5 w-3.5 shrink-0" />
 							<span class="truncate">{collection.restricted ? 'Private' : `Private via ${privateVia}`}</span>
 						</button>
+					{:else if collection.shared}
+						<button
+							type="button"
+							class="inline-flex shrink-0 items-center gap-1 rounded-md bg-sky-500/15 px-2 py-0.5 text-xs font-medium text-sky-700 ring-1 ring-inset ring-sky-500/30 hover:bg-sky-500/25 dark:text-sky-300"
+							title="Anybody with the link can see this collection"
+							onclick={() => (showShareModal = true)}
+						>
+							<GlobeOutline class="h-3.5 w-3.5 shrink-0" /> Shared publicly
+						</button>
 					{/if}
 				</h1>
 				{#if collection.description}
@@ -479,6 +500,15 @@
 									}}
 								>
 									Who can see this…
+								</button>
+								<button
+									class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+									onclick={() => {
+										showShareModal = true;
+										openHeaderMenu = false;
+									}}
+								>
+									Share publicly…
 								</button>
 								{#if canEditCollections}
 									<button
@@ -801,6 +831,17 @@
 {/if}
 
 {#if collection}
+	<ShareCollectionModal
+		bind:open={showShareModal}
+		{collectionId}
+		collectionName={collection.name}
+		canManage={canEditCollections}
+		{privateReason}
+		onchanged={() => {
+			loadData(collectionId);
+			reloadSidebar();
+		}}
+	/>
 	<CollectionAccessModal
 		bind:open={showAccessModal}
 		{collectionId}

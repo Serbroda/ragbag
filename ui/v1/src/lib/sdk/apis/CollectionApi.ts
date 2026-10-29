@@ -24,6 +24,11 @@ import {
     CollectionDtoToJSON,
 } from '../models/CollectionDto';
 import {
+    type CollectionShareDto,
+    CollectionShareDtoFromJSON,
+    CollectionShareDtoToJSON,
+} from '../models/CollectionShareDto';
+import {
     type CreateCollectionDto,
     CreateCollectionDtoFromJSON,
     CreateCollectionDtoToJSON,
@@ -88,6 +93,13 @@ export interface GetCollectionAccessRequest {
     collectionId: string;
 }
 
+export interface GetCollectionShareRequest {
+    /**
+     * 
+     */
+    collectionId: string;
+}
+
 export interface GetCollectionsRequest {
     /**
      * 
@@ -126,6 +138,20 @@ export interface MoveCollectionRequest {
      * 
      */
     moveCollectionDto: MoveCollectionDto;
+}
+
+export interface ShareCollectionRequest {
+    /**
+     * 
+     */
+    collectionId: string;
+}
+
+export interface UnshareCollectionRequest {
+    /**
+     * 
+     */
+    collectionId: string;
 }
 
 export interface UpdateCollectionRequest {
@@ -430,6 +456,59 @@ export class CollectionApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getCollectionShare without sending the request
+     */
+    async getCollectionShareRequestOpts(requestParameters: GetCollectionShareRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling getCollectionShare().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/collections/{collectionId}/share`;
+        urlPath = urlPath.replace('{collectionId}', encodeURIComponent(String(requestParameters['collectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The public read-only link of the collection, if it has one
+     */
+    async getCollectionShareRaw(requestParameters: GetCollectionShareRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionShareDto>> {
+        const requestOptions = await this.getCollectionShareRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CollectionShareDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The public read-only link of the collection, if it has one
+     */
+    async getCollectionShare(requestParameters: GetCollectionShareRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionShareDto> {
+        const response = await this.getCollectionShareRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getCollections without sending the request
      */
     async getCollectionsRequestOpts(requestParameters: GetCollectionsRequest): Promise<runtime.RequestOpts> {
@@ -662,6 +741,111 @@ export class CollectionApi extends runtime.BaseAPI {
     async moveCollection(requestParameters: MoveCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionDto> {
         const response = await this.moveCollectionRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for shareCollection without sending the request
+     */
+    async shareCollectionRequestOpts(requestParameters: ShareCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling shareCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/collections/{collectionId}/share`;
+        urlPath = urlPath.replace('{collectionId}', encodeURIComponent(String(requestParameters['collectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Create a public read-only link, replacing an existing one (the old link stops working)
+     */
+    async shareCollectionRaw(requestParameters: ShareCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<CollectionShareDto>> {
+        const requestOptions = await this.shareCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => CollectionShareDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Create a public read-only link, replacing an existing one (the old link stops working)
+     */
+    async shareCollection(requestParameters: ShareCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionShareDto> {
+        const response = await this.shareCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for unshareCollection without sending the request
+     */
+    async unshareCollectionRequestOpts(requestParameters: UnshareCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling unshareCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/collections/{collectionId}/share`;
+        urlPath = urlPath.replace('{collectionId}', encodeURIComponent(String(requestParameters['collectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Revoke the public link
+     */
+    async unshareCollectionRaw(requestParameters: UnshareCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.unshareCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Revoke the public link
+     */
+    async unshareCollection(requestParameters: UnshareCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.unshareCollectionRaw(requestParameters, initOverrides);
     }
 
     /**

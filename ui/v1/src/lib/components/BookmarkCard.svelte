@@ -17,6 +17,7 @@
 		onfavoritechange,
 		ondragstart,
 		ondragend,
+		publicView = false,
 	}: {
 		bookmark: BookmarkDto;
 		/** Defaults to the user's link display preference. */
@@ -29,6 +30,8 @@
 		/** Makes the card draggable, e.g. onto a collection in the sidebar. */
 		ondragstart?: (event: DragEvent) => void;
 		ondragend?: (event: DragEvent) => void;
+		/** Shown through a public link: no favorites, reactions, authors or links into the app. */
+		publicView?: boolean;
 	} = $props();
 
 	const spaceId = $derived(route.params.spaceId);
@@ -88,9 +91,9 @@
 			<span class="font-medium">{collectionName}</span> ·
 		{/if}
 	{/if}
-	{#if bookmark.createdBy}{bookmark.createdBy}{/if}
+	{#if bookmark.createdBy && !publicView}{bookmark.createdBy}{/if}
 	{#if bookmark.createdAt}
-		·
+		{#if bookmark.createdBy && !publicView}·{/if}
 		<time datetime={bookmark.createdAt.toISOString()} title={bookmark.createdAt.toLocaleString()}>
 			{timeAgo(bookmark.createdAt)}
 		</time>
@@ -109,13 +112,19 @@
 {#snippet tags(limit: number)}
 	{#each (bookmark.tags ?? []).slice(0, limit) as tag (tag)}
 		<!-- Lifted above the title link that covers the card -->
-		<a
-			href={spaceId ? p('/space/:spaceId/search', { params: { spaceId }, search: { q: `#${tag}` } }) : undefined}
-			title="Show all links tagged #{tag}"
-			class="relative z-10 rounded-full bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-500/25 dark:text-primary-300"
-		>
-			#{tag}
-		</a>
+		{#if publicView || !spaceId}
+			<span class="rounded-full bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 dark:text-primary-300">
+				#{tag}
+			</span>
+		{:else}
+			<a
+				href={p('/space/:spaceId/search', { params: { spaceId }, search: { q: `#${tag}` } })}
+				title="Show all links tagged #{tag}"
+				class="relative z-10 rounded-full bg-primary-500/10 px-2 py-0.5 text-xs font-medium text-primary-700 transition-colors hover:bg-primary-500/25 dark:text-primary-300"
+			>
+				#{tag}
+			</a>
+		{/if}
 	{/each}
 {/snippet}
 
@@ -140,12 +149,14 @@
 		{#if bookmark.tags?.length}
 			<div class="hidden shrink-0 gap-1.5 lg:flex">{@render tags(3)}</div>
 		{/if}
-		<div class="shrink-0"><Reactions bookmarkId={bookmark.id} reactions={bookmark.reactions} /></div>
-		<div
-			class="relative z-10 shrink-0 transition {favorite ? '' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'}"
-		>
-			<FavoriteButton bookmarkId={bookmark.id} bind:favorite onchange={onfavoritechange} />
-		</div>
+		{#if !publicView}
+			<div class="shrink-0"><Reactions bookmarkId={bookmark.id} reactions={bookmark.reactions} /></div>
+			<div
+				class="relative z-10 shrink-0 transition {favorite ? '' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'}"
+			>
+				<FavoriteButton bookmarkId={bookmark.id} bind:favorite onchange={onfavoritechange} />
+			</div>
+		{/if}
 		{#if actions}
 			<div class="relative z-10 shrink-0">
 				{@render actions()}
@@ -159,13 +170,15 @@
 		{ondragend}
 		class="group relative flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
 	>
-		<div
-			class="absolute right-2 top-2 z-10 rounded-md bg-white/85 shadow-sm backdrop-blur transition dark:bg-gray-900/85 {favorite
-				? ''
-				: 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'}"
-		>
-			<FavoriteButton bookmarkId={bookmark.id} bind:favorite onchange={onfavoritechange} />
-		</div>
+		{#if !publicView}
+			<div
+				class="absolute right-2 top-2 z-10 rounded-md bg-white/85 shadow-sm backdrop-blur transition dark:bg-gray-900/85 {favorite
+					? ''
+					: 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'}"
+			>
+				<FavoriteButton bookmarkId={bookmark.id} bind:favorite onchange={onfavoritechange} />
+			</div>
+		{/if}
 
 		{#if image}
 			<img
@@ -203,7 +216,9 @@
 
 			<div class="relative z-10 mt-auto flex items-center gap-2 pt-2 text-xs text-gray-500">
 				<p class="min-w-0 flex-1 truncate">{@render meta()}</p>
-				<Reactions bookmarkId={bookmark.id} reactions={bookmark.reactions} />
+				{#if !publicView}
+					<Reactions bookmarkId={bookmark.id} reactions={bookmark.reactions} />
+				{/if}
 				{#if actions}
 					<div class="relative">
 						{@render actions()}

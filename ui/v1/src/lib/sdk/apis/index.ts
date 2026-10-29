@@ -8,5 +8,6 @@ export * from './CollectionApi';
 export * from './DashboardApi';
 export * from './ImageApi';
 export * from './InviteApi';
+export * from './ShareApi';
 export * from './SpaceApi';
 export * from './UserApi';

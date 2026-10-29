@@ -101,6 +101,11 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   can read a link may react. There are deliberately no comments (nothing to moderate).
 - **Space bar** order and folders are personal (`space_bars`, JSON of `SpaceBarDto`); the server drops spaces the
   user is no longer a member of. Leaving a space removes the user's reactions and visits there.
+- **Public links** (`shares.go`, one per collection) show a collection and its sub-collections to anybody, without
+  an account, at `/app/share/{token}` (`GET /api/v1/shares/{token}`, a public path). They never show the space,
+  members, authors, reactions or private collections; private collections cannot be shared, and a shared one that
+  becomes private (or moves below one) answers 404 until it is public again. Every failure is the same 404.
+  Managing the link needs `EDIT_COLLECTIONS`; only those see the token.
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.
