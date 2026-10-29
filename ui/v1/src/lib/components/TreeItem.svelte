@@ -5,7 +5,7 @@
 	import { isDescendantOrSelf, totalNewCount } from './tree';
 	import TreeItem from './TreeItem.svelte';
 	import { route } from '../router';
-	import { DRAG_CTX_KEY, type DragContext } from './DraggableTreeList.svelte';
+	import { DRAG_CTX_KEY, type DragContext, type DropZone } from './DraggableTreeList.svelte';
 	import { isExpanded, setExpanded } from '../stores/preferences.svelte';
 	import { bookmarkDrag } from '../stores/bookmarkDrag.svelte';
 
@@ -16,6 +16,8 @@
 	}: { node: TreeNode; depth?: number; draggable?: boolean } = $props();
 
 	let isDropTarget = $state(false);
+	/** Where a dragged collection would go: in front of this one, behind it or into it. */
+	let dropZone = $state<DropZone | null>(null);
 
 	const expanded = $derived(!!node.id && isExpanded(node.id));
 
@@ -30,7 +32,14 @@
 
 	// Drag context — getContext must be called at top level, but we only use it when isDraggable
 	const dragCtx = getContext<DragContext | undefined>(DRAG_CTX_KEY);
-	const dropHandler = getContext<((target: TreeNode) => void) | undefined>('tree-drop');
+	const dropHandler = getContext<((target: TreeNode, zone: DropZone) => void) | undefined>('tree-drop');
+
+	/** The upper and lower quarter of the row sort in front of or behind it, the middle moves into it. */
+	function zoneAt(e: DragEvent): DropZone {
+		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
+		const y = (e.clientY - rect.top) / rect.height;
+		return y < 0.25 ? 'before' : y > 0.75 ? 'after' : 'into';
+	}
 	const openMenu = getContext<((node: TreeNode, x: number, y: number) => void) | undefined>('collection-menu');
 
 	/** A link dragged from a collection page can be dropped on any other collection. */
@@ -61,11 +70,14 @@
 		if (isDescendantOrSelf(dragCtx.draggedNode, node)) return;
 		e.preventDefault();
 		if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-		isDropTarget = true;
+		dropZone = zoneAt(e);
+		isDropTarget = dropZone === 'into';
+		if (isDropTarget && hasChildren && !expanded && !expandTimer) expandTimer = setTimeout(toggle, 800);
 	}
 
 	function handleDragLeave() {
 		isDropTarget = false;
+		dropZone = null;
 		clearTimeout(expandTimer);
 		expandTimer = undefined;
 	}
@@ -77,7 +89,9 @@
 			bookmarkDrag.current!.drop(node.id!);
 			return;
 		}
-		dropHandler?.(node);
+		const zone = dropZone ?? zoneAt(e);
+		dropZone = null;
+		dropHandler?.(node, zone);
 	}
 
 	function handleContextMenu(e: MouseEvent) {
@@ -99,7 +113,7 @@
 <li>
 	<!-- svelte-ignore a11y_no_static_element_interactions -->
 	<div
-		class="group mx-2 flex items-center rounded-md text-sm transition-colors {isActive
+		class="group relative mx-2 flex items-center rounded-md text-sm transition-colors {isActive
 			? 'bg-gray-200 font-medium text-gray-900 dark:bg-gray-700/70 dark:text-white'
 			: 'text-gray-600 hover:bg-gray-200/60 hover:text-gray-900 dark:text-gray-400 dark:hover:bg-gray-800 dark:hover:text-gray-200'}"
 		class:opacity-40={isDragged}
@@ -116,6 +130,13 @@
 		ondragend={isDraggable ? handleDragEnd : undefined}
 		oncontextmenu={node.id ? handleContextMenu : undefined}
 	>
+		{#if dropZone === 'before' || dropZone === 'after'}
+			<span
+				class="pointer-events-none absolute inset-x-1 h-0.5 rounded-full bg-primary-500 {dropZone === 'before'
+					? '-top-px'
+					: '-bottom-px'}"
+			></span>
+		{/if}
 		<!-- Icon -->
 		{#if node.icon}
 			{@const Icon = node.icon}

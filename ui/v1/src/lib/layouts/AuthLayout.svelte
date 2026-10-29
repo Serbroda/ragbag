@@ -562,12 +562,13 @@
 			: [],
 	);
 
-	async function handleMove(movedNode: TreeNode, newParent: TreeNode | null) {
+	async function handleMove(movedNode: TreeNode, newParent: TreeNode | null, before: TreeNode | null) {
 		if (!canEditCollections) return;
 		await collectionApi.moveCollection({
 			collectionId: movedNode.id!,
 			moveCollectionDto: {
 				parentId: newParent?.id ?? undefined,
+				beforeId: before?.id ?? undefined,
 			},
 		});
 		if (activeSpaceId) {

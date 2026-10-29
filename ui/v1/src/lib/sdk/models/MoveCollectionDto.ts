@@ -23,6 +23,11 @@ export interface MoveCollectionDto {
      * Target parent collection ID, or null to move to root
      */
     parentId?: string;
+    /**
+     * A collection below the target parent to place it in front of; without one it goes to the end. The order is the same for every member of the space.
+     * 
+     */
+    beforeId?: string;
 }
 
 /**
@@ -43,6 +48,7 @@ export function MoveCollectionDtoFromJSONTyped(json: any, ignoreDiscriminator: b
     return {
         
         'parentId': json['parentId'] == null ? undefined : json['parentId'],
+        'beforeId': json['beforeId'] == null ? undefined : json['beforeId'],
     };
 }
 
@@ -58,6 +64,7 @@ export function MoveCollectionDtoToJSONTyped(value?: MoveCollectionDto | null, i
     return {
         
         'parentId': value['parentId'],
+        'beforeId': value['beforeId'],
     };
 }
 

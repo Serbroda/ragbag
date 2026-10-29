@@ -8,12 +8,16 @@
 	}
 
 	export const DRAG_CTX_KEY = Symbol('tree-drag');
+
+	/** Dropping on a collection sorts the dragged one in front of it, behind it or moves it inside. */
+	export type DropZone = 'before' | 'after' | 'into';
 </script>
 
 <script lang="ts">
 	import { setContext } from 'svelte';
 	import { isDescendantOrSelf } from './tree';
 	import TreeItem from './TreeItem.svelte';
+	import { isExpanded } from '../stores/preferences.svelte';
 
 	let {
 		nodes = $bindable(),
@@ -22,11 +26,11 @@
 	}: {
 		nodes: TreeNode[];
 		draggable?: boolean;
-		onmove?: (movedNode: TreeNode, newParent: TreeNode | null) => Promise<void>;
+		/** Moves the collection below newParent (null: top level), in front of before (null: at the end). */
+		onmove?: (movedNode: TreeNode, newParent: TreeNode | null, before: TreeNode | null) => Promise<void>;
 	} = $props();
 
 	let draggedNode = $state<TreeNode | null>(null);
-	let rootDropTarget = $state(false);
 
 	const ctx: DragContext = {
 		get draggedNode() {
@@ -37,55 +41,48 @@
 		},
 		end() {
 			draggedNode = null;
-			rootDropTarget = false;
 		},
 	};
 
 	setContext(DRAG_CTX_KEY, ctx);
 
-	async function handleDrop(targetNode: TreeNode) {
-		if (!draggedNode || draggedNode === targetNode) return;
-		if (isDescendantOrSelf(draggedNode, targetNode)) return;
+	/** The parent of the node (null at the top level). */
+	function parentOf(list: TreeNode[], target: TreeNode, parent: TreeNode | null = null): TreeNode | null | undefined {
+		for (const node of list) {
+			if (node === target) return parent;
+			const found = node.children && parentOf(node.children, target, node);
+			if (found !== undefined) return found;
+		}
+		return undefined;
+	}
 
+	async function handleDrop(target: TreeNode, zone: DropZone) {
 		const moved = draggedNode;
 		draggedNode = null;
+		if (!moved || moved === target || isDescendantOrSelf(moved, target)) return;
 
+		let parent: TreeNode | null = target;
+		let before: TreeNode | null = null;
+		const openWithChildren = !!target.id && isExpanded(target.id) && !!target.children?.length;
+		if (zone === 'after' && openWithChildren) {
+			// Below an open collection the marker sits above its first child: that is where it goes
+			before = target.children!.find((node) => node !== moved) ?? null;
+		} else if (zone !== 'into') {
+			parent = parentOf(nodes, target) ?? null;
+			const siblings = (parent ? parent.children : nodes) ?? [];
+			if (zone === 'before') {
+				before = target;
+			} else {
+				// Behind the target means in front of its next sibling, or at the end
+				const next = siblings.slice(siblings.indexOf(target) + 1).find((node) => node !== moved);
+				before = next ?? null;
+			}
+		}
 		try {
-			await onmove?.(moved, targetNode);
+			await onmove?.(moved, parent, before);
 		} catch (err) {
 			console.error('Move failed:', err);
 		}
-	}
-
-	async function handleRootDrop(e: DragEvent) {
-		e.preventDefault();
-		rootDropTarget = false;
-		if (!draggedNode) return;
-		if (nodes.includes(draggedNode)) {
-			draggedNode = null;
-			return;
-		}
-
-		const moved = draggedNode;
-		draggedNode = null;
-
-		try {
-			await onmove?.(moved, null);
-		} catch (err) {
-			console.error('Move to root failed:', err);
-		}
-	}
-
-	function handleRootDragOver(e: DragEvent) {
-		if (!draggedNode) return;
-		if (nodes.includes(draggedNode)) return;
-		e.preventDefault();
-		if (e.dataTransfer) e.dataTransfer.dropEffect = 'move';
-		rootDropTarget = true;
-	}
-
-	function handleRootDragLeave() {
-		rootDropTarget = false;
 	}
 
 	setContext('tree-drop', handleDrop);
@@ -95,25 +92,4 @@
 	{#each nodes as node (node.id ?? node.label)}
 		<TreeItem {node} {draggable} />
 	{/each}
-
-	<!-- Drop zone: move to root level -->
-	{#if draggable && draggedNode && !nodes.includes(draggedNode)}
-		<!-- svelte-ignore a11y_no_static_element_interactions -->
-		<li
-			class="mx-2 mt-1 flex items-center justify-center rounded-md border-2 border-dashed py-2 text-xs transition-colors"
-			class:border-primary-400={rootDropTarget}
-			class:bg-primary-50={rootDropTarget}
-			class:text-primary-600={rootDropTarget}
-			class:dark:bg-primary-900={rootDropTarget}
-			class:dark:text-primary-400={rootDropTarget}
-			class:border-gray-300={!rootDropTarget}
-			class:text-gray-400={!rootDropTarget}
-			class:dark:border-gray-600={!rootDropTarget}
-			ondragover={handleRootDragOver}
-			ondragleave={handleRootDragLeave}
-			ondrop={handleRootDrop}
-		>
-			Move to top level
-		</li>
-	{/if}
 </ul>
