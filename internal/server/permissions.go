@@ -110,16 +110,32 @@ func (s *Server) requireBookmark(ctx context.Context, tx *store.Store, bookmarkI
 }
 
 // hiddenCollections are the private collections of the space the user is not a member of, and everything
-// below them. Visibility is inherited: a public collection inside a private one is private too.
+// below them. Visibility is inherited: a public collection inside a private one is private too. Unless the
+// request is unlocked, the collections the user locked for themselves (and everything below) are hidden as well.
 func (s *Server) hiddenCollections(ctx context.Context, tx *store.Store, spaceID, userID string) (map[string]bool, error) {
 	hidden := map[string]bool{}
 	hasPrivate, err := tx.HasPrivateCollections(ctx, spaceID)
-	if err != nil || !hasPrivate {
-		return hidden, err
+	if err != nil {
+		return nil, err
+	}
+	var locks []string
+	if !isUnlocked(ctx) {
+		if locks, err = tx.LockedCollectionsOf(ctx, spaceID, userID); err != nil {
+			return nil, err
+		}
+	}
+	if !hasPrivate && len(locks) == 0 {
+		return hidden, nil
 	}
 	collections, err := tx.CollectionsBySpace(ctx, spaceID)
 	if err != nil {
 		return nil, err
+	}
+	for id := range lockedCollections(collections, locks) {
+		hidden[id] = true
+	}
+	if !hasPrivate {
+		return hidden, nil
 	}
 	memberOf, err := tx.PrivateCollectionsOf(ctx, spaceID, userID)
 	if err != nil {

@@ -4,6 +4,7 @@
 	import { apiConfig, changePassword, errorMessage } from '../api/client';
 	import { session } from '../stores/spaces.svelte';
 	import { LINK_VIEWS, preferences, setLinkView } from '../stores/preferences.svelte';
+	import { lockState } from '../stores/lock.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -17,12 +18,40 @@
 	let passwordBusy = $state(false);
 	let passwordMessage = $state<{ ok: boolean; text: string } | null>(null);
 
+	let pinPassword = $state('');
+	let pin = $state('');
+	let pinRepeat = $state('');
+	let pinBusy = $state(false);
+	let pinMessage = $state<{ ok: boolean; text: string } | null>(null);
+
 	$effect(() => {
 		if (open) return;
 		// Never keep passwords around after the dialog was closed
 		currentPassword = newPassword = confirmPassword = '';
 		passwordMessage = null;
+		pinPassword = pin = pinRepeat = '';
+		pinMessage = null;
 	});
+
+	async function savePin(e: Event) {
+		e.preventDefault();
+		if (pin !== pinRepeat) {
+			pinMessage = { ok: false, text: 'The PINs do not match.' };
+			return;
+		}
+		pinBusy = true;
+		pinMessage = null;
+		try {
+			await userApi.setPin({ setPinDto: { currentPassword: pinPassword, pin } });
+			if (session.me) session.me = { ...session.me, hasPin: true };
+			pinPassword = pin = pinRepeat = '';
+			pinMessage = { ok: true, text: 'PIN saved.' };
+		} catch (err) {
+			pinMessage = { ok: false, text: await errorMessage(err, 'Failed to save the PIN.') };
+		} finally {
+			pinBusy = false;
+		}
+	}
 
 	async function savePassword(e: Event) {
 		e.preventDefault();
@@ -106,6 +135,31 @@
 							disabled={passwordBusy || !currentPassword || newPassword.length < MIN_PASSWORD_LENGTH}
 						>
 							{passwordBusy ? 'Saving…' : 'Change password'}
+						</Button>
+					</div>
+				</form>
+			</section>
+
+			<section>
+				<Label class="mb-1">{session.me.hasPin ? 'Change PIN' : 'PIN for locked collections'}</Label>
+				<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+					“Lock for me” hides a collection from your view (right-click it in the sidebar). The PIN unlocks them
+					for a few minutes{lockState.unlocked ? ' – they are unlocked right now' : ''}.
+				</p>
+				<form class="flex flex-col gap-2" onsubmit={savePin} autocomplete="off">
+					<Input type="password" placeholder="Current password" autocomplete="current-password" bind:value={pinPassword} required />
+					<div class="grid grid-cols-2 gap-2">
+						<Input type="password" inputmode="numeric" maxlength={8} placeholder="PIN (4–8 digits)" autocomplete="off" bind:value={pin} required />
+						<Input type="password" inputmode="numeric" maxlength={8} placeholder="Repeat PIN" autocomplete="off" bind:value={pinRepeat} required />
+					</div>
+					{#if pinMessage}
+						<p class="text-sm {pinMessage.ok ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400'}">
+							{pinMessage.text}
+						</p>
+					{/if}
+					<div class="flex justify-end">
+						<Button type="submit" size="sm" disabled={pinBusy || !pinPassword || pin.length < 4}>
+							{pinBusy ? 'Saving…' : session.me.hasPin ? 'Change PIN' : 'Set PIN'}
 						</Button>
 					</div>
 				</form>

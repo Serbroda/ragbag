@@ -55,6 +55,10 @@ export interface CollectionDto {
      * Has a public read-only link
      */
     shared?: boolean;
+    /**
+     * Locked by the current user (only listed while unlocked); sub-collections inherit it
+     */
+    locked?: boolean;
 }
 
 /**
@@ -85,6 +89,7 @@ export function CollectionDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'bookmarkCount': json['bookmarkCount'] == null ? undefined : json['bookmarkCount'],
         'newCount': json['newCount'] == null ? undefined : json['newCount'],
         'shared': json['shared'] == null ? undefined : json['shared'],
+        'locked': json['locked'] == null ? undefined : json['locked'],
     };
 }
 
@@ -108,6 +113,7 @@ export function CollectionDtoToJSONTyped(value?: CollectionDto | null, ignoreDis
         'bookmarkCount': value['bookmarkCount'],
         'newCount': value['newCount'],
         'shared': value['shared'],
+        'locked': value['locked'],
     };
 }
 

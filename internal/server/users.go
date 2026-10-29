@@ -22,7 +22,14 @@ func (s *Server) Me(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, s.userDto(user))
+	pin, err := s.store.PinState(ctxOf(c), user.ID)
+	if err != nil {
+		return err
+	}
+	dto := s.userDto(user)
+	hasPin := pin.Hash != nil
+	dto.HasPin = &hasPin
+	return c.JSON(http.StatusOK, dto)
 }
 
 func (s *Server) SetAvatar(c echo.Context) error {

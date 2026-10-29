@@ -314,8 +314,11 @@ type CollectionDto struct {
 	Description   *string          `json:"description,omitempty"`
 
 	// Id UUID
-	Id   ID     `json:"id"`
-	Name string `json:"name"`
+	Id ID `json:"id"`
+
+	// Locked Locked by the current user (only listed while unlocked); sub-collections inherit it
+	Locked *bool  `json:"locked,omitempty"`
+	Name   string `json:"name"`
 
 	// NewCount Links directly in this collection that are new for the current user; only set in the tree
 	NewCount *int `json:"newCount,omitempty"`
@@ -582,6 +585,14 @@ type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword"`
 }
 
+// SetPinDto defines model for SetPinDto.
+type SetPinDto struct {
+	CurrentPassword string `json:"currentPassword"`
+
+	// Pin 4 to 8 digits
+	Pin string `json:"pin"`
+}
+
 // SetReactionDto defines model for SetReactionDto.
 type SetReactionDto struct {
 	// Emoji One of 👍 ❤️ 😂 🔥 😮 🙏
@@ -687,6 +698,17 @@ type SpaceMemberRoleEnum string
 // SpacePermissionEnum defines model for SpacePermissionEnum.
 type SpacePermissionEnum string
 
+// UnlockDto defines model for UnlockDto.
+type UnlockDto struct {
+	ExpiresAt time.Time `json:"expiresAt"`
+	Token     string    `json:"token"`
+}
+
+// UnlockRequest defines model for UnlockRequest.
+type UnlockRequest struct {
+	Pin string `json:"pin"`
+}
+
 // UpdateBookmarkDto defines model for UpdateBookmarkDto.
 type UpdateBookmarkDto struct {
 	// CollectionId Moves the link to another collection of the same space
@@ -748,6 +770,9 @@ type UserDto struct {
 	// AvatarId UUID
 	AvatarId *ID    `json:"avatarId,omitempty"`
 	Email    string `json:"email"`
+
+	// HasPin Has a PIN to unlock locked collections
+	HasPin *bool `json:"hasPin,omitempty"`
 
 	// Id UUID
 	Id ID `json:"id"`
@@ -861,8 +886,14 @@ type UpdateSpaceMemberJSONRequestBody = UpdateSpaceMemberDto
 // SetAvatarMultipartRequestBody defines body for SetAvatar for multipart/form-data ContentType.
 type SetAvatarMultipartRequestBody = ImageUpload
 
+// SetPinJSONRequestBody defines body for SetPin for application/json ContentType.
+type SetPinJSONRequestBody = SetPinDto
+
 // UpdateSpaceBarJSONRequestBody defines body for UpdateSpaceBar for application/json ContentType.
 type UpdateSpaceBarJSONRequestBody = SpaceBarDto
+
+// UnlockJSONRequestBody defines body for Unlock for application/json ContentType.
+type UnlockJSONRequestBody = UnlockRequest
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -947,6 +978,12 @@ type ServerInterface interface {
 	// ImportCollection Import an export file into a collection; sub-collections with the same name are merged
 	// (POST /v1/collections/{collectionId}/import)
 	ImportCollection(ctx echo.Context, collectionId ID, params ImportCollectionParams) error
+	// UnlockCollection Stop locking the collection for the current user (only possible while unlocked)
+	// (DELETE /v1/collections/{collectionId}/lock)
+	UnlockCollection(ctx echo.Context, collectionId ID) error
+	// LockCollection Lock the collection (and everything below it) for the current user only; needs a PIN
+	// (PUT /v1/collections/{collectionId}/lock)
+	LockCollection(ctx echo.Context, collectionId ID) error
 	// MoveCollection Move a collection to a new parent
 	// (POST /v1/collections/{collectionId}/move)
 	MoveCollection(ctx echo.Context, collectionId ID) error
@@ -1064,12 +1101,21 @@ type ServerInterface interface {
 	// SetAvatar Set the avatar of the current user from an uploaded file or a URL
 	// (PUT /v1/users/me/avatar)
 	SetAvatar(ctx echo.Context) error
+	// SetPin Set or change the PIN that unlocks the user's locked collections (needs the account password)
+	// (PUT /v1/users/me/pin)
+	SetPin(ctx echo.Context) error
 	// GetSpaceBar Personal order and folders of the space bar
 	// (GET /v1/users/me/space-bar)
 	GetSpaceBar(ctx echo.Context) error
 	// UpdateSpaceBar Save the personal order and folders of the space bar
 	// (PUT /v1/users/me/space-bar)
 	UpdateSpaceBar(ctx echo.Context) error
+	// Unlock Unlock the user's locked collections with the PIN. The token goes into the X-Ragbag-Unlock header of later requests and expires after a few minutes unless renewed.
+	// (POST /v1/users/me/unlock)
+	Unlock(ctx echo.Context) error
+	// RenewUnlock Extend a valid unlock (sent in X-Ragbag-Unlock) while the user is active
+	// (POST /v1/users/me/unlock/renew)
+	RenewUnlock(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -1473,6 +1519,38 @@ func (w *ServerInterfaceWrapper) ImportCollection(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.ImportCollection(ctx, collectionId, params)
+	return err
+}
+
+// UnlockCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) UnlockCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UnlockCollection(ctx, collectionId)
+	return err
+}
+
+// LockCollection converts echo context to params.
+func (w *ServerInterfaceWrapper) LockCollection(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.LockCollection(ctx, collectionId)
 	return err
 }
 
@@ -2096,6 +2174,15 @@ func (w *ServerInterfaceWrapper) SetAvatar(ctx echo.Context) error {
 	return err
 }
 
+// SetPin converts echo context to params.
+func (w *ServerInterfaceWrapper) SetPin(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetPin(ctx)
+	return err
+}
+
 // GetSpaceBar converts echo context to params.
 func (w *ServerInterfaceWrapper) GetSpaceBar(ctx echo.Context) error {
 	var err error
@@ -2111,6 +2198,24 @@ func (w *ServerInterfaceWrapper) UpdateSpaceBar(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.UpdateSpaceBar(ctx)
+	return err
+}
+
+// Unlock converts echo context to params.
+func (w *ServerInterfaceWrapper) Unlock(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Unlock(ctx)
+	return err
+}
+
+// RenewUnlock converts echo context to params.
+func (w *ServerInterfaceWrapper) RenewUnlock(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RenewUnlock(ctx)
 	return err
 }
 
@@ -2173,6 +2278,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/admin/users", wrapper.GetAllUsers, options.OperationMiddlewares["getAllUsers"]...)
 	router.POST(options.BaseURL+"/v1/admin/users/:userId/password-reset", wrapper.CreatePasswordReset, options.OperationMiddlewares["createPasswordReset"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
+	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)
+	router.POST(options.BaseURL+"/v1/users/me/unlock", wrapper.Unlock, options.OperationMiddlewares["unlock"]...)
+	router.POST(options.BaseURL+"/v1/users/me/unlock/renew", wrapper.RenewUnlock, options.OperationMiddlewares["renewUnlock"]...)
 	router.GET(options.BaseURL+"/v1/users/me/space-bar", wrapper.GetSpaceBar, options.OperationMiddlewares["getSpaceBar"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/space-bar", wrapper.UpdateSpaceBar, options.OperationMiddlewares["updateSpaceBar"]...)
 	router.DELETE(options.BaseURL+"/v1/users/me/avatar", wrapper.RemoveAvatar, options.OperationMiddlewares["removeAvatar"]...)
@@ -2203,6 +2311,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.GetCollectionShare, options.OperationMiddlewares["getCollectionShare"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.ShareCollection, options.OperationMiddlewares["shareCollection"]...)
 	router.GET(options.BaseURL+"/v1/shares/:token", wrapper.GetSharedCollection, options.OperationMiddlewares["getSharedCollection"]...)
+	router.DELETE(options.BaseURL+"/v1/collections/:collectionId/lock", wrapper.UnlockCollection, options.OperationMiddlewares["unlockCollection"]...)
+	router.PUT(options.BaseURL+"/v1/collections/:collectionId/lock", wrapper.LockCollection, options.OperationMiddlewares["lockCollection"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/seen", wrapper.MarkCollectionSeen, options.OperationMiddlewares["markCollectionSeen"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/move", wrapper.MoveCollection, options.OperationMiddlewares["moveCollection"]...)
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/access", wrapper.GetCollectionAccess, options.OperationMiddlewares["getCollectionAccess"]...)

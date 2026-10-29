@@ -14,10 +14,25 @@
 
 import * as runtime from '../runtime';
 import {
+    type SetPinDto,
+    SetPinDtoFromJSON,
+    SetPinDtoToJSON,
+} from '../models/SetPinDto';
+import {
     type SpaceBarDto,
     SpaceBarDtoFromJSON,
     SpaceBarDtoToJSON,
 } from '../models/SpaceBarDto';
+import {
+    type UnlockDto,
+    UnlockDtoFromJSON,
+    UnlockDtoToJSON,
+} from '../models/UnlockDto';
+import {
+    type UnlockRequest,
+    UnlockRequestFromJSON,
+    UnlockRequestToJSON,
+} from '../models/UnlockRequest';
 import {
     type UserDto,
     UserDtoFromJSON,
@@ -33,6 +48,20 @@ export interface SetAvatarRequest {
      * 
      */
     url?: string;
+}
+
+export interface SetPinRequest {
+    /**
+     * 
+     */
+    setPinDto: SetPinDto;
+}
+
+export interface UnlockOperationRequest {
+    /**
+     * 
+     */
+    unlockRequest: UnlockRequest;
 }
 
 export interface UpdateSpaceBarRequest {
@@ -183,6 +212,51 @@ export class UserApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for renewUnlock without sending the request
+     */
+    async renewUnlockRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/unlock/renew`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Extend a valid unlock (sent in X-Ragbag-Unlock) while the user is active
+     */
+    async renewUnlockRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UnlockDto>> {
+        const requestOptions = await this.renewUnlockRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UnlockDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Extend a valid unlock (sent in X-Ragbag-Unlock) while the user is active
+     */
+    async renewUnlock(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UnlockDto> {
+        const response = await this.renewUnlockRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for setAvatar without sending the request
      */
     async setAvatarRequestOpts(requestParameters: SetAvatarRequest): Promise<runtime.RequestOpts> {
@@ -249,6 +323,115 @@ export class UserApi extends runtime.BaseAPI {
      */
     async setAvatar(requestParameters: SetAvatarRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
         const response = await this.setAvatarRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setPin without sending the request
+     */
+    async setPinRequestOpts(requestParameters: SetPinRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['setPinDto'] == null) {
+            throw new runtime.RequiredError(
+                'setPinDto',
+                'Required parameter "setPinDto" was null or undefined when calling setPin().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/pin`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetPinDtoToJSON(requestParameters['setPinDto']),
+        };
+    }
+
+    /**
+     * Set or change the PIN that unlocks the user\'s locked collections (needs the account password)
+     */
+    async setPinRaw(requestParameters: SetPinRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.setPinRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Set or change the PIN that unlocks the user\'s locked collections (needs the account password)
+     */
+    async setPin(requestParameters: SetPinRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.setPinRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for unlock without sending the request
+     */
+    async unlockRequestOpts(requestParameters: UnlockOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['unlockRequest'] == null) {
+            throw new runtime.RequiredError(
+                'unlockRequest',
+                'Required parameter "unlockRequest" was null or undefined when calling unlock().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/unlock`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: UnlockRequestToJSON(requestParameters['unlockRequest']),
+        };
+    }
+
+    /**
+     * Unlock the user\'s locked collections with the PIN. The token goes into the X-Ragbag-Unlock header of later requests and expires after a few minutes unless renewed. 
+     */
+    async unlockRaw(requestParameters: UnlockOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UnlockDto>> {
+        const requestOptions = await this.unlockRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UnlockDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Unlock the user\'s locked collections with the PIN. The token goes into the X-Ragbag-Unlock header of later requests and expires after a few minutes unless renewed. 
+     */
+    async unlock(requestParameters: UnlockOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UnlockDto> {
+        const response = await this.unlockRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -14,6 +14,8 @@ import (
 const (
 	TypeAccess  = "ACCESS"
 	TypeRefresh = "REFRESH"
+	// TypeUnlock tokens show the user's locked collections; they come with the X-Ragbag-Unlock header
+	TypeUnlock = "UNLOCK"
 )
 
 // Claims of both token types; token_version lets "log out everywhere" and password changes revoke them.
@@ -47,6 +49,12 @@ func (t *Tokens) Refresh(userID string, tokenVersion int) (string, error) {
 	return t.sign(Claims{Type: TypeRefresh, TokenVersion: tokenVersion}, userID, t.refreshTTL)
 }
 
+// Unlock issues a short-lived token for the user's locked collections and returns when it expires.
+func (t *Tokens) Unlock(userID string, tokenVersion int, ttl time.Duration) (string, time.Time, error) {
+	token, err := t.sign(Claims{Type: TypeUnlock, TokenVersion: tokenVersion}, userID, ttl)
+	return token, time.Now().Add(ttl), err
+}
+
 func (t *Tokens) sign(claims Claims, subject string, ttl time.Duration) (string, error) {
 	issuedAt := time.Now()
 	claims.RegisteredClaims = jwt.RegisteredClaims{
@@ -74,6 +82,21 @@ func (t *Tokens) Parse(token, expectedType string) (*Claims, error) {
 		return nil, errors.New("token without subject")
 	}
 	return &claims, nil
+}
+
+// --- PINs ---
+
+// ValidatePIN accepts 4 to 8 digits: quick to type, and the lockout after wrong attempts keeps guessing slow.
+func ValidatePIN(pin string) error {
+	if len(pin) < 4 || len(pin) > 8 {
+		return errors.New("The PIN must have 4 to 8 digits")
+	}
+	for _, r := range pin {
+		if r < '0' || r > '9' {
+			return errors.New("The PIN may only contain digits")
+		}
+	}
+	return nil
 }
 
 // --- Passwords ---

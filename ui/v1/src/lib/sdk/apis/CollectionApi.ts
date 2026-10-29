@@ -122,6 +122,13 @@ export interface ImportCollectionRequest {
     preview?: boolean;
 }
 
+export interface LockCollectionRequest {
+    /**
+     * 
+     */
+    collectionId: string;
+}
+
 export interface MarkCollectionSeenRequest {
     /**
      * 
@@ -141,6 +148,13 @@ export interface MoveCollectionRequest {
 }
 
 export interface ShareCollectionRequest {
+    /**
+     * 
+     */
+    collectionId: string;
+}
+
+export interface UnlockCollectionRequest {
     /**
      * 
      */
@@ -629,6 +643,58 @@ export class CollectionApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for lockCollection without sending the request
+     */
+    async lockCollectionRequestOpts(requestParameters: LockCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling lockCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/collections/{collectionId}/lock`;
+        urlPath = urlPath.replace('{collectionId}', encodeURIComponent(String(requestParameters['collectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Lock the collection (and everything below it) for the current user only; needs a PIN
+     */
+    async lockCollectionRaw(requestParameters: LockCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.lockCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Lock the collection (and everything below it) for the current user only; needs a PIN
+     */
+    async lockCollection(requestParameters: LockCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.lockCollectionRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for markCollectionSeen without sending the request
      */
     async markCollectionSeenRequestOpts(requestParameters: MarkCollectionSeenRequest): Promise<runtime.RequestOpts> {
@@ -794,6 +860,58 @@ export class CollectionApi extends runtime.BaseAPI {
     async shareCollection(requestParameters: ShareCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<CollectionShareDto> {
         const response = await this.shareCollectionRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for unlockCollection without sending the request
+     */
+    async unlockCollectionRequestOpts(requestParameters: UnlockCollectionRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling unlockCollection().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/collections/{collectionId}/lock`;
+        urlPath = urlPath.replace('{collectionId}', encodeURIComponent(String(requestParameters['collectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Stop locking the collection for the current user (only possible while unlocked)
+     */
+    async unlockCollectionRaw(requestParameters: UnlockCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.unlockCollectionRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Stop locking the collection for the current user (only possible while unlocked)
+     */
+    async unlockCollection(requestParameters: UnlockCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.unlockCollectionRaw(requestParameters, initOverrides);
     }
 
     /**
