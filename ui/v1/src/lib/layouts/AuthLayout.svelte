@@ -402,6 +402,7 @@
 			label: space.name,
 			hint: 'Space',
 			kind: 'space' as const,
+			avatar: { name: space.name, iconId: space.iconId },
 			go: () => selectSpace(space.id),
 		})),
 		...(activeSpaceId
@@ -626,7 +627,10 @@
 							spaceMenuOpen = !spaceMenuOpen;
 						}}
 					>
-						<span class="truncate">{activeSpace.name}</span>
+						<span class="flex min-w-0 items-center gap-2.5">
+							<Avatar name={activeSpace.name} imageId={activeSpace.iconId} class="h-7 w-7 rounded-lg text-[10px]" />
+							<span class="truncate">{activeSpace.name}</span>
+						</span>
 						<ChevronDownOutline class="h-4 w-4 shrink-0 transition-transform {spaceMenuOpen ? 'rotate-180' : ''}" />
 					</button>
 					{#if spaceMenuOpen}

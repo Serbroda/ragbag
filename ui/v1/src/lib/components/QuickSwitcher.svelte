@@ -5,11 +5,14 @@
 		/** Secondary text, e.g. the parent path or "Space". */
 		hint: string;
 		kind: 'space' | 'collection';
+		/** Spaces show their icon (or initials). */
+		avatar?: { name: string; iconId?: string | null };
 		go: () => void;
 	}
 </script>
 
 <script lang="ts">
+	import Avatar from './Avatar.svelte';
 	import { tick } from 'svelte';
 
 	let { open = $bindable(false), items }: { open?: boolean; items: SwitcherItem[] } = $props();
@@ -94,8 +97,13 @@
 							onmouseenter={() => (selected = i)}
 							onclick={() => choose(item)}
 						>
-							<span class="truncate">
-								<span class="me-2 opacity-60">{item.kind === 'space' ? '◆' : '#'}</span>{item.label}
+							<span class="flex min-w-0 items-center gap-2">
+								{#if item.avatar}
+									<Avatar name={item.avatar.name} imageId={item.avatar.iconId} class="h-5 w-5 rounded-md text-[9px]" />
+								{:else}
+									<span class="w-5 shrink-0 text-center opacity-60">#</span>
+								{/if}
+								<span class="truncate">{item.label}</span>
 							</span>
 							<span class="shrink-0 truncate text-xs opacity-70">{item.hint}</span>
 						</button>

@@ -18,6 +18,7 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import { navigate, route } from '../router';
 	import LinkTile from '../components/LinkTile.svelte';
+	import Avatar from '../components/Avatar.svelte';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
 	import FavoriteButton from '../components/FavoriteButton.svelte';
 	import { dashboardApi } from '../stores/dashboard';
@@ -169,7 +170,17 @@
 
 <div>
 	<header class="mb-8 flex flex-wrap items-end justify-between gap-4">
-		<div class="min-w-0">
+		<div class="flex min-w-0 items-center gap-4">
+			{#if space}
+				<Avatar
+					name={space.name}
+					imageId={space.iconId}
+					class="h-16 w-16 rounded-2xl text-xl shadow-sm sm:h-20 sm:w-20 sm:text-2xl {space.iconId
+						? 'ring-1 ring-black/5 dark:ring-white/15'
+						: ''}"
+				/>
+			{/if}
+			<div class="min-w-0">
 			<p class="text-sm text-gray-500 dark:text-gray-400">
 				{greeting}{session.me ? `, ${session.me.username}` : ''} 👋
 			</p>
@@ -196,6 +207,7 @@
 						Invite people
 					</button>
 				{/if}
+			</div>
 			</div>
 		</div>
 		{#if dashboard}
