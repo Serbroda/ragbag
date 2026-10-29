@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type SpaceBarDto,
+    SpaceBarDtoFromJSON,
+    SpaceBarDtoToJSON,
+} from '../models/SpaceBarDto';
+import {
     type UserDto,
     UserDtoFromJSON,
     UserDtoToJSON,
@@ -30,10 +35,62 @@ export interface SetAvatarRequest {
     url?: string;
 }
 
+export interface UpdateSpaceBarRequest {
+    /**
+     * 
+     */
+    spaceBarDto: SpaceBarDto;
+}
+
 /**
  * 
  */
 export class UserApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for getSpaceBar without sending the request
+     */
+    async getSpaceBarRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/space-bar`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Personal order and folders of the space bar
+     */
+    async getSpaceBarRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpaceBarDto>> {
+        const requestOptions = await this.getSpaceBarRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpaceBarDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Personal order and folders of the space bar
+     */
+    async getSpaceBar(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceBarDto> {
+        const response = await this.getSpaceBarRaw(initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for me without sending the request
@@ -192,6 +249,61 @@ export class UserApi extends runtime.BaseAPI {
      */
     async setAvatar(requestParameters: SetAvatarRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
         const response = await this.setAvatarRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for updateSpaceBar without sending the request
+     */
+    async updateSpaceBarRequestOpts(requestParameters: UpdateSpaceBarRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceBarDto'] == null) {
+            throw new runtime.RequiredError(
+                'spaceBarDto',
+                'Required parameter "spaceBarDto" was null or undefined when calling updateSpaceBar().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/space-bar`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SpaceBarDtoToJSON(requestParameters['spaceBarDto']),
+        };
+    }
+
+    /**
+     * Save the personal order and folders of the space bar
+     */
+    async updateSpaceBarRaw(requestParameters: UpdateSpaceBarRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpaceBarDto>> {
+        const requestOptions = await this.updateSpaceBarRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpaceBarDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Save the personal order and folders of the space bar
+     */
+    async updateSpaceBar(requestParameters: UpdateSpaceBarRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceBarDto> {
+        const response = await this.updateSpaceBarRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

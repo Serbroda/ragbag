@@ -250,11 +250,15 @@ type BookmarkDto struct {
 	Favorite *bool `json:"favorite,omitempty"`
 
 	// Id UUID
-	Id      ID        `json:"id"`
-	OgImage *string   `json:"ogImage,omitempty"`
-	Tags    *[]string `json:"tags,omitempty"`
-	Title   *string   `json:"title,omitempty"`
-	Url     string    `json:"url"`
+	Id ID `json:"id"`
+
+	// IsNew Added by another member since the current user last looked at the collection; only set when listing a collection
+	IsNew     *bool          `json:"isNew,omitempty"`
+	OgImage   *string        `json:"ogImage,omitempty"`
+	Reactions *[]ReactionDto `json:"reactions,omitempty"`
+	Tags      *[]string      `json:"tags,omitempty"`
+	Title     *string        `json:"title,omitempty"`
+	Url       string         `json:"url"`
 }
 
 // BookmarkDtoList defines model for BookmarkDtoList.
@@ -313,6 +317,9 @@ type CollectionDto struct {
 	Id   ID     `json:"id"`
 	Name string `json:"name"`
 
+	// NewCount Links directly in this collection that are new for the current user; only set in the tree
+	NewCount *int `json:"newCount,omitempty"`
+
 	// ParentId UUID
 	ParentId *ID `json:"parentId,omitempty"`
 
@@ -322,6 +329,17 @@ type CollectionDto struct {
 
 // CollectionDtoList defines model for CollectionDtoList.
 type CollectionDtoList = []CollectionDto
+
+// CollectionNewsDto defines model for CollectionNewsDto.
+type CollectionNewsDto struct {
+	// AddedBy Usernames of the members who added them
+	AddedBy []string `json:"addedBy"`
+
+	// CollectionId UUID
+	CollectionId ID        `json:"collectionId"`
+	Count        int       `json:"count"`
+	LatestAt     time.Time `json:"latestAt"`
+}
 
 // CollectionVisibilityDto defines model for CollectionVisibilityDto.
 type CollectionVisibilityDto string
@@ -528,6 +546,18 @@ type PasswordResetPreviewDto struct {
 	Valid bool `json:"valid"`
 }
 
+// ReactionDto defines model for ReactionDto.
+type ReactionDto struct {
+	Count int    `json:"count"`
+	Emoji string `json:"emoji"`
+
+	// Reacted Whether the current user is one of them
+	Reacted bool `json:"reacted"`
+
+	// Users Usernames of everybody who reacted
+	Users []string `json:"users"`
+}
+
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	Email    string `json:"email"`
@@ -538,6 +568,30 @@ type RegisterRequest struct {
 // ResetPasswordRequest defines model for ResetPasswordRequest.
 type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword"`
+}
+
+// SetReactionDto defines model for SetReactionDto.
+type SetReactionDto struct {
+	// Emoji One of 👍 ❤️ 😂 🔥 😮 🙏
+	Emoji string `json:"emoji"`
+
+	// Reacted True adds the reaction, false removes it
+	Reacted bool `json:"reacted"`
+}
+
+// SpaceBarDto The space bar from top to bottom. Spaces missing here are shown after these items; spaces the user is no longer a member of are dropped.
+type SpaceBarDto struct {
+	Items []SpaceBarItemDto `json:"items"`
+}
+
+// SpaceBarItemDto Either a single space (spaceId) or a folder (folderId, name, spaceIds)
+type SpaceBarItemDto struct {
+	FolderId *string `json:"folderId,omitempty"`
+	Name     *string `json:"name,omitempty"`
+
+	// SpaceId UUID
+	SpaceId  *ID   `json:"spaceId,omitempty"`
+	SpaceIds *[]ID `json:"spaceIds,omitempty"`
 }
 
 // SpaceDto defines model for SpaceDto.
@@ -554,8 +608,11 @@ type SpaceDto struct {
 	Id ID `json:"id"`
 
 	// JoinRole Role of people joining a discoverable space
-	JoinRole    *JoinRoleEnum          `json:"joinRole,omitempty"`
-	Name        string                 `json:"name"`
+	JoinRole *JoinRoleEnum `json:"joinRole,omitempty"`
+	Name     string        `json:"name"`
+
+	// NewCount Links other members added since the current user last looked; only set in the space list
+	NewCount    *int                   `json:"newCount,omitempty"`
 	Permissions *[]SpacePermissionEnum `json:"permissions,omitempty"`
 	Role        *SpaceMemberRoleEnum   `json:"role,omitempty"`
 }
@@ -703,6 +760,9 @@ type RegisterJSONRequestBody = RegisterRequest
 // UpdateBookmarkJSONRequestBody defines body for UpdateBookmark for application/json ContentType.
 type UpdateBookmarkJSONRequestBody = UpdateBookmarkDto
 
+// SetReactionJSONRequestBody defines body for SetReaction for application/json ContentType.
+type SetReactionJSONRequestBody = SetReactionDto
+
 // UpdateCollectionJSONRequestBody defines body for UpdateCollection for application/json ContentType.
 type UpdateCollectionJSONRequestBody = UpdateCollectionDto
 
@@ -744,6 +804,9 @@ type UpdateSpaceMemberJSONRequestBody = UpdateSpaceMemberDto
 
 // SetAvatarMultipartRequestBody defines body for SetAvatar for multipart/form-data ContentType.
 type SetAvatarMultipartRequestBody = ImageUpload
+
+// UpdateSpaceBarJSONRequestBody defines body for UpdateSpaceBar for application/json ContentType.
+type UpdateSpaceBarJSONRequestBody = SpaceBarDto
 
 // ServerInterface represents all server handlers.
 type ServerInterface interface {
@@ -795,6 +858,9 @@ type ServerInterface interface {
 	// AddFavorite Mark a bookmark as favorite for the current user
 	// (PUT /v1/bookmarks/{bookmarkId}/favorite)
 	AddFavorite(ctx echo.Context, bookmarkId ID) error
+	// SetReaction Add or remove a reaction of the current user
+	// (PUT /v1/bookmarks/{bookmarkId}/reactions)
+	SetReaction(ctx echo.Context, bookmarkId ID) error
 	// DeleteCollection Delete a collection
 	// (DELETE /v1/collections/{collectionId})
 	DeleteCollection(ctx echo.Context, collectionId ID) error
@@ -828,6 +894,9 @@ type ServerInterface interface {
 	// MoveCollection Move a collection to a new parent
 	// (POST /v1/collections/{collectionId}/move)
 	MoveCollection(ctx echo.Context, collectionId ID) error
+	// MarkCollectionSeen Mark the links of the collection as seen by the current user
+	// (POST /v1/collections/{collectionId}/seen)
+	MarkCollectionSeen(ctx echo.Context, collectionId ID) error
 	// GetImage Get an avatar or space icon (public, ids are unguessable and change with every upload)
 	// (GET /v1/images/{imageId})
 	GetImage(ctx echo.Context, imageId ID) error
@@ -912,6 +981,12 @@ type ServerInterface interface {
 	// UpdateSpaceMember Change the role of a space member
 	// (PUT /v1/spaces/{spaceId}/members/{userId})
 	UpdateSpaceMember(ctx echo.Context, spaceId ID, userId ID) error
+	// GetSpaceNews Links other members added since the current user last looked, per collection
+	// (GET /v1/spaces/{spaceId}/news)
+	GetSpaceNews(ctx echo.Context, spaceId ID) error
+	// MarkSpaceSeen Mark everything in the space as seen by the current user
+	// (POST /v1/spaces/{spaceId}/seen)
+	MarkSpaceSeen(ctx echo.Context, spaceId ID) error
 	// Me Get current user
 	// (GET /v1/users/me)
 	Me(ctx echo.Context) error
@@ -921,6 +996,12 @@ type ServerInterface interface {
 	// SetAvatar Set the avatar of the current user from an uploaded file or a URL
 	// (PUT /v1/users/me/avatar)
 	SetAvatar(ctx echo.Context) error
+	// GetSpaceBar Personal order and folders of the space bar
+	// (GET /v1/users/me/space-bar)
+	GetSpaceBar(ctx echo.Context) error
+	// UpdateSpaceBar Save the personal order and folders of the space bar
+	// (PUT /v1/users/me/space-bar)
+	UpdateSpaceBar(ctx echo.Context) error
 }
 
 // ServerInterfaceWrapper converts echo contexts to parameters.
@@ -1142,6 +1223,22 @@ func (w *ServerInterfaceWrapper) AddFavorite(ctx echo.Context) error {
 	return err
 }
 
+// SetReaction converts echo context to params.
+func (w *ServerInterfaceWrapper) SetReaction(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetReaction(ctx, bookmarkId)
+	return err
+}
+
 // DeleteCollection converts echo context to params.
 func (w *ServerInterfaceWrapper) DeleteCollection(ctx echo.Context) error {
 	var err error
@@ -1324,6 +1421,22 @@ func (w *ServerInterfaceWrapper) MoveCollection(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.MoveCollection(ctx, collectionId)
+	return err
+}
+
+// MarkCollectionSeen converts echo context to params.
+func (w *ServerInterfaceWrapper) MarkCollectionSeen(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "collectionId" -------------
+	var collectionId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "collectionId", ctx.Param("collectionId"), &collectionId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter collectionId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.MarkCollectionSeen(ctx, collectionId)
 	return err
 }
 
@@ -1783,6 +1896,38 @@ func (w *ServerInterfaceWrapper) UpdateSpaceMember(ctx echo.Context) error {
 	return err
 }
 
+// GetSpaceNews converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSpaceNews(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSpaceNews(ctx, spaceId)
+	return err
+}
+
+// MarkSpaceSeen converts echo context to params.
+func (w *ServerInterfaceWrapper) MarkSpaceSeen(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.MarkSpaceSeen(ctx, spaceId)
+	return err
+}
+
 // Me converts echo context to params.
 func (w *ServerInterfaceWrapper) Me(ctx echo.Context) error {
 	var err error
@@ -1807,6 +1952,24 @@ func (w *ServerInterfaceWrapper) SetAvatar(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.SetAvatar(ctx)
+	return err
+}
+
+// GetSpaceBar converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSpaceBar(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSpaceBar(ctx)
+	return err
+}
+
+// UpdateSpaceBar converts echo context to params.
+func (w *ServerInterfaceWrapper) UpdateSpaceBar(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UpdateSpaceBar(ctx)
 	return err
 }
 
@@ -1869,6 +2032,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/admin/users", wrapper.GetAllUsers, options.OperationMiddlewares["getAllUsers"]...)
 	router.POST(options.BaseURL+"/v1/admin/users/:userId/password-reset", wrapper.CreatePasswordReset, options.OperationMiddlewares["createPasswordReset"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
+	router.GET(options.BaseURL+"/v1/users/me/space-bar", wrapper.GetSpaceBar, options.OperationMiddlewares["getSpaceBar"]...)
+	router.PUT(options.BaseURL+"/v1/users/me/space-bar", wrapper.UpdateSpaceBar, options.OperationMiddlewares["updateSpaceBar"]...)
 	router.DELETE(options.BaseURL+"/v1/users/me/avatar", wrapper.RemoveAvatar, options.OperationMiddlewares["removeAvatar"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/avatar", wrapper.SetAvatar, options.OperationMiddlewares["setAvatar"]...)
 	router.GET(options.BaseURL+"/v1/images/:imageId", wrapper.GetImage, options.OperationMiddlewares["getImage"]...)
@@ -1881,6 +2046,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/spaces/:spaceId/icon", wrapper.SetSpaceIcon, options.OperationMiddlewares["setSpaceIcon"]...)
 	router.GET(options.BaseURL+"/v1/spaces/discover", wrapper.DiscoverSpaces, options.OperationMiddlewares["discoverSpaces"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/join", wrapper.JoinSpace, options.OperationMiddlewares["joinSpace"]...)
+	router.GET(options.BaseURL+"/v1/spaces/:spaceId/news", wrapper.GetSpaceNews, options.OperationMiddlewares["getSpaceNews"]...)
+	router.POST(options.BaseURL+"/v1/spaces/:spaceId/seen", wrapper.MarkSpaceSeen, options.OperationMiddlewares["markSpaceSeen"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/leave", wrapper.LeaveSpace, options.OperationMiddlewares["leaveSpace"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/members", wrapper.GetSpaceMembers, options.OperationMiddlewares["getSpaceMembers"]...)
 	router.DELETE(options.BaseURL+"/v1/spaces/:spaceId/members/:userId", wrapper.RemoveSpaceMember, options.OperationMiddlewares["removeSpaceMember"]...)
@@ -1891,6 +2058,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.DELETE(options.BaseURL+"/v1/collections/:collectionId", wrapper.DeleteCollection, options.OperationMiddlewares["deleteCollection"]...)
 	router.GET(options.BaseURL+"/v1/collections/:collectionId", wrapper.GetCollection, options.OperationMiddlewares["getCollection"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId", wrapper.UpdateCollection, options.OperationMiddlewares["updateCollection"]...)
+	router.POST(options.BaseURL+"/v1/collections/:collectionId/seen", wrapper.MarkCollectionSeen, options.OperationMiddlewares["markCollectionSeen"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/move", wrapper.MoveCollection, options.OperationMiddlewares["moveCollection"]...)
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/access", wrapper.GetCollectionAccess, options.OperationMiddlewares["getCollectionAccess"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId/access", wrapper.UpdateCollectionAccess, options.OperationMiddlewares["updateCollectionAccess"]...)
@@ -1902,6 +2070,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks", wrapper.CreateBookmark, options.OperationMiddlewares["createBookmark"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks/metadata", wrapper.FetchBookmarkMetadata, options.OperationMiddlewares["fetchBookmarkMetadata"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/favorites", wrapper.GetFavorites, options.OperationMiddlewares["getFavorites"]...)
+	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/reactions", wrapper.SetReaction, options.OperationMiddlewares["setReaction"]...)
 	router.DELETE(options.BaseURL+"/v1/bookmarks/:bookmarkId/favorite", wrapper.RemoveFavorite, options.OperationMiddlewares["removeFavorite"]...)
 	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/favorite", wrapper.AddFavorite, options.OperationMiddlewares["addFavorite"]...)
 	router.DELETE(options.BaseURL+"/v1/spaces/:spaceId/dashboard", wrapper.ResetDashboard, options.OperationMiddlewares["resetDashboard"]...)

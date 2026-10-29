@@ -17,6 +17,7 @@ models/ChangePasswordRequest.ts
 models/CollectionAccessDto.ts
 models/CollectionAccessMemberDto.ts
 models/CollectionDto.ts
+models/CollectionNewsDto.ts
 models/CollectionVisibilityDto.ts
 models/CreateBookmarkDto.ts
 models/CreateCollectionDto.ts
@@ -38,8 +39,12 @@ models/ModelError.ts
 models/MoveCollectionDto.ts
 models/PasswordResetDto.ts
 models/PasswordResetPreviewDto.ts
+models/ReactionDto.ts
 models/RegisterRequest.ts
 models/ResetPasswordRequest.ts
+models/SetReactionDto.ts
+models/SpaceBarDto.ts
+models/SpaceBarItemDto.ts
 models/SpaceDto.ts
 models/SpaceMemberDto.ts
 models/SpaceMemberRoleEnum.ts

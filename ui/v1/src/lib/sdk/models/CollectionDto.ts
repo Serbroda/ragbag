@@ -47,6 +47,10 @@ export interface CollectionDto {
      * Links directly in this collection; only set in the collection tree
      */
     bookmarkCount?: number;
+    /**
+     * Links directly in this collection that are new for the current user; only set in the tree
+     */
+    newCount?: number;
 }
 
 /**
@@ -75,6 +79,7 @@ export function CollectionDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'restricted': json['restricted'] == null ? undefined : json['restricted'],
         'children': json['children'] == null ? undefined : ((json['children'] as Array<any>).map(CollectionDtoFromJSON)),
         'bookmarkCount': json['bookmarkCount'] == null ? undefined : json['bookmarkCount'],
+        'newCount': json['newCount'] == null ? undefined : json['newCount'],
     };
 }
 
@@ -96,6 +101,7 @@ export function CollectionDtoToJSONTyped(value?: CollectionDto | null, ignoreDis
         'restricted': value['restricted'],
         'children': value['children'] == null ? undefined : ((value['children'] as Array<any>).map(CollectionDtoToJSON)),
         'bookmarkCount': value['bookmarkCount'],
+        'newCount': value['newCount'],
     };
 }
 

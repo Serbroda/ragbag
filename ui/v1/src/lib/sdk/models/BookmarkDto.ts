@@ -13,6 +13,14 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { ReactionDto } from './ReactionDto';
+import {
+    ReactionDtoFromJSON,
+    ReactionDtoFromJSONTyped,
+    ReactionDtoToJSON,
+    ReactionDtoToJSONTyped,
+} from './ReactionDto';
+
 /**
  * 
  * @export
@@ -67,6 +75,15 @@ export interface BookmarkDto {
      * Whether the current user marked this bookmark as favorite
      */
     favorite?: boolean;
+    /**
+     * Added by another member since the current user last looked at the collection; only set when listing a collection
+     * 
+     */
+    isNew?: boolean;
+    /**
+     * 
+     */
+    reactions?: Array<ReactionDto>;
 }
 
 /**
@@ -100,6 +117,8 @@ export function BookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'createdAt': json['createdAt'] == null ? undefined : (parseDateTime(json['createdAt'])),
         'createdBy': json['createdBy'] == null ? undefined : json['createdBy'],
         'favorite': json['favorite'] == null ? undefined : json['favorite'],
+        'isNew': json['isNew'] == null ? undefined : json['isNew'],
+        'reactions': json['reactions'] == null ? undefined : ((json['reactions'] as Array<any>).map(ReactionDtoFromJSON)),
     };
 }
 
@@ -126,6 +145,8 @@ export function BookmarkDtoToJSONTyped(value?: BookmarkDto | null, ignoreDiscrim
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'createdBy': value['createdBy'],
         'favorite': value['favorite'],
+        'isNew': value['isNew'],
+        'reactions': value['reactions'] == null ? undefined : ((value['reactions'] as Array<any>).map(ReactionDtoToJSON)),
     };
 }
 

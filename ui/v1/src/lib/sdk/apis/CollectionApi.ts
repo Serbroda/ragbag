@@ -110,6 +110,13 @@ export interface ImportCollectionRequest {
     preview?: boolean;
 }
 
+export interface MarkCollectionSeenRequest {
+    /**
+     * 
+     */
+    collectionId: string;
+}
+
 export interface MoveCollectionRequest {
     /**
      * 
@@ -540,6 +547,58 @@ export class CollectionApi extends runtime.BaseAPI {
     async importCollection(requestParameters: ImportCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResultDto> {
         const response = await this.importCollectionRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for markCollectionSeen without sending the request
+     */
+    async markCollectionSeenRequestOpts(requestParameters: MarkCollectionSeenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['collectionId'] == null) {
+            throw new runtime.RequiredError(
+                'collectionId',
+                'Required parameter "collectionId" was null or undefined when calling markCollectionSeen().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/collections/{collectionId}/seen`;
+        urlPath = urlPath.replace('{collectionId}', encodeURIComponent(String(requestParameters['collectionId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mark the links of the collection as seen by the current user
+     */
+    async markCollectionSeenRaw(requestParameters: MarkCollectionSeenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.markCollectionSeenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Mark the links of the collection as seen by the current user
+     */
+    async markCollectionSeen(requestParameters: MarkCollectionSeenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.markCollectionSeenRaw(requestParameters, initOverrides);
     }
 
     /**

@@ -39,9 +39,18 @@ func (s *Server) bookmarkDtos(c echo.Context, bookmarks []store.Bookmark) ([]api
 	if err != nil {
 		return nil, err
 	}
+	reactions, err := s.reactionDtos(c, ids)
+	if err != nil {
+		return nil, err
+	}
 	result := make([]api.BookmarkDto, len(bookmarks))
 	for i := range bookmarks {
 		result[i] = bookmarkDto(&bookmarks[i], favorites[bookmarks[i].ID])
+		list := reactions[bookmarks[i].ID]
+		if list == nil {
+			list = []api.ReactionDto{}
+		}
+		result[i].Reactions = &list
 	}
 	return result, nil
 }
@@ -69,12 +78,34 @@ func (s *Server) respondBookmark(c echo.Context, bookmarkID string) error {
 	return c.JSON(http.StatusOK, dtos[0])
 }
 
+// GetBookmarks lists a collection and flags the links that are new for the user. Listing does not mark them
+// as seen; the frontend does that separately once it has shown them.
 func (s *Server) GetBookmarks(c echo.Context, collectionID api.ID) error {
-	if _, _, err := s.requireCollection(ctxOf(c), s.store, collectionID, currentUser(c), PermRead); err != nil {
+	collection, _, err := s.requireCollection(ctxOf(c), s.store, collectionID, currentUser(c), PermRead)
+	if err != nil {
 		return err
 	}
 	bookmarks, err := s.store.BookmarksInCollection(ctxOf(c), collectionID)
-	return s.respondBookmarks(c, bookmarks, err)
+	if err != nil {
+		return err
+	}
+	news, err := s.store.NewBookmarks(ctxOf(c), currentUser(c), collection.SpaceID)
+	if err != nil {
+		return err
+	}
+	isNew := map[string]bool{}
+	for _, item := range news {
+		isNew[item.ID] = true
+	}
+	dtos, err := s.bookmarkDtos(c, bookmarks)
+	if err != nil {
+		return err
+	}
+	for i := range dtos {
+		flag := isNew[dtos[i].Id]
+		dtos[i].IsNew = &flag
+	}
+	return c.JSON(http.StatusOK, dtos)
 }
 
 func (s *Server) GetBookmark(c echo.Context, bookmarkID api.ID) error {

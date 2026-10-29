@@ -5,6 +5,7 @@
 	import { getDomain, safeUrl, timeAgo } from '../utils/format';
 	import { preferences, type LinkView } from '../stores/preferences.svelte';
 	import FavoriteButton from './FavoriteButton.svelte';
+	import Reactions from './Reactions.svelte';
 	import { p, route } from '../router';
 
 	let {
@@ -96,6 +97,15 @@
 	{/if}
 {/snippet}
 
+{#snippet newBadge()}
+	{#if bookmark.isNew}
+		<span
+			class="shrink-0 rounded bg-primary-500 px-1.5 py-px text-[10px] font-bold uppercase tracking-wide text-white"
+			title="Added since your last visit">New</span
+		>
+	{/if}
+{/snippet}
+
 {#snippet tags(limit: number)}
 	{#each (bookmark.tags ?? []).slice(0, limit) as tag (tag)}
 		<!-- Lifted above the title link that covers the card -->
@@ -118,7 +128,9 @@
 	>
 		{@render faviconIcon('h-5 w-5')}
 		<div class="min-w-0 flex-1">
-			<p class="truncate text-sm">{@render titleLink('font-medium')}</p>
+			<p class="flex min-w-0 items-center gap-2 text-sm">
+				{@render newBadge()}<span class="truncate">{@render titleLink('font-medium')}</span>
+			</p>
 			<p class="truncate text-xs text-gray-500">
 				{getDomain(bookmark.url)}
 				{#if collectionName || bookmark.createdBy || bookmark.createdAt}·{/if}
@@ -128,6 +140,7 @@
 		{#if bookmark.tags?.length}
 			<div class="hidden shrink-0 gap-1.5 lg:flex">{@render tags(3)}</div>
 		{/if}
+		<div class="shrink-0"><Reactions bookmarkId={bookmark.id} reactions={bookmark.reactions} /></div>
 		<div
 			class="relative z-10 shrink-0 transition {favorite ? '' : 'opacity-0 focus-within:opacity-100 group-hover:opacity-100'}"
 		>
@@ -169,6 +182,7 @@
 			<div class="flex items-center gap-2 pe-8 text-xs text-gray-500">
 				{@render faviconIcon('h-4 w-4')}
 				<span class="truncate">{getDomain(bookmark.url)}</span>
+				{@render newBadge()}
 			</div>
 
 			{@render titleLink('line-clamp-2 font-semibold leading-snug')}
@@ -189,6 +203,7 @@
 
 			<div class="relative z-10 mt-auto flex items-center gap-2 pt-2 text-xs text-gray-500">
 				<p class="min-w-0 flex-1 truncate">{@render meta()}</p>
+				<Reactions bookmarkId={bookmark.id} reactions={bookmark.reactions} />
 				{#if actions}
 					<div class="relative">
 						{@render actions()}
