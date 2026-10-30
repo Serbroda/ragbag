@@ -79,7 +79,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - `internal/auth` — JWTs (HS256) and BCrypt passwords (8 characters to 72 bytes)
 - `internal/fetch` — SSRF-guarded fetching of user supplied URLs (every redirect and the dialed IP are checked;
   loopback/link-local always refused, private networks unless `ALLOW_PRIVATE_HOSTS`) and the page metadata parser
-- `internal/images` — avatars and space icons: content sniffing, decompression bomb check, center crop, 256 px PNG
+- `internal/images` — avatars and space icons: content sniffing, decompression bomb check, center crop, 256 px PNG.
+  Random space icons are DiceBear's "Planets" (CC0 1.0, `utils/planet.ts`), generated in the browser (loaded on
+  demand, never the DiceBear API) and uploaded as PNG like any other icon; new spaces get one unless removed
 - `ui` — embeds the frontend build `ui/v1/dist` (only `.gitkeep` is committed, so the package compiles before
   the first build). `v1` leaves room to develop a new UI generation next to the current one
 

@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { planetFile, randomPlanetSeed } from '../utils/planet';
 	import { InviteApi, SpaceApi, UserApi } from 'ragbag-frontend-sdk';
 	import type {
 		InviteDto,
@@ -14,7 +15,7 @@
 	import { navigate, route } from '../router';
 	import RoleBadge from '../components/RoleBadge.svelte';
 	import Avatar from '../components/Avatar.svelte';
-	import ImagePicker from '../components/ImagePicker.svelte';
+	import ImagePicker, { type ImageChange } from '../components/ImagePicker.svelte';
 	import { copyText } from '../utils/clipboard';
 
 	const spaceApi = new SpaceApi(apiConfig());
@@ -93,6 +94,9 @@
 	let savingGeneral = $state(false);
 	let generalMessage = $state<{ color: 'green' | 'red'; text: string } | null>(null);
 
+	/** A new or removed icon, applied with the rest of "General" on save. */
+	let iconChange = $state<ImageChange>(null);
+
 	async function saveGeneral(e: Event) {
 		e.preventDefault();
 		savingGeneral = true;
@@ -102,6 +106,13 @@
 				spaceId,
 				updateSpaceDto: { name: name.trim(), description: description.trim() || undefined },
 			});
+			if (iconChange) {
+				space =
+					'file' in iconChange
+						? await spaceApi.setSpaceIcon({ spaceId, file: iconChange.file })
+						: await spaceApi.removeSpaceIcon({ spaceId });
+				iconChange = null;
+			}
 			await reloadSpaces?.();
 			generalMessage = { color: 'green', text: 'Saved.' };
 		} catch (err) {
@@ -305,15 +316,17 @@
 						name={space.name}
 						imageId={space.iconId}
 						shape="rounded-2xl"
-						onupload={async (file) => {
-							space = await spaceApi.setSpaceIcon({ spaceId, file });
-							await reloadSpaces?.();
-						}}
-						onremove={async () => {
-							space = await spaceApi.removeSpaceIcon({ spaceId });
-							await reloadSpaces?.();
-						}}
+						bind:change={iconChange}
+						random={{ label: 'Random planet', file: () => planetFile(randomPlanetSeed()) }}
 					/>
+					{#if iconChange}
+						<p class="mt-2 text-xs text-primary-600 dark:text-primary-400">
+							The new icon is used once you save.
+							<button type="button" class="ms-1 text-gray-500 hover:underline dark:text-gray-400" onclick={() => (iconChange = null)}>
+								Undo
+							</button>
+						</p>
+					{/if}
 				{:else}
 					<Avatar name={space.name} imageId={space.iconId} class="h-20 w-20 rounded-2xl text-2xl" />
 				{/if}
