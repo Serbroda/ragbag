@@ -529,6 +529,7 @@
 		if (path.endsWith('/settings')) return [space, { label: 'Settings', icon: CogSolid }];
 		if (path.endsWith('/search')) return [space, { label: 'Search', icon: SearchOutline }];
 		if (path.endsWith('/favorites')) return [space, { label: 'Favorites', icon: StarSolid }];
+		if (path.endsWith('/trash')) return [space, { label: 'Trash', icon: TrashBinOutline }];
 		if (activeCollectionId) {
 			const trail = pathToNode(menuTree, activeCollectionId);
 			if (trail.length === 0) return [space, { label: 'Collection', icon: FolderOutline }];
@@ -558,6 +559,12 @@
 						icon: StarSolid,
 						path: `/space/${activeSpaceId}/favorites`,
 						href: p('/space/:spaceId/favorites', { params: { spaceId: activeSpaceId } }),
+					},
+					{
+						label: 'Trash',
+						icon: TrashBinOutline,
+						path: `/space/${activeSpaceId}/trash`,
+						href: p('/space/:spaceId/trash', { params: { spaceId: activeSpaceId } }),
 					},
 				]
 			: [],

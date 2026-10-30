@@ -28,10 +28,10 @@ func (s *Server) spaceCollections(c echo.Context, spaceID string) ([]store.Colle
 	return collections, byID, nil
 }
 
-// privateInPath tells whether the collection or one of its ancestors is private.
+// privateInPath tells whether the collection or one of its ancestors is private or in the trash.
 func privateInPath(byID map[string]*store.Collection, collection *store.Collection) bool {
 	for current, depth := collection, 0; current != nil && depth < 1000; depth++ {
-		if current.Restricted {
+		if current.Restricted || current.DeletedAt != nil {
 			return true
 		}
 		if current.ParentID == nil {
@@ -129,7 +129,7 @@ func (s *Server) sharedCollection(c echo.Context, token string, collectionID *st
 	}
 	path := []*store.Collection{}
 	for current := target; ; {
-		if current.Restricted {
+		if current.Restricted || current.DeletedAt != nil {
 			return nil, notFound(shareNotFound)
 		}
 		path = append([]*store.Collection{current}, path...)
@@ -153,7 +153,7 @@ func (s *Server) sharedCollection(c echo.Context, token string, collectionID *st
 	publicChildren := map[string][]*store.Collection{}
 	for i := range collections {
 		collection := &collections[i]
-		if collection.ParentID != nil && !collection.Restricted {
+		if collection.ParentID != nil && !collection.Restricted && collection.DeletedAt == nil {
 			publicChildren[*collection.ParentID] = append(publicChildren[*collection.ParentID], collection)
 		}
 	}

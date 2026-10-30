@@ -27,7 +27,8 @@ type Bookmark struct {
 const (
 	bookmarkColumns = `b.id, b.collection_id, c.space_id, b.url, b.title, b.description, b.og_image, b.favicon,
 		b.canonical, b.created_by, u.username AS created_by_name, b.created_at, b.updated_at`
-	bookmarkJoins  = ` JOIN collections c ON c.id = b.collection_id JOIN users u ON u.id = b.created_by`
+	// Links in the trash are left out of every query that uses these joins
+	bookmarkJoins  = ` JOIN collections c ON c.id = b.collection_id AND b.deleted_at IS NULL JOIN users u ON u.id = b.created_by`
 	bookmarkSelect = `SELECT ` + bookmarkColumns + ` FROM bookmarks b` + bookmarkJoins
 )
 
@@ -56,8 +57,19 @@ func (s *Store) UpdateBookmark(ctx context.Context, b *Bookmark) error {
 	return s.setTags(ctx, b.ID, b.Tags)
 }
 
-func (s *Store) DeleteBookmark(ctx context.Context, id string) error {
+// DeleteBookmark moves the link to the trash; PurgeBookmark deletes it for good.
+func (s *Store) DeleteBookmark(ctx context.Context, id, userID string) error {
+	_, err := s.exec(ctx, `UPDATE bookmarks SET deleted_at = ?, deleted_by = ? WHERE id = ?`, now(), userID, id)
+	return err
+}
+
+func (s *Store) PurgeBookmark(ctx context.Context, id string) error {
 	_, err := s.exec(ctx, `DELETE FROM bookmarks WHERE id = ?`, id)
+	return err
+}
+
+func (s *Store) RestoreBookmark(ctx context.Context, id string) error {
+	_, err := s.exec(ctx, `UPDATE bookmarks SET deleted_at = NULL, deleted_by = NULL WHERE id = ?`, id)
 	return err
 }
 
@@ -144,9 +156,35 @@ func (s *Store) SearchBookmarks(ctx context.Context, spaceID, query string, hidd
 	return bookmarks, s.loadTags(ctx, bookmarks)
 }
 
+// TagCount is a tag with the number of links that carry it.
+type TagCount struct {
+	Tag   string `db:"tag"`
+	Count int    `db:"n"`
+}
+
+// TagCounts lists the tags of the space's links outside the hidden collections, exactly as spelled.
+func (s *Store) TagCounts(ctx context.Context, spaceID string, hidden []string) ([]TagCount, error) {
+	query, args := excludeCollections(`SELECT t.tag, COUNT(*) AS n FROM bookmark_tags t
+		JOIN bookmarks b ON b.id = t.bookmark_id`+bookmarkJoins+` WHERE c.space_id = ?`, []any{spaceID}, hidden)
+	var counts []TagCount
+	err := s.selIn(ctx, &counts, query+` GROUP BY t.tag`, args...)
+	return counts, err
+}
+
+// BookmarksByURL finds the space's links with this URL (or this canonical URL) outside the hidden collections.
+func (s *Store) BookmarksByURL(ctx context.Context, spaceID, url string, hidden []string) ([]Bookmark, error) {
+	query, args := excludeCollections(bookmarkSelect+` WHERE c.space_id = ? AND (b.url = ? OR b.canonical = ?)`,
+		[]any{spaceID, url, url}, hidden)
+	var bookmarks []Bookmark
+	if err := s.selIn(ctx, &bookmarks, query+` ORDER BY b.created_at DESC, b.id LIMIT 20`, args...); err != nil {
+		return nil, err
+	}
+	return bookmarks, s.loadTags(ctx, bookmarks)
+}
+
 func (s *Store) URLsInCollection(ctx context.Context, collectionID string) ([]string, error) {
 	var urls []string
-	err := s.sel(ctx, &urls, `SELECT url FROM bookmarks WHERE collection_id = ?`, collectionID)
+	err := s.sel(ctx, &urls, `SELECT url FROM bookmarks WHERE collection_id = ? AND deleted_at IS NULL`, collectionID)
 	return urls, err
 }
 

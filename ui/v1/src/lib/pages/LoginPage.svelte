@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { Label, Input, Button, Alert } from 'flowbite-svelte';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
-	import { errorMessage, login, register, fetchFeatureFlags, takePendingInvite } from '../api/client';
+	import { appBase, errorMessage, login, register, fetchFeatureFlags, takePendingAdd, takePendingInvite } from '../api/client';
 	import { navigate, route } from '../router';
 	import { resetSession } from '../stores/spaces.svelte';
 
@@ -62,8 +62,11 @@
 				await login(username, password);
 				resetSession();
 				const pendingInvite = takePendingInvite();
+				const pendingAdd = takePendingAdd();
 				if (pendingInvite) {
 					navigate('/invite/:token', { params: { token: pendingInvite } });
+				} else if (pendingAdd !== null) {
+					window.location.href = `${appBase()}/add${pendingAdd}`;
 				} else {
 					navigate('/');
 				}

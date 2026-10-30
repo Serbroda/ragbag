@@ -63,6 +63,20 @@ func run() error {
 			return err
 		}
 	}
+	// What has been in the trash for 30 days is deleted for good
+	go func() {
+		ticker := time.NewTicker(time.Hour)
+		defer ticker.Stop()
+		for {
+			srv.PurgeOldTrash(ctx)
+			select {
+			case <-ctx.Done():
+				return
+			case <-ticker.C:
+			}
+		}
+	}()
+
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,
 		Handler:           srv.Handler(ui.Frontend()),

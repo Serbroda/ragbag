@@ -55,6 +55,11 @@ models/SpaceDto.ts
 models/SpaceMemberDto.ts
 models/SpaceMemberRoleEnum.ts
 models/SpacePermissionEnum.ts
+models/TagCountDto.ts
+models/TrashDto.ts
+models/TrashSelectionDto.ts
+models/TrashedBookmarkDto.ts
+models/TrashedCollectionDto.ts
 models/UnlockDto.ts
 models/UnlockRequest.ts
 models/UpdateBookmarkDto.ts

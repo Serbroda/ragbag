@@ -39,6 +39,21 @@ import {
     SpaceMemberDtoToJSON,
 } from '../models/SpaceMemberDto';
 import {
+    type TagCountDto,
+    TagCountDtoFromJSON,
+    TagCountDtoToJSON,
+} from '../models/TagCountDto';
+import {
+    type TrashDto,
+    TrashDtoFromJSON,
+    TrashDtoToJSON,
+} from '../models/TrashDto';
+import {
+    type TrashSelectionDto,
+    TrashSelectionDtoFromJSON,
+    TrashSelectionDtoToJSON,
+} from '../models/TrashSelectionDto';
+import {
     type UpdateSpaceDto,
     UpdateSpaceDtoFromJSON,
     UpdateSpaceDtoToJSON,
@@ -91,6 +106,20 @@ export interface GetSpaceNewsRequest {
     spaceId: string;
 }
 
+export interface GetSpaceTagsRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
+export interface GetTrashRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
 export interface JoinSpaceRequest {
     /**
      * 
@@ -112,6 +141,17 @@ export interface MarkSpaceSeenRequest {
     spaceId: string;
 }
 
+export interface PurgeTrashRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+    /**
+     * 
+     */
+    trashSelectionDto: TrashSelectionDto;
+}
+
 export interface RemoveSpaceIconRequest {
     /**
      * 
@@ -128,6 +168,17 @@ export interface RemoveSpaceMemberRequest {
      * 
      */
     userId: string;
+}
+
+export interface RestoreFromTrashRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+    /**
+     * 
+     */
+    trashSelectionDto: TrashSelectionDto;
 }
 
 export interface SetSpaceIconRequest {
@@ -494,6 +545,59 @@ export class SpaceApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getSpaceTags without sending the request
+     */
+    async getSpaceTagsRequestOpts(requestParameters: GetSpaceTagsRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling getSpaceTags().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/tags`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Tags used in the space with how often, for suggestions (case variants merged)
+     */
+    async getSpaceTagsRaw(requestParameters: GetSpaceTagsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<TagCountDto>>> {
+        const requestOptions = await this.getSpaceTagsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(TagCountDtoFromJSON));
+    }
+
+    /**
+     * Tags used in the space with how often, for suggestions (case variants merged)
+     */
+    async getSpaceTags(requestParameters: GetSpaceTagsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<TagCountDto>> {
+        const response = await this.getSpaceTagsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getSpaces without sending the request
      */
     async getSpacesRequestOpts(): Promise<runtime.RequestOpts> {
@@ -535,6 +639,59 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async getSpaces(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<SpaceDto>> {
         const response = await this.getSpacesRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getTrash without sending the request
+     */
+    async getTrashRequestOpts(requestParameters: GetTrashRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling getTrash().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/trash`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Deleted links and collections of the space the user may see; kept for 30 days
+     */
+    async getTrashRaw(requestParameters: GetTrashRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TrashDto>> {
+        const requestOptions = await this.getTrashRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TrashDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Deleted links and collections of the space the user may see; kept for 30 days
+     */
+    async getTrash(requestParameters: GetTrashRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TrashDto> {
+        const response = await this.getTrashRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -698,6 +855,68 @@ export class SpaceApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for purgeTrash without sending the request
+     */
+    async purgeTrashRequestOpts(requestParameters: PurgeTrashRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling purgeTrash().'
+            );
+        }
+
+        if (requestParameters['trashSelectionDto'] == null) {
+            throw new runtime.RequiredError(
+                'trashSelectionDto',
+                'Required parameter "trashSelectionDto" was null or undefined when calling purgeTrash().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/trash/purge`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TrashSelectionDtoToJSON(requestParameters['trashSelectionDto']),
+        };
+    }
+
+    /**
+     * Delete links and collections from the trash for good (all of them with \"all\")
+     */
+    async purgeTrashRaw(requestParameters: PurgeTrashRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.purgeTrashRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete links and collections from the trash for good (all of them with \"all\")
+     */
+    async purgeTrash(requestParameters: PurgeTrashRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.purgeTrashRaw(requestParameters, initOverrides);
+    }
+
+    /**
      * Creates request options for removeSpaceIcon without sending the request
      */
     async removeSpaceIconRequestOpts(requestParameters: RemoveSpaceIconRequest): Promise<runtime.RequestOpts> {
@@ -808,6 +1027,68 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async removeSpaceMember(requestParameters: RemoveSpaceMemberRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.removeSpaceMemberRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for restoreFromTrash without sending the request
+     */
+    async restoreFromTrashRequestOpts(requestParameters: RestoreFromTrashRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling restoreFromTrash().'
+            );
+        }
+
+        if (requestParameters['trashSelectionDto'] == null) {
+            throw new runtime.RequiredError(
+                'trashSelectionDto',
+                'Required parameter "trashSelectionDto" was null or undefined when calling restoreFromTrash().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/trash/restore`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TrashSelectionDtoToJSON(requestParameters['trashSelectionDto']),
+        };
+    }
+
+    /**
+     * Restore deleted links and collections
+     */
+    async restoreFromTrashRaw(requestParameters: RestoreFromTrashRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.restoreFromTrashRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Restore deleted links and collections
+     */
+    async restoreFromTrash(requestParameters: RestoreFromTrashRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.restoreFromTrashRaw(requestParameters, initOverrides);
     }
 
     /**

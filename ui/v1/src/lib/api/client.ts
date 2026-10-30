@@ -200,6 +200,21 @@ export function rememberPendingInvite(pathname: string) {
 	if (match) sessionStorage.setItem(PENDING_INVITE_KEY, match[1]);
 }
 
+// --- Pending "add link" (shared from another app or the bookmarklet before signing in) ---
+
+const PENDING_ADD_KEY = 'pending_add';
+
+export function rememberPendingAdd(location: Location) {
+	if (location.pathname.endsWith('/add')) sessionStorage.setItem(PENDING_ADD_KEY, location.search);
+}
+
+/** The query of the add page to return to after signing in, or null. */
+export function takePendingAdd(): string | null {
+	const search = sessionStorage.getItem(PENDING_ADD_KEY);
+	sessionStorage.removeItem(PENDING_ADD_KEY);
+	return search;
+}
+
 export function takePendingInvite(): string | null {
 	const token = sessionStorage.getItem(PENDING_INVITE_KEY);
 	sessionStorage.removeItem(PENDING_INVITE_KEY);

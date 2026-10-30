@@ -1,5 +1,5 @@
 <script lang="ts">
-	import { BookmarkApi, CollectionApi } from 'ragbag-frontend-sdk';
+	import { BookmarkApi, CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import type { BookmarkDto, CollectionDto, SpacePermissionEnum } from 'ragbag-frontend-sdk';
 	import { getContext, tick } from 'svelte';
 	import { apiConfig, errorMessage } from '../api/client';
@@ -8,6 +8,7 @@
 	import LinkSortSelect from '../components/LinkSortSelect.svelte';
 	import { filterByTags, sortLinks } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
+	import TagInput from '../components/TagInput.svelte';
 	import { linkListClass, preferences } from '../stores/preferences.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
@@ -59,7 +60,6 @@
 	/** Errors of individual actions; unlike `error` they don't replace the page. */
 	let actionError = $state('');
 	let modalError = $state('');
-	let bookmarkToDelete = $state<BookmarkDto | null>(null);
 	let bookmarkToPin = $state<BookmarkDto | null>(null);
 
 	// Add bookmark form
@@ -160,7 +160,10 @@
 	let loadedId = '';
 
 	async function loadData(id: string) {
-		if (id !== loadedId) selectedTags = [];
+		if (id !== loadedId) {
+			selectedTags = [];
+			clearSelection();
+		}
 		loadedId = id;
 		loading = true;
 		error = '';
@@ -253,27 +256,137 @@
 		}
 	}
 
-	async function deleteBookmark(bookmark: BookmarkDto) {
-		if (!canDeleteBookmarks) return;
+	/** Deleting moves links to the trash, so there is no question first: the toast offers to undo it. */
+	async function deleteBookmarks(targets: BookmarkDto[]) {
+		if (!canDeleteBookmarks || targets.length === 0) return;
 		actionError = '';
+		const ids = targets.map((b) => b.id);
 		try {
-			await bookmarkApi.deleteBookmark({ bookmarkId: bookmark.id });
-			bookmarks = bookmarks.filter((b) => b.id !== bookmark.id);
-			reloadSidebar();
+			for (const id of ids) await bookmarkApi.deleteBookmark({ bookmarkId: id });
 		} catch (err) {
 			actionError = await errorMessage(err, 'Failed to delete link.');
-		} finally {
-			bookmarkToDelete = null;
+		}
+		bookmarks = bookmarks.filter((b) => !ids.includes(b.id));
+		reloadSidebar();
+		showToast(targets.length === 1 ? 'Link moved to the trash' : `${targets.length} links moved to the trash`, {
+			label: 'Undo',
+			run: () => restoreFromTrash({ bookmarkIds: ids }),
+		});
+	}
+
+	async function restoreFromTrash(selection: { bookmarkIds?: string[]; collectionIds?: string[] }) {
+		try {
+			await new SpaceApi(apiConfig()).restoreFromTrash({ spaceId, trashSelectionDto: selection });
+			reloadSidebar();
+			if (selection.bookmarkIds) await loadData(collectionId);
+		} catch (err) {
+			showToast(await errorMessage(err, 'Could not restore it.'));
 		}
 	}
 
-	/** Shift-click deletes without confirmation, like deleting messages in Discord. */
-	function requestDelete(bookmark: BookmarkDto, event: MouseEvent) {
-		if (event.shiftKey) deleteBookmark(bookmark);
-		else bookmarkToDelete = bookmark;
+	/** Moves a link to another collection of the space; the toast offers to move it back. */
+	// --- Multi-select: move, tag or delete several links at once ---
+	let selectedIds = $state<string[]>([]);
+	let lastSelectedId: string | null = null;
+	/** Selecting without hover (phones): checkboxes on every card, a tap selects instead of opening. */
+	let selectionMode = $state(false);
+	const selecting = $derived(selectionMode || selectedIds.length > 0);
+	const canSelect = $derived(canEditBookmarks || canDeleteBookmarks);
+	const selectedBookmarks = $derived(bookmarks.filter((b) => selectedIds.includes(b.id)));
+	let bulkMoveOpen = $state(false);
+	let bulkMoveTarget = $state('');
+	let bulkTagsOpen = $state(false);
+	let bulkTags = $state('');
+	let bulkBusy = $state(false);
+
+	/** Shift-click selects everything between the last clicked link and this one, as shown. */
+	function toggleSelected(bookmark: BookmarkDto, event: MouseEvent) {
+		const order = visibleBookmarks.map((b) => b.id);
+		if (event.shiftKey && lastSelectedId && order.includes(lastSelectedId)) {
+			const [from, to] = [order.indexOf(lastSelectedId), order.indexOf(bookmark.id)].sort((a, b) => a - b);
+			selectedIds = [...new Set([...selectedIds, ...order.slice(from, to + 1)])];
+		} else {
+			selectedIds = selectedIds.includes(bookmark.id)
+				? selectedIds.filter((id) => id !== bookmark.id)
+				: [...selectedIds, bookmark.id];
+		}
+		lastSelectedId = bookmark.id;
+		selectionMode = true;
 	}
 
-	/** Moves a link to another collection of the space; the toast offers to move it back. */
+	function clearSelection() {
+		selectedIds = [];
+		lastSelectedId = null;
+		selectionMode = false;
+	}
+
+	function updateDto(b: BookmarkDto, changes: { tags?: string[]; collectionId?: string }) {
+		return {
+			url: b.url,
+			title: b.title,
+			description: b.description,
+			tags: changes.tags ?? b.tags,
+			collectionId: changes.collectionId,
+		};
+	}
+
+	async function moveSelected(targetId: string) {
+		const moving = selectedBookmarks.filter((b) => b.collectionId !== targetId);
+		bulkBusy = true;
+		try {
+			for (const b of moving) {
+				await bookmarkApi.updateBookmark({ bookmarkId: b.id, updateBookmarkDto: updateDto(b, { collectionId: targetId }) });
+			}
+		} catch (err) {
+			actionError = await errorMessage(err, 'Failed to move links.');
+		} finally {
+			bulkBusy = false;
+		}
+		const name = findNode(tree, targetId)?.label ?? 'collection';
+		const from = collectionId;
+		clearSelection();
+		await loadData(collectionId);
+		reloadSidebar();
+		showToast(`Moved ${moving.length} link${moving.length === 1 ? '' : 's'} to ${name}`, {
+			label: 'Undo',
+			run: async () => {
+				for (const b of moving) {
+					await bookmarkApi.updateBookmark({ bookmarkId: b.id, updateBookmarkDto: updateDto(b, { collectionId: from }) });
+				}
+				await loadData(collectionId);
+				reloadSidebar();
+			},
+		});
+	}
+
+	async function tagSelected() {
+		const added = parseTags(bulkTags);
+		if (added.length === 0) return;
+		bulkBusy = true;
+		try {
+			for (const b of selectedBookmarks) {
+				const own = b.tags ?? [];
+				const tags = [...own, ...added.filter((tag) => !own.some((t) => t.toLowerCase() === tag.toLowerCase()))];
+				const updated = await bookmarkApi.updateBookmark({ bookmarkId: b.id, updateBookmarkDto: updateDto(b, { tags }) });
+				bookmarks = bookmarks.map((x) => (x.id === updated.id ? { ...updated, isNew: x.isNew } : x));
+			}
+			showToast(`Tagged ${selectedBookmarks.length} link${selectedBookmarks.length === 1 ? '' : 's'}`);
+			bulkTagsOpen = false;
+			bulkTags = '';
+			clearSelection();
+		} catch (err) {
+			actionError = await errorMessage(err, 'Failed to tag links.');
+		} finally {
+			bulkBusy = false;
+		}
+	}
+
+	async function deleteSelected() {
+		const targets = selectedBookmarks;
+		clearSelection();
+		await deleteBookmarks(targets);
+	}
+
 	async function moveBookmark(bookmark: BookmarkDto, targetId: string, undo = false) {
 		if (!canEditBookmarks || targetId === bookmark.collectionId) return;
 		actionError = '';
@@ -422,7 +535,22 @@
 			await collectionApi.deleteCollection({ collectionId });
 			showDeleteCollectionModal = false;
 			reloadSidebar();
+			const deleted = { id: collectionId, name: collection?.name ?? 'Collection' };
+			const space = spaceId;
 			navigate('/space/:spaceId', { params: { spaceId } });
+			showToast(`“${deleted.name}” moved to the trash`, {
+				label: 'Undo',
+				run: async () => {
+					await new SpaceApi(apiConfig()).restoreFromTrash({
+						spaceId: space,
+						trashSelectionDto: { collectionIds: [deleted.id] },
+					});
+					reloadSidebar();
+					navigate('/space/:spaceId/collections/:collectionId', {
+						params: { spaceId: space, collectionId: deleted.id },
+					});
+				},
+			});
 		} catch (err) {
 			deleteCollectionError = await errorMessage(err, 'Failed to delete collection.');
 		} finally {
@@ -444,7 +572,11 @@
 	}
 </script>
 
-<svelte:window onclick={() => ((openMenuId = null), (openHeaderMenu = false))} onpaste={handlePaste} />
+<svelte:window
+	onclick={() => ((openMenuId = null), (openHeaderMenu = false))}
+	onpaste={handlePaste}
+	onkeydown={(e) => e.key === 'Escape' && selecting && !document.querySelector('dialog[open]') && clearSelection()}
+/>
 
 <div>
 	{#if loading}
@@ -634,6 +766,14 @@
 					<TagFilter links={bookmarks} bind:selected={selectedTags} />
 				</div>
 				<div class="ms-auto flex items-center gap-2">
+					{#if canSelect && !selecting}
+						<button
+							type="button"
+							class="rounded-lg bg-gray-100 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+							title="Select several links (or long-press a card)"
+							onclick={() => (selectionMode = true)}>Select</button
+						>
+					{/if}
 					<LinkSortSelect />
 					<LinkViewToggle />
 				</div>
@@ -663,6 +803,11 @@
 						{bookmark}
 						ondragstart={canEditBookmarks ? (e) => startBookmarkDrag(bookmark, e) : undefined}
 						ondragend={endBookmarkDrag}
+						selectable={canSelect}
+						selected={selectedIds.includes(bookmark.id)}
+						{selecting}
+						onselect={(e) => toggleSelected(bookmark, e)}
+						raised={openMenuId === bookmark.id}
 					>
 						{#snippet actions()}
 							<button
@@ -713,9 +858,8 @@
 									{#if canDeleteBookmarks}
 										<button
 											class="w-full px-3 py-1.5 text-left text-red-600 hover:bg-gray-100 dark:text-red-400 dark:hover:bg-gray-700"
-											title="Shift-click to delete without confirmation"
-											onclick={(e: MouseEvent) => {
-												requestDelete(bookmark, e);
+											onclick={() => {
+												deleteBookmarks([bookmark]);
 												openMenuId = null;
 											}}
 										>
@@ -778,6 +922,7 @@
 		<LinkFormFields
 			{collectionId}
 			idPrefix="edit-link"
+			excludeId={editingBookmark?.id}
 			bind:url={editUrl}
 			bind:title={editTitle}
 			bind:description={editDescription}
@@ -841,8 +986,8 @@
 <!-- Delete Collection Modal -->
 <Modal title="Delete Collection" bind:open={showDeleteCollectionModal} size="sm" autoclose={false}>
 	<p class="text-gray-600 dark:text-gray-400">
-		Are you sure you want to delete <strong>{collection?.name}</strong>? This will also delete all
-		bookmarks and sub-collections within it. This action cannot be undone.
+		Move <strong>{collection?.name}</strong> with all its links and sub-collections to the trash? You can restore
+		it from there for 30 days.
 	</p>
 	{#if deleteCollectionError}
 		<p class="mt-2 text-sm text-red-500 dark:text-red-400">{deleteCollectionError}</p>
@@ -923,14 +1068,99 @@
 	</form>
 </Modal>
 
-<!-- Delete Bookmark Modal -->
-<Modal title="Delete link" open={bookmarkToDelete !== null} size="sm" onclose={() => (bookmarkToDelete = null)}>
-	<p class="text-gray-600 dark:text-gray-400">
-		Delete <strong>{bookmarkToDelete?.title || bookmarkToDelete?.url}</strong>?
-	</p>
-	<p class="text-xs text-gray-500 dark:text-gray-400">Tip: hold Shift while clicking Delete to skip this dialog.</p>
-	<div class="flex justify-end gap-2">
-		<Button color="light" onclick={() => (bookmarkToDelete = null)}>Cancel</Button>
-		<Button color="red" onclick={() => bookmarkToDelete && deleteBookmark(bookmarkToDelete)}>Delete</Button>
+{#if selecting}
+	<!-- Actions for the selected links -->
+	<div
+		class="fixed inset-x-3 bottom-4 z-40 flex items-center justify-between gap-1 rounded-xl bg-gray-950 px-2 py-1.5 text-sm text-gray-100 shadow-2xl ring-1 ring-white/10 sm:inset-x-auto sm:bottom-6 sm:left-1/2 sm:-translate-x-1/2 sm:justify-start"
+		role="toolbar"
+		aria-label="Selected links"
+	>
+		<span class="whitespace-nowrap px-2 font-semibold tabular-nums"
+			>{selectedIds.length === 0 ? 'Tap links' : selectedIds.length}<span class="hidden sm:inline"
+				>{selectedIds.length === 0 ? ' to select' : ' selected'}</span
+			></span
+		>
+		{#if selectedIds.length < visibleBookmarks.length}
+			<button
+				type="button"
+				class="rounded-md px-2 py-1 hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+				onclick={() => (selectedIds = visibleBookmarks.map((b) => b.id))}><span class="sm:hidden">All</span><span class="hidden sm:inline">Select all</span></button
+			>
+		{/if}
+		{#if canEditBookmarks}
+			<button
+				type="button"
+				class="rounded-md px-2 py-1 hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+				disabled={bulkBusy || selectedIds.length === 0}
+				onclick={() => ((bulkMoveTarget = ''), (bulkMoveOpen = true))}><span class="sm:hidden">Move</span><span class="hidden sm:inline">Move to…</span></button
+			>
+			<button
+				type="button"
+				class="rounded-md px-2 py-1 hover:bg-white/10 disabled:pointer-events-none disabled:opacity-40"
+				disabled={bulkBusy || selectedIds.length === 0}
+				onclick={() => ((bulkTags = ''), (bulkTagsOpen = true))}><span class="sm:hidden">Tags</span><span class="hidden sm:inline">Add tags…</span></button
+			>
+		{/if}
+		{#if canDeleteBookmarks}
+			<button type="button" class="rounded-md px-2 py-1 text-red-400 hover:bg-red-600 hover:text-white disabled:pointer-events-none disabled:opacity-40" disabled={bulkBusy || selectedIds.length === 0} onclick={deleteSelected}
+				>Delete</button
+			>
+		{/if}
+		<button
+			type="button"
+			class="rounded-md p-1 text-gray-400 hover:bg-white/10 hover:text-gray-100"
+			aria-label="Clear selection"
+			title="Clear selection (Esc)"
+			onclick={clearSelection}
+		>
+			<svg class="h-4 w-4" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"
+				><path stroke-linecap="round" d="M6 6l12 12M18 6L6 18" /></svg
+			>
+		</button>
 	</div>
+{/if}
+
+<Modal title="Move {selectedIds.length} links" bind:open={bulkMoveOpen} size="sm" autoclose={false}>
+	<form
+		class="flex flex-col gap-4"
+		onsubmit={(e) => {
+			e.preventDefault();
+			if (!bulkMoveTarget) return;
+			bulkMoveOpen = false;
+			moveSelected(bulkMoveTarget);
+		}}
+	>
+		<div>
+			<Label for="bulk-move-target" class="mb-2">Collection</Label>
+			<Select id="bulk-move-target" placeholder="Choose a collection" bind:value={bulkMoveTarget} required>
+				{#each moveTargets as option (option.id)}
+					<option value={option.id}>{'─'.repeat(option.depth)} {option.label}</option>
+				{/each}
+			</Select>
+		</div>
+		<div class="flex justify-end gap-2">
+			<Button color="light" onclick={() => (bulkMoveOpen = false)}>Cancel</Button>
+			<Button type="submit" disabled={!bulkMoveTarget}>Move</Button>
+		</div>
+	</form>
+</Modal>
+
+<Modal title="Add tags to {selectedIds.length} links" bind:open={bulkTagsOpen} size="sm" autoclose={false}>
+	<form
+		class="flex flex-col gap-4"
+		onsubmit={(e) => {
+			e.preventDefault();
+			tagSelected();
+		}}
+	>
+		<div>
+			<Label for="bulk-tags" class="mb-2">Tags</Label>
+			<TagInput id="bulk-tags" {spaceId} bind:value={bulkTags} />
+			<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">Added to the tags the links already have.</p>
+		</div>
+		<div class="flex justify-end gap-2">
+			<Button color="light" onclick={() => (bulkTagsOpen = false)}>Cancel</Button>
+			<Button type="submit" disabled={bulkBusy || parseTags(bulkTags).length === 0}>Add tags</Button>
+		</div>
+	</form>
 </Modal>

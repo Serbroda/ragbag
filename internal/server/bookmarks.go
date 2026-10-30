@@ -2,6 +2,7 @@ package server
 
 import (
 	"net/http"
+	"sort"
 	"strings"
 
 	"github.com/Serbroda/ragbag/internal/api"
@@ -147,6 +148,68 @@ func (s *Server) SearchBookmarks(c echo.Context, spaceID api.ID, params api.Sear
 	return s.respondBookmarks(c, bookmarks, err)
 }
 
+// GetSpaceTags lists the tags for suggestions, case variants merged under their most used spelling.
+func (s *Server) GetSpaceTags(c echo.Context, spaceID api.ID) error {
+	if _, err := s.requireSpace(ctxOf(c), s.store, spaceID, currentUser(c), PermRead); err != nil {
+		return err
+	}
+	hidden, err := s.hiddenCollections(ctxOf(c), s.store, spaceID, currentUser(c))
+	if err != nil {
+		return err
+	}
+	counts, err := s.store.TagCounts(ctxOf(c), spaceID, keys(hidden))
+	if err != nil {
+		return err
+	}
+	type merged struct {
+		spelling string
+		best     int
+		total    int
+	}
+	byKey := map[string]*merged{}
+	for _, count := range counts {
+		key := strings.ToLower(count.Tag)
+		entry := byKey[key]
+		if entry == nil {
+			entry = &merged{}
+			byKey[key] = entry
+		}
+		entry.total += count.Count
+		if count.Count > entry.best || (count.Count == entry.best && count.Tag < entry.spelling) {
+			entry.spelling, entry.best = count.Tag, count.Count
+		}
+	}
+	result := make([]api.TagCountDto, 0, len(byKey))
+	for _, entry := range byKey {
+		result = append(result, api.TagCountDto{Tag: entry.spelling, Count: entry.total})
+	}
+	sort.Slice(result, func(i, j int) bool {
+		if result[i].Count != result[j].Count {
+			return result[i].Count > result[j].Count
+		}
+		return strings.ToLower(result[i].Tag) < strings.ToLower(result[j].Tag)
+	})
+	return c.JSON(http.StatusOK, result)
+}
+
+// LookupBookmarks finds links with the same URL, so adding one twice can be pointed out.
+func (s *Server) LookupBookmarks(c echo.Context, spaceID api.ID, params api.LookupBookmarksParams) error {
+	if _, err := s.requireSpace(ctxOf(c), s.store, spaceID, currentUser(c), PermRead); err != nil {
+		return err
+	}
+	url, err := fetch.NormalizeURL(params.Url)
+	if err != nil {
+		// Not a URL (yet): nothing can match
+		return c.JSON(http.StatusOK, []api.BookmarkDto{})
+	}
+	hidden, err := s.hiddenCollections(ctxOf(c), s.store, spaceID, currentUser(c))
+	if err != nil {
+		return err
+	}
+	bookmarks, err := s.store.BookmarksByURL(ctxOf(c), spaceID, url, keys(hidden))
+	return s.respondBookmarks(c, bookmarks, err)
+}
+
 func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
 	if _, _, err := s.requireCollection(ctxOf(c), s.store, collectionID, currentUser(c), PermCreateBookmarks); err != nil {
 		return err
@@ -225,7 +288,8 @@ func (s *Server) DeleteBookmark(c echo.Context, bookmarkID api.ID) error {
 	if _, err := s.requireBookmark(ctxOf(c), s.store, bookmarkID, currentUser(c), PermDeleteBookmarks); err != nil {
 		return err
 	}
-	if err := s.store.DeleteBookmark(ctxOf(c), bookmarkID); err != nil {
+	// Into the trash; restoring brings back favorites, reactions and pins as well
+	if err := s.store.DeleteBookmark(ctxOf(c), bookmarkID, currentUser(c)); err != nil {
 		return err
 	}
 	return c.NoContent(http.StatusNoContent)

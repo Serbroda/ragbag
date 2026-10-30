@@ -109,12 +109,18 @@ func (s *Server) requireBookmark(ctx context.Context, tx *store.Store, bookmarkI
 	return bookmark, nil
 }
 
-// hiddenCollections are the private collections of the space the user is not a member of, and everything
-// below them. Visibility is inherited: a public collection inside a private one is private too. Unless the
-// request is unlocked, the collections the user locked for themselves (and everything below) are hidden as well.
+// hiddenCollections are the collections the user does not see, each with everything below it (visibility is
+// inherited): private collections they are not a member of, collections in the trash and, unless the request is
+// unlocked, the collections they locked for themselves.
 func (s *Server) hiddenCollections(ctx context.Context, tx *store.Store, spaceID, userID string) (map[string]bool, error) {
+	return s.hiddenCollectionsOf(ctx, tx, spaceID, userID, true)
+}
+
+// hiddenCollectionsOf is hiddenCollections, optionally without the trash: the trash itself and the checks before
+// deleting only care about what is private or locked.
+func (s *Server) hiddenCollectionsOf(ctx context.Context, tx *store.Store, spaceID, userID string, withTrash bool) (map[string]bool, error) {
 	hidden := map[string]bool{}
-	hasPrivate, err := tx.HasPrivateCollections(ctx, spaceID)
+	hasCandidates, err := tx.HasHiddenCandidates(ctx, spaceID)
 	if err != nil {
 		return nil, err
 	}
@@ -124,7 +130,7 @@ func (s *Server) hiddenCollections(ctx context.Context, tx *store.Store, spaceID
 			return nil, err
 		}
 	}
-	if !hasPrivate && len(locks) == 0 {
+	if !hasCandidates && len(locks) == 0 {
 		return hidden, nil
 	}
 	collections, err := tx.CollectionsBySpace(ctx, spaceID)
@@ -134,7 +140,7 @@ func (s *Server) hiddenCollections(ctx context.Context, tx *store.Store, spaceID
 	for id := range lockedCollections(collections, locks) {
 		hidden[id] = true
 	}
-	if !hasPrivate {
+	if !hasCandidates {
 		return hidden, nil
 	}
 	memberOf, err := tx.PrivateCollectionsOf(ctx, spaceID, userID)
@@ -151,7 +157,7 @@ func (s *Server) hiddenCollections(ctx context.Context, tx *store.Store, spaceID
 		if known, ok := visible[c.ID]; ok {
 			return known
 		}
-		result := !c.Restricted || slices.Contains(memberOf, c.ID)
+		result := (!c.Restricted || slices.Contains(memberOf, c.ID)) && (!withTrash || c.DeletedAt == nil)
 		if result && c.ParentID != nil && depth < 1000 {
 			if parent := byID[*c.ParentID]; parent != nil {
 				result = isVisible(parent, depth+1)

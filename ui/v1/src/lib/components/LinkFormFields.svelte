@@ -1,6 +1,10 @@
 <script lang="ts">
 	import { BookmarkApi } from 'ragbag-frontend-sdk';
-	import type { BookmarkMetadataDto } from 'ragbag-frontend-sdk';
+	import type { BookmarkDto, BookmarkMetadataDto } from 'ragbag-frontend-sdk';
+	import { getContext } from 'svelte';
+	import { p, route } from '../router';
+	import { timeAgo } from '../utils/format';
+	import TagInput from './TagInput.svelte';
 	import { Button, Input, Label, Spinner, Textarea } from 'flowbite-svelte';
 	import { WandMagicSparklesOutline } from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage } from '../api/client';
@@ -13,8 +17,14 @@
 		title = $bindable(''),
 		description = $bindable(''),
 		tags = $bindable(''),
+		excludeId,
+		spaceId: spaceIdProp,
 	}: {
 		collectionId: string;
+		/** The link being edited: not a duplicate of itself. */
+		excludeId?: string;
+		/** Defaults to the space of the current page (the add page has none in its URL). */
+		spaceId?: string;
 		/** Keeps element ids unique when several forms are mounted. */
 		idPrefix: string;
 		url?: string;
@@ -22,6 +32,28 @@
 		description?: string;
 		tags?: string;
 	} = $props();
+
+	const spaceId = $derived(spaceIdProp ?? route.params.spaceId);
+	const collectionName = getContext<((id: string) => string | undefined) | undefined>('collection-name');
+
+	// --- Duplicates: the same URL already in the space ---
+	let duplicates = $state<BookmarkDto[]>([]);
+	let lookupTimer: ReturnType<typeof setTimeout> | undefined;
+	$effect(() => {
+		const wanted = url.trim();
+		clearTimeout(lookupTimer);
+		duplicates = [];
+		if (!spaceId || wanted.length < 4) return;
+		const space = spaceId;
+		lookupTimer = setTimeout(async () => {
+			try {
+				const found = await new BookmarkApi(apiConfig()).lookupBookmarks({ spaceId: space, url: wanted });
+				if (url.trim() === wanted) duplicates = found.filter((b) => b.id !== excludeId);
+			} catch {
+				// Only a hint; adding still works
+			}
+		}, 400);
+	});
 
 	let fetching = $state(false);
 	let status = $state<{ kind: 'ok' | 'info' | 'error'; text: string } | null>(null);
@@ -100,6 +132,24 @@
 			Fetch details
 		</Button>
 	</div>
+	{#if duplicates.length > 0}
+		{@const first = duplicates[0]}
+		<p class="mt-2 rounded-md bg-amber-500/10 px-3 py-2 text-xs text-amber-800 dark:text-amber-200" role="status">
+			Already in
+			<a
+				class="font-semibold underline"
+				href={p('/space/:spaceId/collections/:collectionId', {
+					params: { spaceId: spaceId!, collectionId: first.collectionId! },
+				})}
+				target="_blank"
+				rel="noopener">{collectionName?.(first.collectionId!) ?? 'another collection'}</a
+			>{[
+				first.createdBy ? `, added by ${first.createdBy}` : '',
+				first.createdAt ? ` · ${timeAgo(first.createdAt)}` : '',
+				duplicates.length > 1 ? ` (and ${duplicates.length - 1} more)` : '',
+			].join('')}. You can add it anyway.
+		</p>
+	{/if}
 	{#if status}
 		<p
 			class="mt-2 text-xs {status.kind === 'error'
@@ -153,5 +203,5 @@
 </div>
 <div>
 	<Label for="{idPrefix}-tags" class="mb-2">Tags</Label>
-	<Input id="{idPrefix}-tags" type="text" placeholder="Comma separated" bind:value={tags} />
+	<TagInput id="{idPrefix}-tags" {spaceId} bind:value={tags} />
 </div>

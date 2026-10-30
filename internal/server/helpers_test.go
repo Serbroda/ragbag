@@ -38,6 +38,8 @@ func TestMain(m *testing.M) {
 type env struct {
 	t   *testing.T
 	url string
+	srv *server.Server
+	db  *sqlx.DB
 }
 
 type session struct {
@@ -70,7 +72,7 @@ func newEnv(t *testing.T) *env {
 	frontend := fstest.MapFS{"index.html": {Data: []byte("<html><head><title>Ragbag</title></head><body></body></html>")}}
 	httpServer := httptest.NewServer(srv.Handler(frontend))
 	t.Cleanup(httpServer.Close)
-	return &env{t: t, url: httpServer.URL}
+	return &env{t: t, url: httpServer.URL, srv: srv, db: database}
 }
 
 func postgresSchema(t *testing.T, base string) string {
