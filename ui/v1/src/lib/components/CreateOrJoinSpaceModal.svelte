@@ -4,6 +4,8 @@
 	import { Button, Input, Label, Modal } from 'flowbite-svelte';
 	import { ArrowLeftOutline, GlobeOutline, PlusOutline, UserAddSolid } from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage } from '../api/client';
+	import { showToast } from '../stores/toast.svelte';
+	import { initials } from '../utils/format';
 	import Avatar from './Avatar.svelte';
 
 	type Step = 'choose' | 'create' | 'join' | 'discover';
@@ -23,12 +25,27 @@
 	let invite = $state('');
 	let error = $state('');
 	let busy = $state(false);
+	/** Optional logo, uploaded right after the space was created. */
+	let logo = $state<File | null>(null);
+	let logoInput = $state<HTMLInputElement | null>(null);
+	let dragging = $state(false);
+	const logoPreview = $derived(logo ? URL.createObjectURL(logo) : undefined);
+	$effect(() => {
+		const url = logoPreview;
+		return () => url && URL.revokeObjectURL(url);
+	});
+
+	function pickLogo(files: FileList | File[] | null | undefined) {
+		const file = [...(files ?? [])].find((f) => f.type.startsWith('image/'));
+		if (file) logo = file;
+	}
 
 	$effect(() => {
 		if (open) {
 			step = 'choose';
 			name = '';
 			description = '';
+			logo = null;
 			invite = '';
 			error = '';
 			query = '';
@@ -98,9 +115,16 @@
 		error = '';
 		try {
 			if (step === 'create') {
-				const space = await new SpaceApi(apiConfig()).createSpace({
+				const spaceApi = new SpaceApi(apiConfig());
+				const space = await spaceApi.createSpace({
 					createSpaceDto: { name: name.trim(), description: description.trim() || undefined },
 				});
+				if (logo) {
+					// The space exists either way; a rejected image only costs the logo
+					await spaceApi.setSpaceIcon({ spaceId: space.id, file: logo }).catch(async (err) => {
+						showToast(await errorMessage(err, 'The space was created, but the logo could not be used.'));
+					});
+				}
 				await ondone(space.id);
 			} else {
 				const preview = await new InviteApi(apiConfig()).acceptInvite({ token: extractToken(invite) });
@@ -217,8 +241,60 @@
 			</div>
 		</div>
 	{:else}
-		<form class="flex flex-col gap-4" onsubmit={submit}>
+		<form
+			class="flex flex-col gap-4"
+			onsubmit={submit}
+			onpaste={(e) => {
+				if (step !== 'create' || !e.clipboardData?.files.length) return;
+				e.preventDefault();
+				pickLogo(e.clipboardData.files);
+			}}
+		>
 			{#if step === 'create'}
+				<div class="flex items-center gap-4">
+					<input
+						bind:this={logoInput}
+						type="file"
+						accept="image/*"
+						class="hidden"
+						onchange={(e) => pickLogo(e.currentTarget.files)}
+					/>
+					<button
+						type="button"
+						class="group relative flex h-16 w-16 shrink-0 items-center justify-center overflow-hidden rounded-2xl border-2 border-dashed transition-colors {dragging
+							? 'border-primary-500 bg-primary-500/10'
+							: logo
+								? 'border-transparent'
+								: 'border-gray-300 hover:border-primary-500 dark:border-gray-600'}"
+						aria-label={logo ? 'Change the logo' : 'Choose a logo'}
+						title="Choose a logo, drop or paste an image"
+						onclick={() => logoInput?.click()}
+						ondragover={(e) => (e.preventDefault(), (dragging = true))}
+						ondragleave={() => (dragging = false)}
+						ondrop={(e) => (e.preventDefault(), (dragging = false), pickLogo(e.dataTransfer?.files))}
+					>
+						{#if logoPreview}
+							<img src={logoPreview} alt="" class="h-full w-full object-cover" />
+						{:else}
+							<span class="text-sm font-semibold text-gray-400 group-hover:hidden">
+								{name.trim() ? initials(name) : ''}
+							</span>
+							<PlusOutline
+								class="h-5 w-5 text-gray-400 {name.trim() ? 'hidden group-hover:block' : ''}"
+							/>
+						{/if}
+					</button>
+					<div class="min-w-0 text-sm">
+						<p class="font-medium text-gray-900 dark:text-white">Logo <span class="font-normal text-gray-500">(optional)</span></p>
+						{#if logo}
+							<button type="button" class="text-xs text-gray-500 hover:underline dark:text-gray-400" onclick={() => (logo = null)}>
+								Remove
+							</button>
+						{:else}
+							<p class="text-xs text-gray-500 dark:text-gray-400">Click, drop or paste an image. Square works best.</p>
+						{/if}
+					</div>
+				</div>
 				<div>
 					<Label for="new-space-name" class="mb-2">Name</Label>
 					<Input id="new-space-name" bind:value={name} required maxlength={80} placeholder="e.g. Team Research" />
