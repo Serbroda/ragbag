@@ -309,10 +309,6 @@
 							space = await spaceApi.setSpaceIcon({ spaceId, file });
 							await reloadSpaces?.();
 						}}
-						onurl={async (url) => {
-							space = await spaceApi.setSpaceIcon({ spaceId, url });
-							await reloadSpaces?.();
-						}}
 						onremove={async () => {
 							space = await spaceApi.removeSpaceIcon({ spaceId });
 							await reloadSpaces?.();

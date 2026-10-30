@@ -1,6 +1,6 @@
 <script lang="ts">
-	import { Button, Input } from 'flowbite-svelte';
-	import { LinkOutline, UploadOutline } from 'flowbite-svelte-icons';
+	import { Button } from 'flowbite-svelte';
+	import { UploadOutline } from 'flowbite-svelte-icons';
 	import { errorMessage } from '../api/client';
 	import Avatar from './Avatar.svelte';
 
@@ -9,7 +9,6 @@
 		imageId,
 		shape = 'rounded-full',
 		onupload,
-		onurl,
 		onremove,
 	}: {
 		/** Used for the initials fallback. */
@@ -17,7 +16,6 @@
 		imageId?: string | null;
 		shape?: 'rounded-full' | 'rounded-2xl';
 		onupload: (file: File) => Promise<void>;
-		onurl: (url: string) => Promise<void>;
 		onremove: () => Promise<void>;
 	} = $props();
 
@@ -25,8 +23,6 @@
 	const MAX_BYTES = 5 * 1024 * 1024;
 
 	let fileInput = $state<HTMLInputElement | null>(null);
-	let showUrl = $state(false);
-	let url = $state('');
 	let busy = $state(false);
 	let error = $state('');
 	let dragging = $state(false);
@@ -36,8 +32,6 @@
 		error = '';
 		try {
 			await action();
-			showUrl = false;
-			url = '';
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to update the image.');
 		} finally {
@@ -89,27 +83,12 @@
 			<Button size="xs" color="light" disabled={busy} onclick={() => fileInput?.click()}>
 				<UploadOutline class="me-1.5 h-4 w-4" /> Upload
 			</Button>
-			<Button size="xs" color="light" disabled={busy} onclick={() => (showUrl = !showUrl)}>
-				<LinkOutline class="me-1.5 h-4 w-4" /> From URL
-			</Button>
 			{#if imageId}
 				<Button size="xs" color="light" disabled={busy} onclick={() => run(onremove)}>Remove</Button>
 			{/if}
 		</div>
 		<input bind:this={fileInput} type="file" accept={ACCEPT} class="hidden" onchange={onfilechange} />
 	</div>
-	{#if showUrl}
-		<form
-			class="flex gap-2"
-			onsubmit={(e) => {
-				e.preventDefault();
-				if (url.trim()) run(() => onurl(url.trim()));
-			}}
-		>
-			<Input type="url" size="sm" placeholder="https://example.com/logo.png" bind:value={url} required />
-			<Button size="sm" type="submit" disabled={busy || !url.trim()}>{busy ? 'Loading…' : 'Load'}</Button>
-		</form>
-	{/if}
 	<p class="text-xs text-gray-500 dark:text-gray-400">
 		PNG, JPEG, GIF or WebP up to 5 MB. Images are cropped to a square.
 	</p>
