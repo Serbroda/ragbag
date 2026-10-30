@@ -24,6 +24,11 @@ import {
     SpaceBarDtoToJSON,
 } from '../models/SpaceBarDto';
 import {
+    type StartSpaceDto,
+    StartSpaceDtoFromJSON,
+    StartSpaceDtoToJSON,
+} from '../models/StartSpaceDto';
+import {
     type UnlockDto,
     UnlockDtoFromJSON,
     UnlockDtoToJSON,
@@ -55,6 +60,13 @@ export interface SetPinRequest {
      * 
      */
     setPinDto: SetPinDto;
+}
+
+export interface SetStartSpaceRequest {
+    /**
+     * 
+     */
+    startSpaceDto: StartSpaceDto;
 }
 
 export interface UnlockOperationRequest {
@@ -378,6 +390,61 @@ export class UserApi extends runtime.BaseAPI {
      */
     async setPin(requestParameters: SetPinRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.setPinRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for setStartSpace without sending the request
+     */
+    async setStartSpaceRequestOpts(requestParameters: SetStartSpaceRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['startSpaceDto'] == null) {
+            throw new runtime.RequiredError(
+                'startSpaceDto',
+                'Required parameter "startSpaceDto" was null or undefined when calling setStartSpace().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/start-space`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: StartSpaceDtoToJSON(requestParameters['startSpaceDto']),
+        };
+    }
+
+    /**
+     * The space to open on start; null opens the last visited one
+     */
+    async setStartSpaceRaw(requestParameters: SetStartSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDto>> {
+        const requestOptions = await this.setStartSpaceRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The space to open on start; null opens the last visited one
+     */
+    async setStartSpace(requestParameters: SetStartSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
+        const response = await this.setStartSpaceRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**

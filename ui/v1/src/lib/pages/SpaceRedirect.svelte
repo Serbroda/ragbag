@@ -4,23 +4,32 @@
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
-	import { lastSpaceId, loadMe, loadSpaces, resetSession, session } from '../stores/spaces.svelte';
+	import { UserApi } from 'ragbag-frontend-sdk';
+	import { apiConfig } from '../api/client';
+	import { loadMe, loadSpaces, resetSession, session, startSpaceId } from '../stores/spaces.svelte';
 
 	let failed = $state(false);
 	let showCreateOrJoin = $state(false);
 
 	async function init() {
 		failed = false;
+		let bar: string[] = [];
 		try {
-			await Promise.all([loadSpaces(), loadMe()]);
+			const [, , layout] = await Promise.all([
+				loadSpaces(),
+				loadMe(),
+				new UserApi(apiConfig()).getSpaceBar().catch(() => ({ items: [] })),
+			]);
+			// The order of the space bar, folders included
+			bar = layout.items.flatMap((item) => (item.spaceId ? [item.spaceId] : (item.spaceIds ?? [])));
 		} catch {
 			failed = true;
 			return;
 		}
-		// Reopen the space the user was in last, like Discord does
-		const target = session.spaces.find((s) => s.id === lastSpaceId()) ?? session.spaces[0];
+		// The chosen start space, else the one the user was in last (like Discord), else the first in their bar
+		const target = startSpaceId(bar);
 		if (target) {
-			navigate('/space/:spaceId', { params: { spaceId: target.id }, replace: true });
+			navigate('/space/:spaceId', { params: { spaceId: target }, replace: true });
 		}
 	}
 

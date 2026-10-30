@@ -26,10 +26,44 @@ func (s *Server) Me(c echo.Context) error {
 	if err != nil {
 		return err
 	}
+	return s.meView(c, user, pin.Hash != nil)
+}
+
+// meView is the current user with their personal settings.
+func (s *Server) meView(c echo.Context, user *store.User, hasPin bool) error {
 	dto := s.userDto(user)
-	hasPin := pin.Hash != nil
 	dto.HasPin = &hasPin
+	start, err := s.store.StartSpace(ctxOf(c), user.ID)
+	if err != nil {
+		return err
+	}
+	dto.StartSpaceId = start
 	return c.JSON(http.StatusOK, dto)
+}
+
+// SetStartSpace chooses the space opened on start (only one the user is a member of), or the last visited one.
+func (s *Server) SetStartSpace(c echo.Context) error {
+	var req api.StartSpaceDto
+	if err := bind(c, &req); err != nil {
+		return err
+	}
+	if req.SpaceId != nil {
+		if _, err := s.store.MemberRole(ctxOf(c), *req.SpaceId, currentUser(c)); err != nil {
+			return orBadRequest(err, "You are not a member of this space")
+		}
+	}
+	if err := s.store.SetStartSpace(ctxOf(c), currentUser(c), req.SpaceId); err != nil {
+		return err
+	}
+	user, err := s.store.UserByID(ctxOf(c), currentUser(c))
+	if err != nil {
+		return err
+	}
+	pin, err := s.store.PinState(ctxOf(c), user.ID)
+	if err != nil {
+		return err
+	}
+	return s.meView(c, user, pin.Hash != nil)
 }
 
 func (s *Server) SetAvatar(c echo.Context) error {

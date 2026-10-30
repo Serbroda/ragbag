@@ -7,7 +7,7 @@
 	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import { collectionsToTree, flattenTree } from '../components/tree';
-	import { lastSpaceId, loadSpaces, rememberSpace, session } from '../stores/spaces.svelte';
+	import { lastSpaceId, loadMe, loadSpaces, rememberSpace, session } from '../stores/spaces.svelte';
 
 	/**
 	 * Adding a link from anywhere: the share menu of the installed app (Android) and the bookmarklet open this page
@@ -37,7 +37,7 @@
 	const options = $derived(flattenTree(collectionsToTree(collections, spaceId)));
 	const storageKey = (space: string) => `quick-add:${space}`;
 
-	loadSpaces()
+	Promise.all([loadSpaces(), loadMe()])
 		.then(() => {
 			const last = lastSpaceId();
 			spaceId = session.spaces.find((s) => s.id === last)?.id ?? session.spaces[0]?.id ?? '';

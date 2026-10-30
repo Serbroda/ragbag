@@ -5,7 +5,7 @@
 	import { CheckOutline, FolderOpenSolid, FolderPlusOutline, PenOutline, PlusOutline } from 'flowbite-svelte-icons';
 	import { apiConfig } from '../api/client';
 	import { isFolderOpen, setFolderOpen } from '../stores/preferences.svelte';
-	import { loadSpaces, session } from '../stores/spaces.svelte';
+	import { loadSpaces, session, setStartSpace } from '../stores/spaces.svelte';
 	import { initials } from '../utils/format';
 	import { localId } from '../utils/id';
 	import Avatar from './Avatar.svelte';
@@ -498,7 +498,24 @@
 	>
 		{#if menuSpace}
 			{@const space = menuSpace}
+			{@const isStart = session.me?.startSpaceId === space.id}
 			<p class="truncate px-2 pb-1 pt-0.5 text-xs font-semibold text-gray-400">{space.name}</p>
+			<button
+				role="menuitemcheckbox"
+				aria-checked={isStart}
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+				title="Ragbag opens with this space, on every device"
+				onclick={() => {
+					// Read before closing: the menu's space is gone once it is closed
+					const spaceId = isStart ? null : space.id;
+					menu = null;
+					setStartSpace(spaceId);
+				}}
+			>
+				Open on start
+				{#if isStart}<CheckOutline class="h-4 w-4" />{/if}
+			</button>
+			<div class="my-1 h-px bg-gray-800"></div>
 			{#if (space.newCount ?? 0) > 0}
 				<button
 					role="menuitem"

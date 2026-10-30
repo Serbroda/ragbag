@@ -43,6 +43,10 @@ export interface UserDto {
      * Has a PIN to unlock locked collections
      */
     hasPin?: boolean;
+    /**
+     * Opened on start instead of the last visited space; unset when the user leaves it
+     */
+    startSpaceId?: string;
 }
 
 /**
@@ -71,6 +75,7 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
         'instanceAdmin': json['instanceAdmin'] == null ? undefined : json['instanceAdmin'],
         'hasPin': json['hasPin'] == null ? undefined : json['hasPin'],
+        'startSpaceId': json['startSpaceId'] == null ? undefined : json['startSpaceId'],
     };
 }
 
@@ -91,6 +96,7 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'avatarId': value['avatarId'],
         'instanceAdmin': value['instanceAdmin'],
         'hasPin': value['hasPin'],
+        'startSpaceId': value['startSpaceId'],
     };
 }
 

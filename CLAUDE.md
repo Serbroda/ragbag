@@ -152,7 +152,9 @@ change, never edit an applied one. Times are stored in UTC, truncated to microse
 ### Frontend Structure (`ui/v1/src/lib`)
 - `pages/` — one component per route (routes in `router.ts`), `layouts/AuthLayout.svelte` is the Discord-like shell (space bar, sidebar, quick switcher)
 - `components/` — shared UI (`BookmarkCard`, modals, `QuickSwitcher`, collection tree)
-- `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user, last visited space)
+- `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user). The start page opens
+  `startSpaceId()`: the chosen start space (`users.start_space_id`, unset by leaving or deleting the space), else
+  the last visited one (localStorage per user), else the first in the user's space bar
 - `stores/preferences.svelte.ts` — personal display settings (link view: cards / compact / list), stored in localStorage per user and device
 - `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`; show users and spaces with `Avatar.svelte`
 - Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend

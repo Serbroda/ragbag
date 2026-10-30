@@ -37,12 +37,46 @@ export function resetSession() {
 
 // --- Last visited space (Discord reopens the server you were in) ---
 
-const LAST_SPACE_KEY = 'last_space';
+/** Per user: another account in the same browser has spaces of its own. */
+function lastSpaceKey(): string | null {
+	return session.me ? `last_space:${session.me.id}` : null;
+}
 
 export function rememberSpace(spaceId: string) {
-	localStorage.setItem(LAST_SPACE_KEY, spaceId);
+	const key = lastSpaceKey();
+	if (!key) return;
+	try {
+		localStorage.setItem(key, spaceId);
+	} catch {
+		// Private mode etc.: the start falls back to the first space
+	}
 }
 
 export function lastSpaceId(): string | null {
-	return localStorage.getItem(LAST_SPACE_KEY);
+	const key = lastSpaceKey();
+	try {
+		// "last_space" is where versions before 0.12 kept it for everybody
+		return (key && localStorage.getItem(key)) || localStorage.getItem('last_space');
+	} catch {
+		return null;
+	}
+}
+
+/** Chooses the space opened on start (null: the last visited one). */
+export async function setStartSpace(spaceId: string | null): Promise<void> {
+	// Without spaceId the server opens the last visited space again
+	session.me = await new UserApi(apiConfig()).setStartSpace({ startSpaceDto: { spaceId: spaceId ?? undefined } });
+}
+
+/**
+ * The space to open on start: the chosen start space, else the last visited one, else the first in the user's
+ * own space bar (spaceBarOrder), else the first one at all. Spaces the user left or that were deleted are skipped.
+ */
+export function startSpaceId(spaceBarOrder: string[] = []): string | undefined {
+	const member = (id: string | null | undefined) => !!id && session.spaces.some((space) => space.id === id);
+	const chosen = session.me?.startSpaceId;
+	if (member(chosen)) return chosen!;
+	const last = lastSpaceId();
+	if (member(last)) return last!;
+	return spaceBarOrder.find(member) ?? session.spaces[0]?.id;
 }

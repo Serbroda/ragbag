@@ -715,6 +715,12 @@ type SpaceMemberRoleEnum string
 // SpacePermissionEnum defines model for SpacePermissionEnum.
 type SpacePermissionEnum string
 
+// StartSpaceDto defines model for StartSpaceDto.
+type StartSpaceDto struct {
+	// SpaceId A space the user is a member of, or null for the last visited one
+	SpaceId *ID `json:"spaceId,omitempty"`
+}
+
 // TagCountDto defines model for TagCountDto.
 type TagCountDto struct {
 	Count int    `json:"count"`
@@ -853,8 +859,11 @@ type UserDto struct {
 	Id ID `json:"id"`
 
 	// InstanceAdmin Listed in ADMIN_USERS, may manage all users of this installation
-	InstanceAdmin *bool  `json:"instanceAdmin,omitempty"`
-	Username      string `json:"username"`
+	InstanceAdmin *bool `json:"instanceAdmin,omitempty"`
+
+	// StartSpaceId Opened on start instead of the last visited space; unset when the user leaves it
+	StartSpaceId *ID    `json:"startSpaceId,omitempty"`
+	Username     string `json:"username"`
 }
 
 // BadRequest defines model for BadRequest.
@@ -980,6 +989,9 @@ type SetPinJSONRequestBody = SetPinDto
 
 // UpdateSpaceBarJSONRequestBody defines body for UpdateSpaceBar for application/json ContentType.
 type UpdateSpaceBarJSONRequestBody = SpaceBarDto
+
+// SetStartSpaceJSONRequestBody defines body for SetStartSpace for application/json ContentType.
+type SetStartSpaceJSONRequestBody = StartSpaceDto
 
 // UnlockJSONRequestBody defines body for Unlock for application/json ContentType.
 type UnlockJSONRequestBody = UnlockRequest
@@ -1220,6 +1232,9 @@ type ServerInterface interface {
 	// UpdateSpaceBar Save the personal order and folders of the space bar
 	// (PUT /v1/users/me/space-bar)
 	UpdateSpaceBar(ctx echo.Context) error
+	// SetStartSpace The space to open on start; null opens the last visited one
+	// (PUT /v1/users/me/start-space)
+	SetStartSpace(ctx echo.Context) error
 	// Unlock Unlock the user's locked collections with the PIN. The token goes into the X-Ragbag-Unlock header of later requests and expires after a few minutes unless renewed.
 	// (POST /v1/users/me/unlock)
 	Unlock(ctx echo.Context) error
@@ -2432,6 +2447,15 @@ func (w *ServerInterfaceWrapper) UpdateSpaceBar(ctx echo.Context) error {
 	return err
 }
 
+// SetStartSpace converts echo context to params.
+func (w *ServerInterfaceWrapper) SetStartSpace(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetStartSpace(ctx)
+	return err
+}
+
 // Unlock converts echo context to params.
 func (w *ServerInterfaceWrapper) Unlock(ctx echo.Context) error {
 	var err error
@@ -2509,6 +2533,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/admin/users", wrapper.GetAllUsers, options.OperationMiddlewares["getAllUsers"]...)
 	router.POST(options.BaseURL+"/v1/admin/users/:userId/password-reset", wrapper.CreatePasswordReset, options.OperationMiddlewares["createPasswordReset"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
+	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock", wrapper.Unlock, options.OperationMiddlewares["unlock"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock/renew", wrapper.RenewUnlock, options.OperationMiddlewares["renewUnlock"]...)

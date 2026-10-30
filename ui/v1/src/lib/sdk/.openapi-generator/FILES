@@ -55,6 +55,7 @@ models/SpaceDto.ts
 models/SpaceMemberDto.ts
 models/SpaceMemberRoleEnum.ts
 models/SpacePermissionEnum.ts
+models/StartSpaceDto.ts
 models/TagCountDto.ts
 models/TrashDto.ts
 models/TrashSelectionDto.ts
