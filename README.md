@@ -13,22 +13,35 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 **Spaces & people**
 - Spaces with members and roles: **owner**, **admin**, **contributor** (adds and edits links and collections)
   and **viewer**. A space bar like in Discord switches between them, `Ctrl/⌘ K` jumps anywhere.
+- Arrange the space bar your way: drag spaces into your own order and group them in **folders**.
+- Choose the space Ragbag **opens on start** (profile, or right-click a space); otherwise it reopens the last one.
 - **Invite links** with role, expiry and maximum uses – send them via any messenger.
 - **Public spaces** show up under *Discover spaces* for everybody on your instance, who can join with one click
   as viewer or contributor.
-- Avatars for users and icons for spaces: upload an image or load it from an address.
+- Avatars for users and logos for spaces. New spaces start with a **random planet** – roll another one or upload
+  your own image.
+- **What's new**: a dot on spaces and collections with links others added since your last visit, and a bell with
+  the latest additions. React to links with a small set of **emojis** (deliberately no comments).
 
 **Collections & links**
-- Nested collections with drag & drop and breadcrumbs.
+- Nested collections with drag & drop and breadcrumbs; sort them by dragging them in the sidebar.
 - **Private collections** are only visible to selected members – not even to space owners and admins. Everything
   inside them (sub-collections, links) is private too, which makes them perfect for gift ideas.
-- Links with title, description, tags, favicon and preview image. **Fetch details** loads them from the page.
-- Full-text search over titles, addresses, descriptions and tags.
+- **Lock collections** for yourself with a PIN: they disappear from your view, search and dashboard until you
+  unlock them – handy when somebody looks over your shoulder. Nobody else is affected.
+- **Public links** show a collection and its sub-collections to anybody, without an account – read-only, without
+  members, authors or private collections. Chat apps like WhatsApp and Signal show a proper preview.
+- Links with title, description, tags, favicon and preview image. **Fetch details** loads them from the page,
+  suggests tags already used in the space and warns about duplicates. Links that point straight to an image become
+  their own preview; set your **own preview image** (upload or address) or hide it.
+- Select several links (long press on phones) to move, tag or delete them at once; copy a link from its menu.
+- Sort links (newest, oldest, name, domain) and narrow them down with tag chips.
+- Full-text search over titles, addresses, descriptions and tags; `#tag` finds exactly that tag.
 - Three ways to show links – cards with preview images, compact cards or a dense list – chosen per user and device.
 
 **Personal**
 - **Favorites** and a **dashboard** per user and space: arrange sections of hand-picked links, favorites and recently
-  added links by drag & drop. Great as a homelab start page.
+  added links by drag & drop, and add links right from there. Great as a homelab start page.
 
 **Data**
 - **Save from anywhere**: install Ragbag as an app and share links to it (Android), or use the bookmarklet.
@@ -39,7 +52,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Users change their password themselves. Without email, **admins create one-time reset links** for people who
   forgot theirs.
 - Registration can be switched off once everybody has an account.
-- Light and dark mode, works on phones.
+- Light and dark mode, works on phones and can be installed as an app.
+- The version is shown in the account menu.
 
 ---
 
@@ -123,6 +137,19 @@ account if your instance is reachable from the internet.
 
 Database migrations run automatically on start-up.
 
+### Updating
+
+Releases are git tags (`vX.Y.Z`); the account menu shows which one is running. Pull and rebuild the same way you
+installed:
+
+```bash
+git pull && docker compose up -d --build                  # Docker
+git pull && sudo ./scripts/install.sh --build --dir /opt/ragbag   # systemd, built in a container
+```
+
+Migrations run on start-up, configuration and data are kept. Back up first (see *Backups*) when an update says it
+changes the database.
+
 ---
 
 ## ⚙️ Configuration
@@ -174,8 +201,11 @@ and images, `LOG_FORMAT=json` suits Loki, Graylog & co.
   container does not work, often because a host firewall (e.g. UFW) blocks the container network. Allow the
   container subnets (Podman: `10.88.0.0/15`) or set public DNS servers (see `docker-compose.yaml`). The log says
   *refusing private address* for links into your own network: set `ALLOW_PRIVATE_HOSTS=true`.
-- **Copying invite links does nothing:** browsers only allow clipboard access over HTTPS or on `localhost`. Ragbag
-  falls back to selecting the link for `Ctrl/⌘ C`; a reverse proxy with HTTPS fixes it for good.
+- **Copying links does nothing:** browsers only allow clipboard access over HTTPS or on `localhost`. Ragbag
+  falls back to the older copy command, or selects the link for `Ctrl/⌘ C`; a reverse proxy with HTTPS fixes it
+  for good.
+- **Disk filling up with `install.sh --build`:** every build used to leave its layers behind as untagged images.
+  Since v0.12.0 the script removes them after the build; older leftovers go with `podman image prune -f`.
 
 ### Backups
 
@@ -234,3 +264,7 @@ Contributions are welcome:
 ## 📄 License
 
 Ragbag is released under the **MIT License**. See [LICENSE](LICENSE) for details.
+
+The random space logos are the [Planets](https://www.dicebear.com/styles/planets/) style by
+[DiceBear](https://www.dicebear.com), released under [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/);
+they are generated in the browser, nothing is sent to DiceBear.
