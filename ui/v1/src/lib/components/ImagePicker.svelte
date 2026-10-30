@@ -1,22 +1,36 @@
+<script lang="ts" module>
+	/** A change the user picked but has not saved yet: a new image or removing the current one. */
+	export type ImageChange = { file: File } | { remove: true } | null;
+</script>
+
 <script lang="ts">
 	import { Button } from 'flowbite-svelte';
 	import { UploadOutline } from 'flowbite-svelte-icons';
 	import { errorMessage } from '../api/client';
 	import Avatar from './Avatar.svelte';
 
+	/**
+	 * Picks an avatar or space icon. With onupload/onremove a change applies right away (the profile); without them
+	 * it is only kept in `change` until the surrounding form saves it (space settings, creating a space).
+	 */
 	let {
 		name,
 		imageId,
 		shape = 'rounded-full',
+		change = $bindable(null),
 		onupload,
 		onremove,
+		random,
 	}: {
 		/** Used for the initials fallback. */
 		name: string;
 		imageId?: string | null;
 		shape?: 'rounded-full' | 'rounded-2xl';
-		onupload: (file: File) => Promise<void>;
-		onremove: () => Promise<void>;
+		change?: ImageChange;
+		onupload?: (file: File) => Promise<void>;
+		onremove?: () => Promise<void>;
+		/** Offers a random image ("Random planet") when given. */
+		random?: { label: string; file: () => Promise<File> };
 	} = $props();
 
 	const ACCEPT = 'image/png,image/jpeg,image/gif,image/webp';
@@ -26,6 +40,15 @@
 	let busy = $state(false);
 	let error = $state('');
 	let dragging = $state(false);
+
+	const pickedUrl = $derived(change && 'file' in change ? URL.createObjectURL(change.file) : undefined);
+	$effect(() => {
+		const url = pickedUrl;
+		return () => url && URL.revokeObjectURL(url);
+	});
+	/** What is shown: the picked image, nothing once removed, else the current one. */
+	const shownId = $derived(change ? undefined : imageId);
+	const hasImage = $derived(!!pickedUrl || !!shownId);
 
 	async function run(action: () => Promise<void>) {
 		busy = true;
@@ -39,6 +62,13 @@
 		}
 	}
 
+	function apply(file: File) {
+		return run(async () => {
+			if (onupload) await onupload(file);
+			else change = { file };
+		});
+	}
+
 	function upload(file: File | undefined) {
 		if (!file) return;
 		if (!ACCEPT.split(',').includes(file.type)) {
@@ -49,7 +79,15 @@
 			error = 'Images must be smaller than 5 MB.';
 			return;
 		}
-		run(() => onupload(file));
+		apply(file);
+	}
+
+	function remove() {
+		run(async () => {
+			if (onremove) await onremove();
+			// Removing a picked image goes back to nothing new; the current one is removed on save
+			else change = imageId ? { remove: true } : null;
+		});
 	}
 
 	function onfilechange(e: Event) {
@@ -62,6 +100,13 @@
 		e.preventDefault();
 		dragging = false;
 		upload(e.dataTransfer?.files?.[0]);
+	}
+
+	/** An image from the clipboard, for the surrounding dialog's paste handler. */
+	export function paste(files: FileList | undefined | null): boolean {
+		const file = [...(files ?? [])].find((f) => f.type.startsWith('image/'));
+		if (file) upload(file);
+		return !!file;
 	}
 </script>
 
@@ -77,14 +122,23 @@
 			ondragleave={() => (dragging = false)}
 			{ondrop}
 		>
-			<Avatar {name} {imageId} class="h-20 w-20 text-2xl {shape} {busy ? 'opacity-50' : ''}" />
+			{#if pickedUrl}
+				<img src={pickedUrl} alt="" class="h-20 w-20 object-cover {shape} {busy ? 'opacity-50' : ''}" />
+			{:else}
+				<Avatar {name} imageId={shownId} class="h-20 w-20 text-2xl {shape} {busy ? 'opacity-50' : ''}" />
+			{/if}
 		</button>
 		<div class="flex flex-wrap gap-2">
 			<Button size="xs" color="light" disabled={busy} onclick={() => fileInput?.click()}>
 				<UploadOutline class="me-1.5 h-4 w-4" /> Upload
 			</Button>
-			{#if imageId}
-				<Button size="xs" color="light" disabled={busy} onclick={() => run(onremove)}>Remove</Button>
+			{#if random}
+				<Button size="xs" color="light" disabled={busy} onclick={() => run(async () => apply(await random.file()))}>
+					🎲 {random.label}
+				</Button>
+			{/if}
+			{#if hasImage}
+				<Button size="xs" color="light" disabled={busy} onclick={remove}>Remove</Button>
 			{/if}
 		</div>
 		<input bind:this={fileInput} type="file" accept={ACCEPT} class="hidden" onchange={onfilechange} />
