@@ -4,6 +4,8 @@ import (
 	"fmt"
 	"testing"
 	"time"
+
+	"github.com/stretchr/testify/require"
 )
 
 type spaceFixture struct {
@@ -132,4 +134,31 @@ func TestDeletingASpaceRemovesItsInvites(t *testing.T) {
 	token := f.invite(f.owner, f.space, "VIEWER")
 	f.req("DELETE", "/api/v1/spaces/%s", f.space).as(f.owner).expect(204)
 	f.req("GET", "/api/v1/invites/%s", token).as(f.owner).expect(404)
+}
+
+func TestChoosingTheStartSpace(t *testing.T) {
+	e := newEnv(t)
+	owner, member := e.register(), e.register()
+	first := e.firstSpace(owner)
+	other := e.req("POST", "/api/v1/spaces").as(owner).json(`{"name":"Other"}`).expect(201).str("id")
+	e.join(member, other, "VIEWER", owner)
+
+	e.req("GET", "/api/v1/users/me").as(member).expect(200)
+	require.False(t, e.req("GET", "/api/v1/users/me").as(member).expect(200).get("startSpaceId").Exists())
+	e.req("PUT", "/api/v1/users/me/start-space").as(member).json(fmt.Sprintf(`{"spaceId":%q}`, other)).
+		expect(200).has("startSpaceId", other)
+	// Only spaces the user is a member of
+	e.req("PUT", "/api/v1/users/me/start-space").as(member).json(fmt.Sprintf(`{"spaceId":%q}`, first)).expect(400)
+
+	// Leaving the space unsets it
+	e.req("POST", "/api/v1/spaces/%s/leave", other).as(member).expect(204)
+	require.False(t, e.req("GET", "/api/v1/users/me").as(member).expect(200).get("startSpaceId").Exists())
+
+	// Deleting the space unsets it, back to the last visited one with null
+	e.req("PUT", "/api/v1/users/me/start-space").as(owner).json(fmt.Sprintf(`{"spaceId":%q}`, other)).expect(200)
+	e.req("DELETE", "/api/v1/spaces/%s", other).as(owner).expect(204)
+	require.False(t, e.req("GET", "/api/v1/users/me").as(owner).expect(200).get("startSpaceId").Exists())
+	e.req("PUT", "/api/v1/users/me/start-space").as(owner).json(fmt.Sprintf(`{"spaceId":%q}`, first)).expect(200)
+	e.req("PUT", "/api/v1/users/me/start-space").as(owner).json(`{"spaceId":null}`).expect(200)
+	require.False(t, e.req("GET", "/api/v1/users/me").as(owner).expect(200).get("startSpaceId").Exists())
 }

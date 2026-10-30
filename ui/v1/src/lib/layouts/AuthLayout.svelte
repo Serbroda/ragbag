@@ -133,6 +133,8 @@
 	// Leave spaces the user is no longer a member of (removed, deleted, bad link)
 	$effect(() => {
 		if (!spacesReady || !activeSpaceId) return;
+		// Remembered per user, so it waits for the account to be loaded
+		session.me;
 		if (activeSpace) {
 			rememberSpace(activeSpace.id);
 		} else {

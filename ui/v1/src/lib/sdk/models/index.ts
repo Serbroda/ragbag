@@ -44,6 +44,7 @@ export * from './SpaceDto';
 export * from './SpaceMemberDto';
 export * from './SpaceMemberRoleEnum';
 export * from './SpacePermissionEnum';
+export * from './StartSpaceDto';
 export * from './TagCountDto';
 export * from './TrashDto';
 export * from './TrashSelectionDto';

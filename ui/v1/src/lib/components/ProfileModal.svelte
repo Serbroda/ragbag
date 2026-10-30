@@ -2,7 +2,7 @@
 	import { UserApi } from 'ragbag-frontend-sdk';
 	import { Button, Input, Label, Modal } from 'flowbite-svelte';
 	import { apiConfig, appBase, changePassword, errorMessage } from '../api/client';
-	import { session } from '../stores/spaces.svelte';
+	import { session, setStartSpace } from '../stores/spaces.svelte';
 	import { LINK_VIEWS, preferences, setLinkView } from '../stores/preferences.svelte';
 	import { lockState } from '../stores/lock.svelte';
 	import ImagePicker from './ImagePicker.svelte';
@@ -168,6 +168,24 @@
 						</Button>
 					</div>
 				</form>
+			</section>
+
+			<section>
+				<Label for="start-space" class="mb-1">Open on start</Label>
+				<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+					The space Ragbag opens with, on every device. You can also right-click a space in the bar.
+				</p>
+				<select
+					id="start-space"
+					class="w-full rounded-lg border border-gray-300 bg-gray-50 p-2.5 text-sm text-gray-900 focus:border-primary-500 focus:ring-primary-500 dark:border-gray-600 dark:bg-gray-700 dark:text-white"
+					value={session.me.startSpaceId ?? ''}
+					onchange={(e) => setStartSpace((e.currentTarget as HTMLSelectElement).value || null)}
+				>
+					<option value="">The space I was in last</option>
+					{#each session.spaces as space (space.id)}
+						<option value={space.id}>{space.name}</option>
+					{/each}
+				</select>
 			</section>
 
 			<section>

@@ -258,6 +258,30 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /v1/users/me/start-space:
+    put:
+      summary: The space to open on start; null opens the last visited one
+      operationId: setStartSpace
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StartSpaceDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /v1/users/me/pin:
     put:
       summary: Set or change the PIN that unlocks the user's locked collections (needs the account password)
@@ -2216,10 +2240,20 @@ components:
         hasPin:
           type: boolean
           description: Has a PIN to unlock locked collections
+        startSpaceId:
+          $ref: '#/components/schemas/ID'
+          description: Opened on start instead of the last visited space; unset when the user leaves it
       required:
         - id
         - username
         - email
+
+    StartSpaceDto:
+      properties:
+        spaceId:
+          $ref: '#/components/schemas/ID'
+          nullable: true
+          description: A space the user is a member of, or null for the last visited one
 
     SetPinDto:
       properties:

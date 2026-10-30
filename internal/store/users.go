@@ -2,6 +2,7 @@ package store
 
 import (
 	"context"
+	"database/sql"
 	"strings"
 	"time"
 )
@@ -93,6 +94,21 @@ type Image struct {
 	ContentType string    `db:"content_type"`
 	Data        []byte    `db:"data"`
 	CreatedAt   time.Time `db:"created_at"`
+}
+
+// StartSpace returns the space the user opens on start, or nil for the last visited one.
+func (s *Store) StartSpace(ctx context.Context, userID string) (*string, error) {
+	var ids []sql.NullString
+	if err := s.sel(ctx, &ids, `SELECT start_space_id FROM users WHERE id = ?`, userID); err != nil || len(ids) == 0 ||
+		!ids[0].Valid {
+		return nil, err
+	}
+	return &ids[0].String, nil
+}
+
+func (s *Store) SetStartSpace(ctx context.Context, userID string, spaceID *string) error {
+	_, err := s.exec(ctx, `UPDATE users SET start_space_id = ?, updated_at = ? WHERE id = ?`, spaceID, now(), userID)
+	return err
 }
 
 func (s *Store) CreateImage(ctx context.Context, contentType string, data []byte) (string, error) {
