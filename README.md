@@ -150,7 +150,8 @@ Everything is configured with environment variables. For local runs the server a
 
 Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything to port 8080; the app lives under
 `/app`, the API under `/api`. When the proxy terminates HTTPS and sends `X-Forwarded-Proto: https`, the login cookie
-is marked `Secure` automatically.
+is marked `Secure` automatically. Link previews in chat apps (WhatsApp, Signal, Discord) use the `Host` and
+`X-Forwarded-Proto` headers the proxy passes on to build the image address.
 
 ### Logs
 

@@ -93,51 +93,61 @@ func (s *Server) UnshareCollection(c echo.Context, collectionID api.ID) error {
 
 // GetSharedCollection answers the public link. Every failure is the same 404, so links cannot be probed.
 func (s *Server) GetSharedCollection(c echo.Context, token string, params api.GetSharedCollectionParams) error {
-	share, err := s.store.ShareByToken(ctxOf(c), token)
-	if err != nil {
-		return orNotFound(err, shareNotFound)
-	}
-	root, err := s.store.CollectionByID(ctxOf(c), share.CollectionID)
-	if err != nil {
-		return orNotFound(err, shareNotFound)
-	}
-	collections, byID, err := s.spaceCollections(c, root.SpaceID)
+	dto, err := s.sharedCollection(c, token, params.CollectionId)
 	if err != nil {
 		return err
 	}
+	c.Response().Header().Set("X-Robots-Tag", "noindex")
+	return c.JSON(http.StatusOK, dto)
+}
+
+// sharedCollection is what a public link shows; the page and its link preview (meta.go) both go through here.
+func (s *Server) sharedCollection(c echo.Context, token string, collectionID *string) (*api.SharedCollectionDto, error) {
+	share, err := s.store.ShareByToken(ctxOf(c), token)
+	if err != nil {
+		return nil, orNotFound(err, shareNotFound)
+	}
+	root, err := s.store.CollectionByID(ctxOf(c), share.CollectionID)
+	if err != nil {
+		return nil, orNotFound(err, shareNotFound)
+	}
+	collections, byID, err := s.spaceCollections(c, root.SpaceID)
+	if err != nil {
+		return nil, err
+	}
 	if privateInPath(byID, root) {
-		return notFound(shareNotFound)
+		return nil, notFound(shareNotFound)
 	}
 
 	// The requested collection must be the shared one or below it, with nothing private in between
 	target := root
-	if params.CollectionId != nil && *params.CollectionId != root.ID {
-		target = byID[*params.CollectionId]
+	if collectionID != nil && *collectionID != root.ID {
+		target = byID[*collectionID]
 		if target == nil {
-			return notFound(shareNotFound)
+			return nil, notFound(shareNotFound)
 		}
 	}
 	path := []*store.Collection{}
 	for current := target; ; {
 		if current.Restricted {
-			return notFound(shareNotFound)
+			return nil, notFound(shareNotFound)
 		}
 		path = append([]*store.Collection{current}, path...)
 		if current.ID == root.ID {
 			break
 		}
 		if current.ParentID == nil || len(path) > 1000 {
-			return notFound(shareNotFound)
+			return nil, notFound(shareNotFound)
 		}
 		current = byID[*current.ParentID]
 		if current == nil {
-			return notFound(shareNotFound)
+			return nil, notFound(shareNotFound)
 		}
 	}
 
 	counts, err := s.store.BookmarkCounts(ctxOf(c), root.SpaceID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	// In the order of the app's collection tree
 	publicChildren := map[string][]*store.Collection{}
@@ -162,7 +172,7 @@ func (s *Server) GetSharedCollection(c echo.Context, token string, params api.Ge
 
 	bookmarks, err := s.store.BookmarksInCollection(ctxOf(c), target.ID)
 	if err != nil {
-		return err
+		return nil, err
 	}
 	for _, b := range bookmarks {
 		tags, createdAt := b.Tags, b.CreatedAt
@@ -173,6 +183,5 @@ func (s *Server) GetSharedCollection(c echo.Context, token string, params api.Ge
 		dto.Bookmarks = append(dto.Bookmarks, api.SharedBookmarkDto{Id: b.ID, Url: b.URL, Title: b.Title,
 			Description: b.Description, Tags: tags, OgImage: b.OgImage, Favicon: b.Favicon, CreatedAt: &createdAt})
 	}
-	c.Response().Header().Set("X-Robots-Tag", "noindex")
-	return c.JSON(http.StatusOK, dto)
+	return &dto, nil
 }
