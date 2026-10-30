@@ -135,6 +135,13 @@ export interface RemoveFavoriteRequest {
     bookmarkId: string;
 }
 
+export interface ResetBookmarkImageRequest {
+    /**
+     * 
+     */
+    bookmarkId: string;
+}
+
 export interface SearchBookmarksRequest {
     /**
      * 
@@ -144,6 +151,21 @@ export interface SearchBookmarksRequest {
      * Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
      */
     q: string;
+}
+
+export interface SetBookmarkImageRequest {
+    /**
+     * 
+     */
+    bookmarkId: string;
+    /**
+     * 
+     */
+    file?: Blob;
+    /**
+     * 
+     */
+    url?: string;
 }
 
 export interface SetReactionRequest {
@@ -736,6 +758,59 @@ export class BookmarkApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for resetBookmarkImage without sending the request
+     */
+    async resetBookmarkImageRequestOpts(requestParameters: ResetBookmarkImageRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['bookmarkId'] == null) {
+            throw new runtime.RequiredError(
+                'bookmarkId',
+                'Required parameter "bookmarkId" was null or undefined when calling resetBookmarkImage().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/bookmarks/{bookmarkId}/image`;
+        urlPath = urlPath.replace('{bookmarkId}', encodeURIComponent(String(requestParameters['bookmarkId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Back to the page\'s own preview image (removes an upload, an own image URL and hiding)
+     */
+    async resetBookmarkImageRaw(requestParameters: ResetBookmarkImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BookmarkDto>> {
+        const requestOptions = await this.resetBookmarkImageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Back to the page\'s own preview image (removes an upload, an own image URL and hiding)
+     */
+    async resetBookmarkImage(requestParameters: ResetBookmarkImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkDto> {
+        const response = await this.resetBookmarkImageRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for searchBookmarks without sending the request
      */
     async searchBookmarksRequestOpts(requestParameters: SearchBookmarksRequest): Promise<runtime.RequestOpts> {
@@ -796,6 +871,84 @@ export class BookmarkApi extends runtime.BaseAPI {
      */
     async searchBookmarks(requestParameters: SearchBookmarksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BookmarkDto>> {
         const response = await this.searchBookmarksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setBookmarkImage without sending the request
+     */
+    async setBookmarkImageRequestOpts(requestParameters: SetBookmarkImageRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['bookmarkId'] == null) {
+            throw new runtime.RequiredError(
+                'bookmarkId',
+                'Required parameter "bookmarkId" was null or undefined when calling setBookmarkImage().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+        const consumes: runtime.Consume[] = [
+            { contentType: 'multipart/form-data' },
+        ];
+        // @ts-ignore: canConsumeForm may be unused
+        const canConsumeForm = runtime.canConsumeForm(consumes);
+
+        let formParams: { append(param: string, value: any): any };
+        let useForm = false;
+        // use FormData to transmit files using content-type "multipart/form-data"
+        useForm = canConsumeForm;
+        if (useForm) {
+            formParams = new FormData();
+        } else {
+            formParams = new URLSearchParams();
+        }
+
+        if (requestParameters['file'] != null) {
+            formParams.append('file', requestParameters['file'] as any);
+        }
+
+        if (requestParameters['url'] != null) {
+            formParams.append('url', requestParameters['url'] as any);
+        }
+
+
+        let urlPath = `/v1/bookmarks/{bookmarkId}/image`;
+        urlPath = urlPath.replace('{bookmarkId}', encodeURIComponent(String(requestParameters['bookmarkId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: formParams,
+        };
+    }
+
+    /**
+     * Upload an own preview image for the link (replaces the page\'s image)
+     */
+    async setBookmarkImageRaw(requestParameters: SetBookmarkImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BookmarkDto>> {
+        const requestOptions = await this.setBookmarkImageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BookmarkDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Upload an own preview image for the link (replaces the page\'s image)
+     */
+    async setBookmarkImage(requestParameters: SetBookmarkImageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkDto> {
+        const response = await this.setBookmarkImageRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

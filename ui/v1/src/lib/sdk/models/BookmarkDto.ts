@@ -76,6 +76,18 @@ export interface BookmarkDto {
      */
     favorite?: boolean;
     /**
+     * An uploaded preview image (/api/v1/images/{id}); wins over everything else
+     */
+    customImageId?: string;
+    /**
+     * An own preview image address, loaded from there; wins over ogImage
+     */
+    customImageUrl?: string;
+    /**
+     * Show no preview image at all
+     */
+    imageHidden?: boolean;
+    /**
      * Added by another member since the current user last looked at the collection; only set when listing a collection
      * 
      */
@@ -117,6 +129,9 @@ export function BookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'createdAt': json['createdAt'] == null ? undefined : (parseDateTime(json['createdAt'])),
         'createdBy': json['createdBy'] == null ? undefined : json['createdBy'],
         'favorite': json['favorite'] == null ? undefined : json['favorite'],
+        'customImageId': json['customImageId'] == null ? undefined : json['customImageId'],
+        'customImageUrl': json['customImageUrl'] == null ? undefined : json['customImageUrl'],
+        'imageHidden': json['imageHidden'] == null ? undefined : json['imageHidden'],
         'isNew': json['isNew'] == null ? undefined : json['isNew'],
         'reactions': json['reactions'] == null ? undefined : ((json['reactions'] as Array<any>).map(ReactionDtoFromJSON)),
     };
@@ -145,6 +160,9 @@ export function BookmarkDtoToJSONTyped(value?: BookmarkDto | null, ignoreDiscrim
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'createdBy': value['createdBy'],
         'favorite': value['favorite'],
+        'customImageId': value['customImageId'],
+        'customImageUrl': value['customImageUrl'],
+        'imageHidden': value['imageHidden'],
         'isNew': value['isNew'],
         'reactions': value['reactions'] == null ? undefined : ((value['reactions'] as Array<any>).map(ReactionDtoToJSON)),
     };

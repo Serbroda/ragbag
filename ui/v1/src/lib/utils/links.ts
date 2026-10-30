@@ -1,5 +1,6 @@
 import type { LinkSort } from '../stores/preferences.svelte';
-import { getDomain } from './format';
+import { imageUrl } from '../api/client';
+import { getDomain, safeUrl } from './format';
 
 /** The fields of a link that sorting and filtering look at (bookmarks and links of a public share). */
 interface SortableLink {
@@ -52,4 +53,19 @@ export function filterByTags<T extends SortableLink>(links: T[], tags: string[])
 		const own = new Set((link.tags ?? []).map((tag) => tag.toLowerCase()));
 		return wanted.every((tag) => own.has(tag));
 	});
+}
+
+/** What decides a link's preview image (a bookmark or a link of a public share). */
+interface ImageSource {
+	ogImage?: string;
+	customImageId?: string;
+	customImageUrl?: string;
+	imageHidden?: boolean;
+}
+
+/** The preview image to show: an upload, else an own address, else the page's image; none if hidden. */
+export function previewImage(link: ImageSource): string | undefined {
+	if (link.imageHidden) return undefined;
+	if (link.customImageId) return imageUrl(link.customImageId);
+	return safeUrl(link.customImageUrl) ?? safeUrl(link.ogImage);
 }

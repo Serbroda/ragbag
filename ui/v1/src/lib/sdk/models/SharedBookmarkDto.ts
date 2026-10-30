@@ -40,9 +40,13 @@ export interface SharedBookmarkDto {
      */
     tags: Array<string>;
     /**
-     * 
+     * The preview image to show (an own address or the page's), unless customImageId is set
      */
     ogImage?: string;
+    /**
+     * UUID
+     */
+    customImageId?: string;
     /**
      * 
      */
@@ -79,6 +83,7 @@ export function SharedBookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'description': json['description'] == null ? undefined : json['description'],
         'tags': json['tags'],
         'ogImage': json['ogImage'] == null ? undefined : json['ogImage'],
+        'customImageId': json['customImageId'] == null ? undefined : json['customImageId'],
         'favicon': json['favicon'] == null ? undefined : json['favicon'],
         'createdAt': json['createdAt'] == null ? undefined : (parseDateTime(json['createdAt'])),
     };
@@ -101,6 +106,7 @@ export function SharedBookmarkDtoToJSONTyped(value?: SharedBookmarkDto | null, i
         'description': value['description'],
         'tags': value['tags'],
         'ogImage': value['ogImage'],
+        'customImageId': value['customImageId'],
         'favicon': value['favicon'],
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
     };

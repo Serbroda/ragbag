@@ -44,6 +44,15 @@ func (s *Store) DeleterNames(ctx context.Context, ids []string) (map[string]stri
 	return names, err
 }
 
+// DeleteOrphanImages removes uploads nothing points to any more (links deleted for good, images replaced),
+// leaving fresh ones alone in case they are about to be used.
+func (s *Store) DeleteOrphanImages(ctx context.Context, before time.Time) (int64, error) {
+	return s.exec(ctx, `DELETE FROM images WHERE created_at < ?
+		AND id NOT IN (SELECT avatar_image_id FROM users WHERE avatar_image_id IS NOT NULL)
+		AND id NOT IN (SELECT icon_image_id FROM spaces WHERE icon_image_id IS NOT NULL)
+		AND id NOT IN (SELECT image_id FROM bookmarks WHERE image_id IS NOT NULL)`, before.UTC())
+}
+
 // PurgeTrash deletes what has been in the trash since before the given time, for good.
 func (s *Store) PurgeTrash(ctx context.Context, before time.Time) (int64, error) {
 	links, err := s.exec(ctx, `DELETE FROM bookmarks WHERE deleted_at < ?`, before.UTC())

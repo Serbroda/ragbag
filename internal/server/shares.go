@@ -179,9 +179,18 @@ func (s *Server) sharedCollection(c echo.Context, token string, collectionID *st
 		if tags == nil {
 			tags = []string{}
 		}
+		// The preview image as the app shows it: an upload, an own address, the page's, or none
+		image, imageID := b.OgImage, b.ImageID
+		if b.ImageURL != nil {
+			image = b.ImageURL
+		}
+		if b.ImageHidden {
+			image, imageID = nil, nil
+		}
 		// Deliberately without who added it, favorites or reactions
 		dto.Bookmarks = append(dto.Bookmarks, api.SharedBookmarkDto{Id: b.ID, Url: b.URL, Title: b.Title,
-			Description: b.Description, Tags: tags, OgImage: b.OgImage, Favicon: b.Favicon, CreatedAt: &createdAt})
+			Description: b.Description, Tags: tags, OgImage: image, CustomImageId: imageID, Favicon: b.Favicon,
+			CreatedAt: &createdAt})
 	}
 	return &dto, nil
 }

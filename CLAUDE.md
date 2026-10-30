@@ -118,6 +118,11 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   them out without extra code; queries that do not use those joins must filter `deleted_at IS NULL` themselves.
   The trash lists what the user could see (`hiddenCollectionsOf(…, withTrash=false)`), restoring brings back
   favorites, reactions and pins, `PurgeOldTrash` (hourly from main) deletes after 30 days.
+- **Preview images**: shown is an upload (`image_id`, `images.NormalizePreview`: scaled to 1200 px, aspect kept,
+  JPEG unless transparent) over an own address (`image_url`) over the page's `og_image`, none if `image_hidden`
+  (`previewImage()` in the frontend, the same order for public shares). Addresses are loaded by the browser,
+  never cached. Links that point straight to an image become their own preview (`fetch.isImage`, by content
+  type or first bytes). Unused uploads are deleted by the hourly job (`DeleteOrphanImages`).
 - **Quick saving**: `/app/add?url=&title=&text=` (route outside a space) is the target of the web app manifest's
   `share_target` (installed app on Android) and of the bookmarklet in the profile dialog; signed-out visitors
   return there after the login (`rememberPendingAdd`).

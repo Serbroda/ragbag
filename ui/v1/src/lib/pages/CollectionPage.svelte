@@ -9,6 +9,7 @@
 	import { filterByTags, sortLinks } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
 	import TagInput from '../components/TagInput.svelte';
+	import PreviewImageField from '../components/PreviewImageField.svelte';
 	import { linkListClass, preferences } from '../stores/preferences.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
@@ -76,6 +77,8 @@
 	let editTitle = $state('');
 	let editDescription = $state('');
 	let editTags = $state('');
+	let editImageUrl = $state('');
+	let editImageHidden = $state(false);
 	let addLinkForm = $state<LinkFormFields | null>(null);
 	let bookmarkToMove = $state<BookmarkDto | null>(null);
 	let moveTargetId = $state('');
@@ -229,7 +232,15 @@
 		editTitle = bookmark.title ?? '';
 		editDescription = bookmark.description ?? '';
 		editTags = bookmark.tags?.join(', ') ?? '';
+		editImageUrl = bookmark.customImageUrl ?? '';
+		editImageHidden = bookmark.imageHidden ?? false;
 		modalError = '';
+	}
+
+	/** After an upload or a reset in the edit dialog, which apply right away. */
+	function imageChanged(updated: BookmarkDto) {
+		editingBookmark = updated;
+		bookmarks = bookmarks.map((b) => (b.id === updated.id ? { ...updated, isNew: b.isNew } : b));
 	}
 
 	async function saveEdit() {
@@ -245,9 +256,12 @@
 					title: editTitle || undefined,
 					description: editDescription || undefined,
 					tags: parseTags(editTags),
+					// "" keeps an upload and removes an own address
+					customImageUrl: editImageUrl.trim(),
+					imageHidden: editImageHidden,
 				},
 			});
-			bookmarks = bookmarks.map((b) => (b.id === updated.id ? updated : b));
+			bookmarks = bookmarks.map((b) => (b.id === updated.id ? { ...updated, isNew: b.isNew } : b));
 			editingBookmark = null;
 		} catch (err) {
 			modalError = await errorMessage(err, 'Failed to update link.');
@@ -928,6 +942,14 @@
 			bind:description={editDescription}
 			bind:tags={editTags}
 		/>
+		{#if editingBookmark}
+			<PreviewImageField
+				bookmark={editingBookmark}
+				bind:imageUrl={editImageUrl}
+				bind:hidden={editImageHidden}
+				onchange={imageChanged}
+			/>
+		{/if}
 		{#if modalError}
 			<p class="text-sm text-red-500 dark:text-red-400">{modalError}</p>
 		{/if}

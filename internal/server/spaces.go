@@ -3,6 +3,7 @@ package server
 import (
 	"context"
 	"errors"
+	"github.com/Serbroda/ragbag/internal/images"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -242,7 +243,7 @@ func (s *Server) SetSpaceIcon(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
-	contentType, data, err := s.readImage(c)
+	contentType, data, err := s.readImage(c, images.Normalize)
 	if err != nil {
 		return err
 	}

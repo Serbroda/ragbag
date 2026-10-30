@@ -1,6 +1,7 @@
 package server
 
 import (
+	"github.com/Serbroda/ragbag/internal/images"
 	"net/http"
 	"sort"
 	"strings"
@@ -23,10 +24,11 @@ func bookmarkDto(b *store.Bookmark, favorite bool) api.BookmarkDto {
 		tags = []string{}
 	}
 	collectionID, createdAt, createdBy := b.CollectionID, b.CreatedAt, b.CreatedByName
+	hidden := b.ImageHidden
 	return api.BookmarkDto{
 		Id: b.ID, CollectionId: &collectionID, Url: b.URL, Title: b.Title, Description: b.Description, Tags: &tags,
 		OgImage: b.OgImage, Favicon: b.Favicon, Canonical: b.Canonical, CreatedAt: &createdAt, CreatedBy: &createdBy,
-		Favorite: &favorite,
+		Favorite: &favorite, CustomImageId: b.ImageID, CustomImageUrl: b.ImageURL, ImageHidden: &hidden,
 	}
 }
 
@@ -279,6 +281,82 @@ func (s *Server) UpdateBookmark(c echo.Context, bookmarkID api.ID) error {
 		bookmark.Description = nilIfEmpty(firstNonEmpty(deref(bookmark.Description), metadata.Description))
 	}
 	if err := s.store.UpdateBookmark(ctxOf(c), bookmark); err != nil {
+		return err
+	}
+	if req.CustomImageUrl != nil || req.ImageHidden != nil {
+		if err := s.updateOwnImage(c, bookmark, req.CustomImageUrl, req.ImageHidden); err != nil {
+			return err
+		}
+	}
+	return s.respondBookmark(c, bookmarkID)
+}
+
+// updateOwnImage applies an own image address (replacing an upload, "" removes it) and hiding.
+func (s *Server) updateOwnImage(c echo.Context, bookmark *store.Bookmark, imageURL *string, hidden *bool) error {
+	imageID, address, hide := bookmark.ImageID, bookmark.ImageURL, bookmark.ImageHidden
+	var replaced *string
+	if imageURL != nil {
+		value := strings.TrimSpace(*imageURL)
+		if value == "" {
+			address = nil
+		} else {
+			normalized, err := fetch.NormalizeURL(value)
+			if err != nil {
+				return badRequest("The image address is not valid: %s", err.Error())
+			}
+			address, replaced, imageID = &normalized, imageID, nil
+		}
+	}
+	if hidden != nil {
+		hide = *hidden
+	}
+	return s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		if err := tx.SetBookmarkImage(ctxOf(c), bookmark.ID, imageID, address, hide); err != nil {
+			return err
+		}
+		return tx.DeleteImage(ctxOf(c), replaced)
+	})
+}
+
+// SetBookmarkImage stores an uploaded preview image, which wins over the page's and an own address.
+func (s *Server) SetBookmarkImage(c echo.Context, bookmarkID api.ID) error {
+	bookmark, err := s.requireBookmark(ctxOf(c), s.store, bookmarkID, currentUser(c), PermEditBookmarks)
+	if err != nil {
+		return err
+	}
+	contentType, data, err := s.readImage(c, images.NormalizePreview)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		imageID, err := tx.CreateImage(ctxOf(c), contentType, data)
+		if err != nil {
+			return err
+		}
+		if err := tx.SetBookmarkImage(ctxOf(c), bookmarkID, &imageID, nil, false); err != nil {
+			return err
+		}
+		return tx.DeleteImage(ctxOf(c), bookmark.ImageID)
+	})
+	if err != nil {
+		return err
+	}
+	return s.respondBookmark(c, bookmarkID)
+}
+
+// ResetBookmarkImage goes back to the page's preview image.
+func (s *Server) ResetBookmarkImage(c echo.Context, bookmarkID api.ID) error {
+	bookmark, err := s.requireBookmark(ctxOf(c), s.store, bookmarkID, currentUser(c), PermEditBookmarks)
+	if err != nil {
+		return err
+	}
+	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		if err := tx.SetBookmarkImage(ctxOf(c), bookmarkID, nil, nil, false); err != nil {
+			return err
+		}
+		return tx.DeleteImage(ctxOf(c), bookmark.ImageID)
+	})
+	if err != nil {
 		return err
 	}
 	return s.respondBookmark(c, bookmarkID)

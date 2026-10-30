@@ -309,4 +309,10 @@ func (s *Server) PurgeOldTrash(ctx context.Context) {
 	if purged > 0 {
 		slog.Info("purged the trash", "items", purged)
 	}
+	// Uploads of links deleted for good (or replaced) are no longer needed
+	if orphans, err := s.store.DeleteOrphanImages(ctx, time.Now().Add(-time.Hour)); err != nil {
+		slog.Error("deleting unused images failed", "error", err)
+	} else if orphans > 0 {
+		slog.Info("deleted unused images", "images", orphans)
+	}
 }
