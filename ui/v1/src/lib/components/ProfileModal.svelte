@@ -89,9 +89,6 @@
 					onupload={async (file) => {
 						session.me = await userApi.setAvatar({ file });
 					}}
-					onurl={async (url) => {
-						session.me = await userApi.setAvatar({ url });
-					}}
 					onremove={async () => {
 						session.me = await userApi.removeAvatar();
 					}}
