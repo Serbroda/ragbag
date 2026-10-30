@@ -20,6 +20,7 @@
 	import LinkTile from '../components/LinkTile.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
+	import QuickAddModal from '../components/QuickAddModal.svelte';
 	import FavoriteButton from '../components/FavoriteButton.svelte';
 	import { dashboardApi } from '../stores/dashboard';
 	import { session } from '../stores/spaces.svelte';
@@ -31,6 +32,23 @@
 
 	const spaceId = $derived(route.params.spaceId ?? '');
 	const space = $derived(session.spaces.find((s) => s.id === spaceId) ?? null);
+
+	// --- Quick add: open Ragbag, paste a link, done ---
+	let quickAdd = $state<QuickAddModal | null>(null);
+	let quickAddOpen = $state(false);
+	const canAddLinks = $derived(space?.permissions?.includes('CREATE_BOOKMARKS') ?? false);
+
+	/** Pasting a URL anywhere on the dashboard (outside fields) starts adding it, like in a collection. */
+	function handlePaste(event: ClipboardEvent) {
+		if (!canAddLinks || editing) return;
+		const target = event.target instanceof Element ? event.target : null;
+		if (target?.closest('input, textarea, select, [contenteditable]')) return;
+		if (document.querySelector('dialog[open], [role=dialog]')) return;
+		const text = event.clipboardData?.getData('text/plain').trim() ?? '';
+		if (!/^https?:\/\/\S+$/i.test(text)) return;
+		event.preventDefault();
+		quickAdd?.show(text);
+	}
 
 	let dashboard = $state<DashboardDto | null>(null);
 	let memberCount = $state<number | null>(null);
@@ -168,6 +186,8 @@
 	}
 </script>
 
+<svelte:window onpaste={handlePaste} />
+
 <div>
 	<header class="mb-8 flex flex-wrap items-end justify-between gap-4">
 		<div class="flex min-w-0 items-center gap-4">
@@ -216,6 +236,11 @@
 					<Button color="alternative" onclick={() => (editing = false)} disabled={saving}>Cancel</Button>
 					<Button onclick={save} disabled={saving}>{saving ? 'Saving…' : 'Save dashboard'}</Button>
 				{:else}
+					{#if canAddLinks}
+						<Button onclick={() => quickAdd?.show()} title="Or paste a URL anywhere on this page">
+							<PlusOutline class="me-1.5 h-4 w-4" /> Add Link
+						</Button>
+					{/if}
 					<Button color="alternative" onclick={startEditing}>
 						<PenOutline class="me-2 h-4 w-4" /> Customize
 					</Button>
@@ -418,3 +443,7 @@
 		</div>
 	{/snippet}
 </Modal>
+
+{#if space}
+	<QuickAddModal bind:this={quickAdd} bind:open={quickAddOpen} spaceId={space.id} onadded={() => load(spaceId)} />
+{/if}
