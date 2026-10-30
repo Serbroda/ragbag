@@ -13,14 +13,17 @@ type Collection struct {
 	Description *string `db:"description"`
 	Restricted  bool    `db:"restricted"`
 	// Position orders collections below the same parent
-	Position  int       `db:"position"`
-	CreatedBy string    `db:"created_by"`
-	CreatedAt time.Time `db:"created_at"`
-	UpdatedAt time.Time `db:"updated_at"`
+	Position  int    `db:"position"`
+	CreatedBy string `db:"created_by"`
+	// DeletedAt is set while the collection is in the trash (everything below it is hidden with it)
+	DeletedAt *time.Time `db:"deleted_at"`
+	DeletedBy *string    `db:"deleted_by"`
+	CreatedAt time.Time  `db:"created_at"`
+	UpdatedAt time.Time  `db:"updated_at"`
 }
 
 const collectionColumns = `id, space_id, parent_id, name, description, restricted, position, created_by, created_at,
-	updated_at`
+	updated_at, deleted_at, deleted_by`
 
 // CreateCollection appends the collection after its future siblings.
 func (s *Store) CreateCollection(ctx context.Context, c *Collection, memberIDs []string) error {
@@ -31,7 +34,8 @@ func (s *Store) CreateCollection(ctx context.Context, c *Collection, memberIDs [
 		return err
 	}
 	c.Position = position
-	if _, err := s.exec(ctx, `INSERT INTO collections (`+collectionColumns+`) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+	if _, err := s.exec(ctx, `INSERT INTO collections (id, space_id, parent_id, name, description, restricted, position,
+		created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		c.ID, c.SpaceID, c.ParentID, c.Name, c.Description, c.Restricted, c.Position, c.CreatedBy, at, at); err != nil {
 		return err
 	}
@@ -63,7 +67,7 @@ func (s *Store) BookmarkCounts(ctx context.Context, spaceID string) (map[string]
 		Count        int    `db:"n"`
 	}
 	if err := s.sel(ctx, &rows, `SELECT b.collection_id, COUNT(*) AS n FROM bookmarks b
-		JOIN collections c ON c.id = b.collection_id WHERE c.space_id = ? GROUP BY b.collection_id`, spaceID); err != nil {
+		JOIN collections c ON c.id = b.collection_id WHERE b.deleted_at IS NULL AND c.space_id = ? GROUP BY b.collection_id`, spaceID); err != nil {
 		return nil, err
 	}
 	counts := make(map[string]int, len(rows))
@@ -104,7 +108,18 @@ func (s *Store) OrderCollections(ctx context.Context, ids []string) error {
 	return nil
 }
 
-// DeleteCollection removes it with everything below (ON DELETE CASCADE).
+// TrashCollection moves the collection (and with it everything below) to the trash.
+func (s *Store) TrashCollection(ctx context.Context, id, userID string) error {
+	_, err := s.exec(ctx, `UPDATE collections SET deleted_at = ?, deleted_by = ? WHERE id = ?`, now(), userID, id)
+	return err
+}
+
+func (s *Store) RestoreCollection(ctx context.Context, id string) error {
+	_, err := s.exec(ctx, `UPDATE collections SET deleted_at = NULL, deleted_by = NULL WHERE id = ?`, id)
+	return err
+}
+
+// DeleteCollection removes it with everything below for good (ON DELETE CASCADE).
 func (s *Store) DeleteCollection(ctx context.Context, id string) error {
 	_, err := s.exec(ctx, `DELETE FROM collections WHERE id = ?`, id)
 	return err
@@ -143,8 +158,11 @@ func (s *Store) PrivateCollectionsOf(ctx context.Context, spaceID, userID string
 	return ids, err
 }
 
-func (s *Store) HasPrivateCollections(ctx context.Context, spaceID string) (bool, error) {
+// HasHiddenCandidates tells whether the space has private collections or collections in the trash, the two
+// things that can hide a collection from everybody or some.
+func (s *Store) HasHiddenCandidates(ctx context.Context, spaceID string) (bool, error) {
 	var count int
-	err := s.get(ctx, &count, `SELECT COUNT(*) FROM collections WHERE space_id = ? AND restricted = ?`, spaceID, true)
+	err := s.get(ctx, &count, `SELECT COUNT(*) FROM collections WHERE space_id = ? AND (restricted = ? OR deleted_at IS NOT NULL)`,
+		spaceID, true)
 	return count > 0, err
 }

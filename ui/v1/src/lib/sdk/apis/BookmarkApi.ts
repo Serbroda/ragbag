@@ -117,6 +117,17 @@ export interface GetRecentBookmarksRequest {
     limit?: number;
 }
 
+export interface LookupBookmarksRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+    /**
+     * 
+     */
+    url: string;
+}
+
 export interface RemoveFavoriteRequest {
     /**
      * 
@@ -605,6 +616,70 @@ export class BookmarkApi extends runtime.BaseAPI {
      */
     async getRecentBookmarks(requestParameters: GetRecentBookmarksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BookmarkDto>> {
         const response = await this.getRecentBookmarksRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for lookupBookmarks without sending the request
+     */
+    async lookupBookmarksRequestOpts(requestParameters: LookupBookmarksRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling lookupBookmarks().'
+            );
+        }
+
+        if (requestParameters['url'] == null) {
+            throw new runtime.RequiredError(
+                'url',
+                'Required parameter "url" was null or undefined when calling lookupBookmarks().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['url'] != null) {
+            queryParameters['url'] = requestParameters['url'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/bookmarks/lookup`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Links of the space with this URL (after normalizing), to warn about duplicates
+     */
+    async lookupBookmarksRaw(requestParameters: LookupBookmarksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<BookmarkDto>>> {
+        const requestOptions = await this.lookupBookmarksRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(BookmarkDtoFromJSON));
+    }
+
+    /**
+     * Links of the space with this URL (after normalizing), to warn about duplicates
+     */
+    async lookupBookmarks(requestParameters: LookupBookmarksRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<BookmarkDto>> {
+        const response = await this.lookupBookmarksRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

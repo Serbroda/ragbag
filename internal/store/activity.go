@@ -26,7 +26,7 @@ func (s *Store) NewBookmarks(ctx context.Context, userID, spaceID string) ([]New
 		JOIN users u ON u.id = b.created_by
 		JOIN space_members m ON m.space_id = c.space_id AND m.user_id = ?
 		LEFT JOIN collection_visits v ON v.collection_id = b.collection_id AND v.user_id = ?
-		WHERE b.created_by <> ? AND b.created_at > COALESCE(v.seen_at, m.created_at)`
+		WHERE b.deleted_at IS NULL AND b.created_by <> ? AND b.created_at > COALESCE(v.seen_at, m.created_at)`
 	args := []any{userID, userID, userID}
 	if spaceID != "" {
 		query += ` AND c.space_id = ?`

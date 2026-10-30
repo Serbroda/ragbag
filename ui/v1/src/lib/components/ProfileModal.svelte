@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { UserApi } from 'ragbag-frontend-sdk';
 	import { Button, Input, Label, Modal } from 'flowbite-svelte';
-	import { apiConfig, changePassword, errorMessage } from '../api/client';
+	import { apiConfig, appBase, changePassword, errorMessage } from '../api/client';
 	import { session } from '../stores/spaces.svelte';
 	import { LINK_VIEWS, preferences, setLinkView } from '../stores/preferences.svelte';
 	import { lockState } from '../stores/lock.svelte';
@@ -17,6 +17,11 @@
 	let confirmPassword = $state('');
 	let passwordBusy = $state(false);
 	let passwordMessage = $state<{ ok: boolean; text: string } | null>(null);
+
+	/** Saves the page that is open in the browser: drag it to the bookmarks bar. */
+	const bookmarklet = $derived(
+		`javascript:(()=>{window.open('${window.location.origin}${appBase()}/add?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'ragbag','width=560,height=760')})()`,
+	);
 
 	let pinPassword = $state('');
 	let pin = $state('');
@@ -163,6 +168,22 @@
 						</Button>
 					</div>
 				</form>
+			</section>
+
+			<section>
+				<Label class="mb-1">Save links from anywhere</Label>
+				<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+					Drag this button to your browser's bookmarks bar. Clicking it on any page opens a small window to save
+					that page to Ragbag. On Android, install Ragbag as an app (browser menu → “Install app”) to share links
+					to it from other apps.
+				</p>
+				<!-- svelte-ignore a11y_invalid_attribute -->
+				<a
+					href={bookmarklet}
+					class="inline-flex cursor-grab items-center gap-1.5 rounded-lg bg-primary-500 px-3 py-1.5 text-sm font-semibold text-white shadow-sm"
+					title="Drag me to the bookmarks bar"
+					onclick={(e) => e.preventDefault()}>＋ Save to Ragbag</a
+				>
 			</section>
 
 			<section>

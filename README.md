@@ -31,6 +31,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
   added links by drag & drop. Great as a homelab start page.
 
 **Data**
+- **Save from anywhere**: install Ragbag as an app and share links to it (Android), or use the bookmarklet.
+- **Trash**: deleted links and collections can be restored for 30 days.
 - **Export and import** collections as versioned JSON files, with a preview of what an import will do.
 
 **Accounts**

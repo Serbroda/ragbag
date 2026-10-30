@@ -18,6 +18,11 @@
 		ondragstart,
 		ondragend,
 		publicView = false,
+		selectable = false,
+		selected = false,
+		selecting = false,
+		onselect,
+		raised = false,
 	}: {
 		bookmark: BookmarkDto;
 		/** Defaults to the user's link display preference. */
@@ -32,7 +37,53 @@
 		ondragend?: (event: DragEvent) => void;
 		/** Shown through a public link: no favorites, reactions, authors or links into the app. */
 		publicView?: boolean;
+		/** Multi-select: a checkbox on the card (on hover, always once something is selected). */
+		selectable?: boolean;
+		selected?: boolean;
+		selecting?: boolean;
+		onselect?: (event: MouseEvent) => void;
+		/** Lifts the card above its neighbours, e.g. while its menu is open. */
+		raised?: boolean;
 	} = $props();
+
+	// Touch screens have no hover: a long press selects the card (and starts selecting)
+	let pressTimer: ReturnType<typeof setTimeout> | undefined;
+	let pressed = false;
+	let pressStart = { x: 0, y: 0 };
+
+	function onpointerdown(e: PointerEvent) {
+		if (!selectable || e.pointerType === 'mouse') return;
+		pressed = false;
+		pressStart = { x: e.clientX, y: e.clientY };
+		clearTimeout(pressTimer);
+		pressTimer = setTimeout(() => {
+			pressed = true;
+			navigator.vibrate?.(15);
+			onselect?.(new MouseEvent('click'));
+		}, 450);
+	}
+
+	function cancelPress() {
+		clearTimeout(pressTimer);
+	}
+
+	/** A finger always moves a little; only scrolling (more than a few pixels) cancels the long press. */
+	function onpointermove(e: PointerEvent) {
+		if (Math.hypot(e.clientX - pressStart.x, e.clientY - pressStart.y) > 8) cancelPress();
+	}
+
+	/** While selecting, tapping the card (its title link covers it) selects instead of opening the link. */
+	function onlinkclick(e: MouseEvent) {
+		if (pressed) {
+			pressed = false;
+			e.preventDefault();
+			return;
+		}
+		if (selectable && selecting) {
+			e.preventDefault();
+			onselect?.(e);
+		}
+	}
 
 	const spaceId = $derived(route.params.spaceId);
 
@@ -71,7 +122,11 @@
 		{href}
 		target="_blank"
 		rel="noopener noreferrer"
-		class="break-words text-gray-900 after:absolute after:inset-0 after:content-[''] group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400 {classes}"
+		class="break-words text-gray-900 after:absolute after:inset-0 after:content-[''] group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400 {selectable
+			? '[-webkit-touch-callout:none]'
+			: ''} {classes}"
+		onclick={onlinkclick}
+		oncontextmenu={(e) => pressed && e.preventDefault()}
 	>
 		{bookmark.title || bookmark.url}
 	</a>
@@ -97,6 +152,46 @@
 		<time datetime={bookmark.createdAt.toISOString()} title={bookmark.createdAt.toLocaleString()}>
 			{timeAgo(bookmark.createdAt)}
 		</time>
+	{/if}
+{/snippet}
+
+{#snippet checkbox(classes: string)}
+	{#if selectable}
+		<button
+			type="button"
+			role="checkbox"
+			aria-checked={selected}
+			aria-label="Select {bookmark.title || bookmark.url}"
+			title="Select (Shift: a range)"
+			class="z-10 flex h-5 w-5 shrink-0 items-center justify-center rounded border-2 transition {selected
+				? 'border-primary-500 bg-primary-500 text-white'
+				: 'border-gray-400 bg-white dark:border-gray-500 dark:bg-gray-900'} {classes}"
+			onclick={(e) => {
+				e.preventDefault();
+				e.stopPropagation();
+				onselect?.(e);
+			}}
+		>
+			{#if selected}
+				<svg class="h-3.5 w-3.5" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5"
+					><path stroke-linecap="round" stroke-linejoin="round" d="M5 13l4 4L19 7" /></svg
+				>
+			{/if}
+		</button>
+	{/if}
+{/snippet}
+
+<!-- The favicon, which turns into the checkbox on hover (and stays one while something is selected) -->
+{#snippet lead(size: string)}
+	{#if selectable && (selected || selecting)}
+		{@render checkbox('relative')}
+	{:else if selectable}
+		<span class="relative flex shrink-0 items-center">
+			<span class="group-hover:hidden group-focus-within:hidden">{@render faviconIcon(size)}</span>
+			{@render checkbox('relative hidden group-hover:flex group-focus-within:flex')}
+		</span>
+	{:else}
+		{@render faviconIcon(size)}
 	{/if}
 {/snippet}
 
@@ -133,9 +228,15 @@
 		draggable={ondragstart ? 'true' : undefined}
 		{ondragstart}
 		{ondragend}
-		class="group relative flex items-center gap-3 px-3 py-2 transition-colors focus-within:z-20 first:rounded-t-xl last:rounded-b-xl hover:bg-gray-50 dark:hover:bg-gray-800/60"
+		class="group relative flex items-center gap-3 px-3 py-2 transition-colors focus-within:z-20 first:rounded-t-xl last:rounded-b-xl hover:bg-gray-50 dark:hover:bg-gray-800/60 {selected
+			? 'bg-primary-500/10'
+			: ''} {raised ? 'z-30' : ''}"
+		{onpointerdown}
+		onpointerup={cancelPress}
+		{onpointermove}
+		onpointercancel={cancelPress}
 	>
-		{@render faviconIcon('h-5 w-5')}
+		{@render lead('h-5 w-5')}
 		<div class="min-w-0 flex-1">
 			<p class="flex min-w-0 items-center gap-2 text-sm">
 				{@render newBadge()}<span class="truncate">{@render titleLink('font-medium')}</span>
@@ -168,7 +269,13 @@
 		draggable={ondragstart ? 'true' : undefined}
 		{ondragstart}
 		{ondragend}
-		class="group relative flex h-full flex-col overflow-hidden rounded-xl border border-gray-200 bg-white transition duration-200 hover:-translate-y-0.5 hover:border-gray-300 hover:shadow-lg dark:border-gray-800 dark:bg-gray-900 dark:hover:border-gray-700 dark:hover:shadow-black/30"
+		{onpointerdown}
+		onpointerup={cancelPress}
+		{onpointermove}
+		onpointercancel={cancelPress}
+		class="group relative flex h-full flex-col rounded-xl border bg-white transition duration-200 {raised ? 'z-30' : ''} hover:-translate-y-0.5 hover:shadow-lg dark:bg-gray-900 dark:hover:shadow-black/30 {selected
+			? 'border-primary-500 ring-2 ring-primary-500'
+			: 'border-gray-200 hover:border-gray-300 dark:border-gray-800 dark:hover:border-gray-700'}"
 	>
 		{#if !publicView}
 			<div
@@ -186,14 +293,14 @@
 				alt=""
 				loading="lazy"
 				referrerpolicy="no-referrer"
-				class="aspect-[2.4/1] w-full bg-gray-100 object-cover dark:bg-gray-800"
+				class="aspect-[2.4/1] w-full rounded-t-[11px] bg-gray-100 object-cover dark:bg-gray-800"
 				onerror={() => (imageFailed = true)}
 			/>
 		{/if}
 
 		<div class="flex flex-1 flex-col {view === 'compact' ? 'gap-1.5 p-3' : 'gap-2 p-4'}">
 			<div class="flex items-center gap-2 pe-8 text-xs text-gray-500">
-				{@render faviconIcon('h-4 w-4')}
+				{@render lead('h-4 w-4')}
 				<span class="truncate">{getDomain(bookmark.url)}</span>
 				{@render newBadge()}
 			</div>

@@ -6,6 +6,7 @@ import (
 	"context"
 	"errors"
 	"io/fs"
+	"mime"
 	"net/http"
 	"path"
 	"strings"
@@ -174,6 +175,11 @@ func (s *Server) isAdmin(user *store.User) bool {
 }
 
 // serveFrontend serves the single page app under /app; unknown paths get index.html for client side routing.
+func init() {
+	// Go does not know the web app manifest; browsers expect it as JSON
+	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
+}
+
 func (s *Server) serveFrontend(e *echo.Echo, frontend fs.FS) {
 	e.GET("/", func(c echo.Context) error { return c.Redirect(http.StatusFound, "/app/") })
 	fileServer := http.StripPrefix("/app", http.FileServer(http.FS(frontend)))

@@ -1,5 +1,5 @@
 import { createRouter } from 'sv-router';
-import { isAuthenticated, rememberPendingInvite } from './api/client';
+import { isAuthenticated, rememberPendingAdd, rememberPendingInvite } from './api/client';
 
 declare module 'sv-router' {
 	interface RouteMeta {
@@ -26,6 +26,14 @@ export const { p, navigate, isActive, route } = createRouter({
 	},
 	'/space/:spaceId/search': {
 		'/': () => import('./pages/SearchPage.svelte'),
+		layout: () => import('./layouts/AuthLayout.svelte'),
+	},
+	// Target of the share menu (installed app) and the bookmarklet: add a link from anywhere
+	'/add': {
+		'/': () => import('./pages/AddPage.svelte'),
+	},
+	'/space/:spaceId/trash': {
+		'/': () => import('./pages/TrashPage.svelte'),
 		layout: () => import('./layouts/AuthLayout.svelte'),
 	},
 	'/space/:spaceId/favorites': {
@@ -61,6 +69,7 @@ export const { p, navigate, isActive, route } = createRouter({
 			if (!meta.public && !isAuthenticated()) {
 				// Resume an opened invite link once the user has signed in
 				rememberPendingInvite(window.location.pathname);
+				rememberPendingAdd(window.location);
 				throw navigate('/login');
 			}
 		},

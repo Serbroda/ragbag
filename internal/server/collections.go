@@ -272,8 +272,9 @@ func (s *Server) DeleteCollection(c echo.Context, collectionID api.ID) error {
 		return err
 	}
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
-		// Deleting would silently take other members' private collections with it
-		hidden, err := s.hiddenCollections(ctxOf(c), tx, collection.SpaceID, currentUser(c))
+		// Deleting would silently take other members' private collections with it (what is already in the
+		// trash below it does not count)
+		hidden, err := s.hiddenCollectionsOf(ctxOf(c), tx, collection.SpaceID, currentUser(c), false)
 		if err != nil {
 			return err
 		}
@@ -288,12 +289,12 @@ func (s *Server) DeleteCollection(c echo.Context, collectionID api.ID) error {
 				}
 			}
 		}
-		return tx.DeleteCollection(ctxOf(c), collectionID)
+		return tx.TrashCollection(ctxOf(c), collectionID, currentUser(c))
 	})
 	if err != nil {
 		return err
 	}
-	audit(c, slog.LevelInfo, "collection deleted", "collection", collection.Name, "space", collection.SpaceID)
+	audit(c, slog.LevelInfo, "collection moved to the trash", "collection", collection.Name, "space", collection.SpaceID)
 	return c.NoContent(http.StatusNoContent)
 }
 

@@ -1392,6 +1392,147 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /v1/spaces/{spaceId}/trash:
+    get:
+      summary: Deleted links and collections of the space the user may see; kept for 30 days
+      operationId: getTrash
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: The most recently deleted first
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TrashDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/trash/restore:
+    post:
+      summary: Restore deleted links and collections
+      operationId: restoreFromTrash
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrashSelectionDto'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/trash/purge:
+    post:
+      summary: Delete links and collections from the trash for good (all of them with "all")
+      operationId: purgeTrash
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TrashSelectionDto'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/tags:
+    get:
+      summary: Tags used in the space with how often, for suggestions (case variants merged)
+      operationId: getSpaceTags
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: The most used first
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/TagCountDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/spaces/{spaceId}/bookmarks/lookup:
+    get:
+      summary: Links of the space with this URL (after normalizing), to warn about duplicates
+      operationId: lookupBookmarks
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: query
+          name: url
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDtoList'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/spaces/{spaceId}/bookmarks/search:
     get:
       summary: Search bookmarks in a space
@@ -2459,6 +2600,98 @@ components:
       required:
         - emoji
         - reacted
+
+    TrashDto:
+      properties:
+        collections:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrashedCollectionDto'
+        bookmarks:
+          type: array
+          items:
+            $ref: '#/components/schemas/TrashedBookmarkDto'
+        retentionDays:
+          type: integer
+      required:
+        - collections
+        - bookmarks
+        - retentionDays
+
+    TrashedCollectionDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        parentName:
+          type: string
+        bookmarkCount:
+          type: integer
+          description: Links in it and below it
+        childCount:
+          type: integer
+          description: Collections below it
+        deletedAt:
+          type: string
+          format: date-time
+        deletedBy:
+          type: string
+      required:
+        - id
+        - name
+        - bookmarkCount
+        - childCount
+        - deletedAt
+
+    TrashedBookmarkDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        url:
+          type: string
+        title:
+          type: string
+        favicon:
+          type: string
+        collectionId:
+          $ref: '#/components/schemas/ID'
+        collectionName:
+          type: string
+        deletedAt:
+          type: string
+          format: date-time
+        deletedBy:
+          type: string
+      required:
+        - id
+        - url
+        - collectionId
+        - deletedAt
+
+    TrashSelectionDto:
+      properties:
+        collectionIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ID'
+        bookmarkIds:
+          type: array
+          items:
+            $ref: '#/components/schemas/ID'
+        all:
+          type: boolean
+          description: Everything in the trash the user may see (purge only)
+
+    TagCountDto:
+      properties:
+        tag:
+          type: string
+        count:
+          type: integer
+      required:
+        - tag
+        - count
 
     CollectionShareDto:
       properties:

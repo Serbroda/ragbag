@@ -113,6 +113,14 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   members, authors, reactions or private collections; private collections cannot be shared, and a shared one that
   becomes private (or moves below one) answers 404 until it is public again. Every failure is the same 404.
   Managing the link needs `EDIT_COLLECTIONS`; only those see the token.
+- **Trash** (`trash.go`): deleting only sets `deleted_at` on a link or collection. Trashed collections are part of
+  `hiddenCollections` (with everything below), trashed links are filtered by `bookmarkJoins`, so every query leaves
+  them out without extra code; queries that do not use those joins must filter `deleted_at IS NULL` themselves.
+  The trash lists what the user could see (`hiddenCollectionsOf(…, withTrash=false)`), restoring brings back
+  favorites, reactions and pins, `PurgeOldTrash` (hourly from main) deletes after 30 days.
+- **Quick saving**: `/app/add?url=&title=&text=` (route outside a space) is the target of the web app manifest's
+  `share_target` (installed app on Android) and of the bookmarklet in the profile dialog; signed-out visitors
+  return there after the login (`rememberPendingAdd`).
 - **Link previews** (`meta.go`): the server writes title, description and Open Graph tags into `index.html` per
   page (chat apps do not run JavaScript). Shared collections go through the same `sharedCollection` as the API,
   so private, revoked or unknown links get the generic preview; pages behind a login never reveal anything.

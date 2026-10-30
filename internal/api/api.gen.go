@@ -701,6 +701,58 @@ type SpaceMemberRoleEnum string
 // SpacePermissionEnum defines model for SpacePermissionEnum.
 type SpacePermissionEnum string
 
+// TagCountDto defines model for TagCountDto.
+type TagCountDto struct {
+	Count int    `json:"count"`
+	Tag   string `json:"tag"`
+}
+
+// TrashDto defines model for TrashDto.
+type TrashDto struct {
+	Bookmarks     []TrashedBookmarkDto   `json:"bookmarks"`
+	Collections   []TrashedCollectionDto `json:"collections"`
+	RetentionDays int                    `json:"retentionDays"`
+}
+
+// TrashSelectionDto defines model for TrashSelectionDto.
+type TrashSelectionDto struct {
+	// All Everything in the trash the user may see (purge only)
+	All           *bool `json:"all,omitempty"`
+	BookmarkIds   *[]ID `json:"bookmarkIds,omitempty"`
+	CollectionIds *[]ID `json:"collectionIds,omitempty"`
+}
+
+// TrashedBookmarkDto defines model for TrashedBookmarkDto.
+type TrashedBookmarkDto struct {
+	// CollectionId UUID
+	CollectionId   ID        `json:"collectionId"`
+	CollectionName *string   `json:"collectionName,omitempty"`
+	DeletedAt      time.Time `json:"deletedAt"`
+	DeletedBy      *string   `json:"deletedBy,omitempty"`
+	Favicon        *string   `json:"favicon,omitempty"`
+
+	// Id UUID
+	Id    ID      `json:"id"`
+	Title *string `json:"title,omitempty"`
+	Url   string  `json:"url"`
+}
+
+// TrashedCollectionDto defines model for TrashedCollectionDto.
+type TrashedCollectionDto struct {
+	// BookmarkCount Links in it and below it
+	BookmarkCount int `json:"bookmarkCount"`
+
+	// ChildCount Collections below it
+	ChildCount int       `json:"childCount"`
+	DeletedAt  time.Time `json:"deletedAt"`
+	DeletedBy  *string   `json:"deletedBy,omitempty"`
+
+	// Id UUID
+	Id         ID      `json:"id"`
+	Name       string  `json:"name"`
+	ParentName *string `json:"parentName,omitempty"`
+}
+
 // UnlockDto defines model for UnlockDto.
 type UnlockDto struct {
 	ExpiresAt time.Time `json:"expiresAt"`
@@ -823,6 +875,11 @@ type GetRecentBookmarksParams struct {
 	Limit *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
+// LookupBookmarksParams defines parameters for LookupBookmarks.
+type LookupBookmarksParams struct {
+	Url string `form:"url" json:"url"`
+}
+
 // SearchBookmarksParams defines parameters for SearchBookmarks.
 type SearchBookmarksParams struct {
 	// Q Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
@@ -885,6 +942,12 @@ type SetSpaceIconMultipartRequestBody = ImageUpload
 
 // UpdateSpaceMemberJSONRequestBody defines body for UpdateSpaceMember for application/json ContentType.
 type UpdateSpaceMemberJSONRequestBody = UpdateSpaceMemberDto
+
+// PurgeTrashJSONRequestBody defines body for PurgeTrash for application/json ContentType.
+type PurgeTrashJSONRequestBody = TrashSelectionDto
+
+// RestoreFromTrashJSONRequestBody defines body for RestoreFromTrash for application/json ContentType.
+type RestoreFromTrashJSONRequestBody = TrashSelectionDto
 
 // SetAvatarMultipartRequestBody defines body for SetAvatar for multipart/form-data ContentType.
 type SetAvatarMultipartRequestBody = ImageUpload
@@ -1044,6 +1107,9 @@ type ServerInterface interface {
 	// GetRecentBookmarks Most recently added bookmarks of a space
 	// (GET /v1/spaces/{spaceId}/bookmarks)
 	GetRecentBookmarks(ctx echo.Context, spaceId ID, params GetRecentBookmarksParams) error
+	// LookupBookmarks Links of the space with this URL (after normalizing), to warn about duplicates
+	// (GET /v1/spaces/{spaceId}/bookmarks/lookup)
+	LookupBookmarks(ctx echo.Context, spaceId ID, params LookupBookmarksParams) error
 	// SearchBookmarks Search bookmarks in a space
 	// (GET /v1/spaces/{spaceId}/bookmarks/search)
 	SearchBookmarks(ctx echo.Context, spaceId ID, params SearchBookmarksParams) error
@@ -1095,6 +1161,18 @@ type ServerInterface interface {
 	// MarkSpaceSeen Mark everything in the space as seen by the current user
 	// (POST /v1/spaces/{spaceId}/seen)
 	MarkSpaceSeen(ctx echo.Context, spaceId ID) error
+	// GetSpaceTags Tags used in the space with how often, for suggestions (case variants merged)
+	// (GET /v1/spaces/{spaceId}/tags)
+	GetSpaceTags(ctx echo.Context, spaceId ID) error
+	// GetTrash Deleted links and collections of the space the user may see; kept for 30 days
+	// (GET /v1/spaces/{spaceId}/trash)
+	GetTrash(ctx echo.Context, spaceId ID) error
+	// PurgeTrash Delete links and collections from the trash for good (all of them with "all")
+	// (POST /v1/spaces/{spaceId}/trash/purge)
+	PurgeTrash(ctx echo.Context, spaceId ID) error
+	// RestoreFromTrash Restore deleted links and collections
+	// (POST /v1/spaces/{spaceId}/trash/restore)
+	RestoreFromTrash(ctx echo.Context, spaceId ID) error
 	// Me Get current user
 	// (GET /v1/users/me)
 	Me(ctx echo.Context) error
@@ -1853,6 +1931,31 @@ func (w *ServerInterfaceWrapper) GetRecentBookmarks(ctx echo.Context) error {
 	return err
 }
 
+// LookupBookmarks converts echo context to params.
+func (w *ServerInterfaceWrapper) LookupBookmarks(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params LookupBookmarksParams
+	// ------------- Required query parameter "url" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "url", ctx.QueryParams(), &params.Url, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter url: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.LookupBookmarks(ctx, spaceId, params)
+	return err
+}
+
 // SearchBookmarks converts echo context to params.
 func (w *ServerInterfaceWrapper) SearchBookmarks(ctx echo.Context) error {
 	var err error
@@ -2150,6 +2253,70 @@ func (w *ServerInterfaceWrapper) MarkSpaceSeen(ctx echo.Context) error {
 	return err
 }
 
+// GetSpaceTags converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSpaceTags(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSpaceTags(ctx, spaceId)
+	return err
+}
+
+// GetTrash converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTrash(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTrash(ctx, spaceId)
+	return err
+}
+
+// PurgeTrash converts echo context to params.
+func (w *ServerInterfaceWrapper) PurgeTrash(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.PurgeTrash(ctx, spaceId)
+	return err
+}
+
+// RestoreFromTrash converts echo context to params.
+func (w *ServerInterfaceWrapper) RestoreFromTrash(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RestoreFromTrash(ctx, spaceId)
+	return err
+}
+
 // Me converts echo context to params.
 func (w *ServerInterfaceWrapper) Me(ctx echo.Context) error {
 	var err error
@@ -2323,6 +2490,11 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/export", wrapper.ExportCollection, options.OperationMiddlewares["exportCollection"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/import", wrapper.ImportCollection, options.OperationMiddlewares["importCollection"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/bookmarks", wrapper.GetRecentBookmarks, options.OperationMiddlewares["getRecentBookmarks"]...)
+	router.GET(options.BaseURL+"/v1/spaces/:spaceId/trash", wrapper.GetTrash, options.OperationMiddlewares["getTrash"]...)
+	router.POST(options.BaseURL+"/v1/spaces/:spaceId/trash/restore", wrapper.RestoreFromTrash, options.OperationMiddlewares["restoreFromTrash"]...)
+	router.POST(options.BaseURL+"/v1/spaces/:spaceId/trash/purge", wrapper.PurgeTrash, options.OperationMiddlewares["purgeTrash"]...)
+	router.GET(options.BaseURL+"/v1/spaces/:spaceId/tags", wrapper.GetSpaceTags, options.OperationMiddlewares["getSpaceTags"]...)
+	router.GET(options.BaseURL+"/v1/spaces/:spaceId/bookmarks/lookup", wrapper.LookupBookmarks, options.OperationMiddlewares["lookupBookmarks"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/bookmarks/search", wrapper.SearchBookmarks, options.OperationMiddlewares["searchBookmarks"]...)
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/bookmarks", wrapper.GetBookmarks, options.OperationMiddlewares["getBookmarks"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks", wrapper.CreateBookmark, options.OperationMiddlewares["createBookmark"]...)
