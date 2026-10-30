@@ -247,7 +247,7 @@ make docker         # container image
 ```
 
 The code layout and the rules behind it (permissions, private collections, migrations) are described in
-[CLAUDE.md](CLAUDE.md).
+[AGENTS.md](AGENTS.md).
 
 ---
 
