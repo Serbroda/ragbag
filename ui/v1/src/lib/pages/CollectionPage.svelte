@@ -29,6 +29,7 @@
 	import { bookmarkDrag } from '../stores/bookmarkDrag.svelte';
 	import { pendingCollectionAction } from '../stores/collectionAction.svelte';
 	import { showToast } from '../stores/toast.svelte';
+	import { copyText } from '../utils/clipboard';
 
 	const bookmarkApi = new BookmarkApi(apiConfig());
 	const collectionApi = new CollectionApi(apiConfig());
@@ -838,6 +839,15 @@
 										? 'top-8'
 										: 'bottom-9'} border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
 								>
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={async () => {
+											openMenuId = null;
+											showToast((await copyText(bookmark.url)) ? 'Link copied' : 'Could not copy the link');
+										}}
+									>
+										Copy link
+									</button>
 									<button
 										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
 										onclick={() => {
