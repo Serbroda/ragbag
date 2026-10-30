@@ -1,16 +1,17 @@
-// Package images turns uploads into avatars and space icons: square PNGs of at most 256 px. Re-encoding keeps
-// them small, strips metadata such as GPS positions and guarantees that only real images are served.
+// Package images turns uploads into avatars and space icons (square PNGs of at most 256 px) and into preview
+// images of links (scaled down, aspect ratio kept). Re-encoding keeps them small, strips metadata such as GPS
+// positions and guarantees that only real images are served.
 package images
 
 import (
 	"bytes"
 	"errors"
 	"image"
+	"image/jpeg"
 	"image/png"
 
 	// Decoders for image.Decode
 	_ "image/gif"
-	_ "image/jpeg"
 
 	"golang.org/x/image/draw"
 )
@@ -20,6 +21,8 @@ const (
 	// GIF (maybe animated) and WebP cannot be re-encoded without losing quality, so they are kept up to this size
 	maxOriginalBytes = 1 << 20
 	Size             = 256
+	// Preview images of links are scaled down to fit this box, never cropped
+	MaxPreviewSize = 1200
 	// A tiny PNG can claim gigapixel dimensions: refuse before decoding
 	maxPixels = 50_000_000
 )
@@ -30,8 +33,31 @@ var (
 	ErrUnreadable  = errors.New("The image could not be read")
 )
 
-// Normalize returns the content type and bytes to store.
+// Normalize returns the content type and bytes of an avatar or icon to store.
 func Normalize(data []byte) (string, []byte, error) {
+	return normalize(data, func(source image.Image) (string, []byte, error) {
+		var out bytes.Buffer
+		err := png.Encode(&out, squared(source))
+		return "image/png", out.Bytes(), err
+	})
+}
+
+// NormalizePreview returns the content type and bytes of a link's preview image to store: at most
+// MaxPreviewSize on each side, JPEG unless it has transparency.
+func NormalizePreview(data []byte) (string, []byte, error) {
+	return normalize(data, func(source image.Image) (string, []byte, error) {
+		scaled := fit(source, MaxPreviewSize)
+		var out bytes.Buffer
+		if transparent(scaled) {
+			err := png.Encode(&out, scaled)
+			return "image/png", out.Bytes(), err
+		}
+		err := jpeg.Encode(&out, scaled, &jpeg.Options{Quality: 85})
+		return "image/jpeg", out.Bytes(), err
+	})
+}
+
+func normalize(data []byte, encode func(image.Image) (string, []byte, error)) (string, []byte, error) {
 	format := detect(data)
 	switch {
 	case format == "":
@@ -53,11 +79,32 @@ func Normalize(data []byte) (string, []byte, error) {
 	if err != nil {
 		return "", nil, ErrUnreadable
 	}
-	var out bytes.Buffer
-	if err := png.Encode(&out, squared(source)); err != nil {
-		return "", nil, err
+	return encode(source)
+}
+
+// fit scales down to at most size pixels on each side, keeping the aspect ratio (never up).
+func fit(source image.Image, size int) image.Image {
+	bounds := source.Bounds()
+	width, height := bounds.Dx(), bounds.Dy()
+	if width <= size && height <= size {
+		return source
 	}
-	return "image/png", out.Bytes(), nil
+	if width >= height {
+		width, height = size, max(1, height*size/width)
+	} else {
+		width, height = max(1, width*size/height), size
+	}
+	scaled := image.NewNRGBA(image.Rect(0, 0, width, height))
+	draw.CatmullRom.Scale(scaled, scaled.Bounds(), source, bounds, draw.Src, nil)
+	return scaled
+}
+
+// transparent tells whether any pixel is not fully opaque.
+func transparent(img image.Image) bool {
+	if opaque, ok := img.(interface{ Opaque() bool }); ok {
+		return !opaque.Opaque()
+	}
+	return true
 }
 
 // squared center-crops to a square and scales down to at most Size pixels (never up).

@@ -76,8 +76,18 @@ type Response struct {
 	Body        []byte
 }
 
-// Get loads the URL and returns the body of a 2xx response up to maxBytes.
+// Get loads the URL and returns the body of a 2xx response up to maxBytes; larger bodies are an error.
 func (c *Client) Get(ctx context.Context, rawURL string, maxBytes int64) (*Response, error) {
+	return c.get(ctx, rawURL, maxBytes, false)
+}
+
+// GetStart loads the URL like Get but returns at most the first maxBytes of a larger body: enough for the head
+// of a page or to recognize an image.
+func (c *Client) GetStart(ctx context.Context, rawURL string, maxBytes int64) (*Response, error) {
+	return c.get(ctx, rawURL, maxBytes, true)
+}
+
+func (c *Client) get(ctx context.Context, rawURL string, maxBytes int64, truncate bool) (*Response, error) {
 	target, err := url.Parse(rawURL)
 	if err != nil || (target.Scheme != "http" && target.Scheme != "https") || target.Hostname() == "" {
 		return nil, fmt.Errorf("not an http(s) URL: %q", rawURL)
@@ -115,7 +125,10 @@ func (c *Client) Get(ctx context.Context, rawURL string, maxBytes int64) (*Respo
 		return nil, err
 	}
 	if int64(len(body)) > maxBytes {
-		return nil, ErrTooLarge
+		if !truncate {
+			return nil, ErrTooLarge
+		}
+		body = body[:maxBytes]
 	}
 	return &Response{URL: res.Request.URL, ContentType: res.Header.Get("Content-Type"), Body: body}, nil
 }

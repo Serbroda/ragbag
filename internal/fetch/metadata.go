@@ -3,7 +3,9 @@ package fetch
 import (
 	"bytes"
 	"context"
+	"net/http"
 	"net/url"
+	"path"
 	"strings"
 
 	"golang.org/x/net/html"
@@ -30,9 +32,13 @@ func (m Metadata) Found() bool { return m.Title != "" || m.Description != "" }
 // Metadata loads a page and extracts title, description, preview image, favicon and keywords. Failures
 // return empty metadata: links are saved anyway.
 func (c *Client) Metadata(ctx context.Context, pageURL string) Metadata {
-	res, err := c.Get(ctx, pageURL, maxPageBytes)
+	// The start of a large page still has its head; an image is recognized by its first bytes
+	res, err := c.GetStart(ctx, pageURL, maxPageBytes)
 	if err != nil {
 		return Metadata{}
+	}
+	if isImage(res) {
+		return imageMetadata(res.URL)
 	}
 	reader, err := charset.NewReader(bytes.NewReader(res.Body), res.ContentType)
 	if err != nil {
@@ -43,6 +49,30 @@ func (c *Client) Metadata(ctx context.Context, pageURL string) Metadata {
 		return Metadata{}
 	}
 	return ParseMetadata(doc, res.URL)
+}
+
+// isImage tells whether the response is an image: by its declared type or, for servers that do not declare
+// one, by its first bytes.
+func isImage(res *Response) bool {
+	declared := strings.ToLower(strings.TrimSpace(strings.Split(res.ContentType, ";")[0]))
+	if strings.HasPrefix(declared, "image/") {
+		// SVG too: shown in an <img>, it cannot run scripts
+		return true
+	}
+	if declared != "" && declared != "application/octet-stream" && declared != "binary/octet-stream" {
+		return false
+	}
+	sniffed := http.DetectContentType(res.Body)
+	return strings.HasPrefix(sniffed, "image/")
+}
+
+// imageMetadata describes a link straight to an image: the image is its own preview, the file name its title.
+func imageMetadata(location *url.URL) Metadata {
+	name, err := url.PathUnescape(path.Base(location.Path))
+	if err != nil || name == "/" || name == "." {
+		name = location.Hostname()
+	}
+	return Metadata{Title: name, OgImage: location.String()}
 }
 
 // ParseMetadata reads the head of a parsed page; relative URLs are resolved against base.

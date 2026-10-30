@@ -242,15 +242,24 @@ type BookmarkDto struct {
 	CreatedAt    *time.Time `json:"createdAt,omitempty"`
 
 	// CreatedBy Username of the member who added the bookmark
-	CreatedBy   *string `json:"createdBy,omitempty"`
-	Description *string `json:"description,omitempty"`
-	Favicon     *string `json:"favicon,omitempty"`
+	CreatedBy *string `json:"createdBy,omitempty"`
+
+	// CustomImageId An uploaded preview image (/api/v1/images/{id}); wins over everything else
+	CustomImageId *ID `json:"customImageId,omitempty"`
+
+	// CustomImageUrl An own preview image address, loaded from there; wins over ogImage
+	CustomImageUrl *string `json:"customImageUrl,omitempty"`
+	Description    *string `json:"description,omitempty"`
+	Favicon        *string `json:"favicon,omitempty"`
 
 	// Favorite Whether the current user marked this bookmark as favorite
 	Favorite *bool `json:"favorite,omitempty"`
 
 	// Id UUID
 	Id ID `json:"id"`
+
+	// ImageHidden Show no preview image at all
+	ImageHidden *bool `json:"imageHidden,omitempty"`
 
 	// IsNew Added by another member since the current user last looked at the collection; only set when listing a collection
 	IsNew     *bool          `json:"isNew,omitempty"`
@@ -607,12 +616,17 @@ type SetReactionDto struct {
 
 // SharedBookmarkDto defines model for SharedBookmarkDto.
 type SharedBookmarkDto struct {
-	CreatedAt   *time.Time `json:"createdAt,omitempty"`
-	Description *string    `json:"description,omitempty"`
-	Favicon     *string    `json:"favicon,omitempty"`
+	CreatedAt *time.Time `json:"createdAt,omitempty"`
+
+	// CustomImageId UUID
+	CustomImageId *ID     `json:"customImageId,omitempty"`
+	Description   *string `json:"description,omitempty"`
+	Favicon       *string `json:"favicon,omitempty"`
 
 	// Id UUID
-	Id      ID       `json:"id"`
+	Id ID `json:"id"`
+
+	// OgImage The preview image to show (an own address or the page's), unless customImageId is set
 	OgImage *string  `json:"ogImage,omitempty"`
 	Tags    []string `json:"tags"`
 	Title   *string  `json:"title,omitempty"`
@@ -767,11 +781,17 @@ type UnlockRequest struct {
 // UpdateBookmarkDto defines model for UpdateBookmarkDto.
 type UpdateBookmarkDto struct {
 	// CollectionId Moves the link to another collection of the same space
-	CollectionId *ID       `json:"collectionId,omitempty"`
-	Description  *string   `json:"description,omitempty"`
-	Tags         *[]string `json:"tags,omitempty"`
-	Title        *string   `json:"title,omitempty"`
-	Url          string    `json:"url"`
+	CollectionId *ID `json:"collectionId,omitempty"`
+
+	// CustomImageUrl An own preview image address (replaces an upload); an empty string removes it
+	CustomImageUrl *string `json:"customImageUrl,omitempty"`
+	Description    *string `json:"description,omitempty"`
+
+	// ImageHidden Show no preview image at all
+	ImageHidden *bool     `json:"imageHidden,omitempty"`
+	Tags        *[]string `json:"tags,omitempty"`
+	Title       *string   `json:"title,omitempty"`
+	Url         string    `json:"url"`
 }
 
 // UpdateCollectionAccessDto defines model for UpdateCollectionAccessDto.
@@ -901,6 +921,9 @@ type RegisterJSONRequestBody = RegisterRequest
 // UpdateBookmarkJSONRequestBody defines body for UpdateBookmark for application/json ContentType.
 type UpdateBookmarkJSONRequestBody = UpdateBookmarkDto
 
+// SetBookmarkImageMultipartRequestBody defines body for SetBookmarkImage for multipart/form-data ContentType.
+type SetBookmarkImageMultipartRequestBody = ImageUpload
+
 // SetReactionJSONRequestBody defines body for SetReaction for application/json ContentType.
 type SetReactionJSONRequestBody = SetReactionDto
 
@@ -1011,6 +1034,12 @@ type ServerInterface interface {
 	// AddFavorite Mark a bookmark as favorite for the current user
 	// (PUT /v1/bookmarks/{bookmarkId}/favorite)
 	AddFavorite(ctx echo.Context, bookmarkId ID) error
+	// ResetBookmarkImage Back to the page's own preview image (removes an upload, an own image URL and hiding)
+	// (DELETE /v1/bookmarks/{bookmarkId}/image)
+	ResetBookmarkImage(ctx echo.Context, bookmarkId ID) error
+	// SetBookmarkImage Upload an own preview image for the link (replaces the page's image)
+	// (PUT /v1/bookmarks/{bookmarkId}/image)
+	SetBookmarkImage(ctx echo.Context, bookmarkId ID) error
 	// SetReaction Add or remove a reaction of the current user
 	// (PUT /v1/bookmarks/{bookmarkId}/reactions)
 	SetReaction(ctx echo.Context, bookmarkId ID) error
@@ -1415,6 +1444,38 @@ func (w *ServerInterfaceWrapper) AddFavorite(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.AddFavorite(ctx, bookmarkId)
+	return err
+}
+
+// ResetBookmarkImage converts echo context to params.
+func (w *ServerInterfaceWrapper) ResetBookmarkImage(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ResetBookmarkImage(ctx, bookmarkId)
+	return err
+}
+
+// SetBookmarkImage converts echo context to params.
+func (w *ServerInterfaceWrapper) SetBookmarkImage(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetBookmarkImage(ctx, bookmarkId)
 	return err
 }
 
@@ -2500,6 +2561,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks", wrapper.CreateBookmark, options.OperationMiddlewares["createBookmark"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks/metadata", wrapper.FetchBookmarkMetadata, options.OperationMiddlewares["fetchBookmarkMetadata"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/favorites", wrapper.GetFavorites, options.OperationMiddlewares["getFavorites"]...)
+	router.DELETE(options.BaseURL+"/v1/bookmarks/:bookmarkId/image", wrapper.ResetBookmarkImage, options.OperationMiddlewares["resetBookmarkImage"]...)
+	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/image", wrapper.SetBookmarkImage, options.OperationMiddlewares["setBookmarkImage"]...)
 	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/reactions", wrapper.SetReaction, options.OperationMiddlewares["setReaction"]...)
 	router.DELETE(options.BaseURL+"/v1/bookmarks/:bookmarkId/favorite", wrapper.RemoveFavorite, options.OperationMiddlewares["removeFavorite"]...)
 	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/favorite", wrapper.AddFavorite, options.OperationMiddlewares["addFavorite"]...)

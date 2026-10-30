@@ -33,7 +33,7 @@ func (s *Server) Me(c echo.Context) error {
 }
 
 func (s *Server) SetAvatar(c echo.Context) error {
-	contentType, data, err := s.readImage(c)
+	contentType, data, err := s.readImage(c, images.Normalize)
 	if err != nil {
 		return err
 	}
@@ -98,8 +98,9 @@ func (s *Server) GetImage(c echo.Context, imageID api.ID) error {
 	return c.Blob(http.StatusOK, image.ContentType, image.Data)
 }
 
-// readImage takes the multipart field "file", or loads the image at "url" (SSRF-guarded), and normalizes it.
-func (s *Server) readImage(c echo.Context) (string, []byte, error) {
+// readImage takes the multipart field "file", or loads the image at "url" (SSRF-guarded), and normalizes it
+// (images.Normalize for avatars and icons, images.NormalizePreview for preview images).
+func (s *Server) readImage(c echo.Context, normalize func([]byte) (string, []byte, error)) (string, []byte, error) {
 	var data []byte
 	if header, err := c.FormFile("file"); err == nil {
 		if header.Size > images.MaxUploadBytes {
@@ -129,7 +130,7 @@ func (s *Server) readImage(c echo.Context) (string, []byte, error) {
 	} else {
 		return "", nil, badRequest("Send an image file or the URL of one")
 	}
-	contentType, normalized, err := images.Normalize(data)
+	contentType, normalized, err := normalize(data)
 	if err != nil {
 		return "", nil, badRequest("%s", err.Error())
 	}

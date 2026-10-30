@@ -22,11 +22,16 @@ type Bookmark struct {
 	CreatedAt     time.Time `db:"created_at"`
 	UpdatedAt     time.Time `db:"updated_at"`
 	Tags          []string  `db:"-"`
+	// Own preview image: an upload wins over an address; ImageHidden shows none at all
+	ImageID     *string `db:"image_id"`
+	ImageURL    *string `db:"image_url"`
+	ImageHidden bool    `db:"image_hidden"`
 }
 
 const (
 	bookmarkColumns = `b.id, b.collection_id, c.space_id, b.url, b.title, b.description, b.og_image, b.favicon,
-		b.canonical, b.created_by, u.username AS created_by_name, b.created_at, b.updated_at`
+		b.canonical, b.created_by, u.username AS created_by_name, b.created_at, b.updated_at, b.image_id, b.image_url,
+		b.image_hidden`
 	// Links in the trash are left out of every query that uses these joins
 	bookmarkJoins  = ` JOIN collections c ON c.id = b.collection_id AND b.deleted_at IS NULL JOIN users u ON u.id = b.created_by`
 	bookmarkSelect = `SELECT ` + bookmarkColumns + ` FROM bookmarks b` + bookmarkJoins
@@ -60,6 +65,13 @@ func (s *Store) UpdateBookmark(ctx context.Context, b *Bookmark) error {
 // DeleteBookmark moves the link to the trash; PurgeBookmark deletes it for good.
 func (s *Store) DeleteBookmark(ctx context.Context, id, userID string) error {
 	_, err := s.exec(ctx, `UPDATE bookmarks SET deleted_at = ?, deleted_by = ? WHERE id = ?`, now(), userID, id)
+	return err
+}
+
+// SetBookmarkImage sets the own preview image; the previous upload (if replaced) is the caller's to delete.
+func (s *Store) SetBookmarkImage(ctx context.Context, id string, imageID, imageURL *string, hidden bool) error {
+	_, err := s.exec(ctx, `UPDATE bookmarks SET image_id = ?, image_url = ?, image_hidden = ?, updated_at = ? WHERE id = ?`,
+		imageID, imageURL, hidden, now(), id)
 	return err
 }
 

@@ -3,6 +3,7 @@
 	import type { Snippet } from 'svelte';
 	import { FolderOutline, LinkOutline } from 'flowbite-svelte-icons';
 	import { getDomain, safeUrl, timeAgo } from '../utils/format';
+	import { previewImage } from '../utils/links';
 	import { preferences, type LinkView } from '../stores/preferences.svelte';
 	import FavoriteButton from './FavoriteButton.svelte';
 	import Reactions from './Reactions.svelte';
@@ -96,9 +97,11 @@
 
 	const href = $derived(safeUrl(bookmark.url));
 	let faviconFailed = $state(false);
-	let imageFailed = $state(false);
+	/** The image that failed to load; a changed image (e.g. a new upload) gets a new chance. */
+	let failedImage = $state<string | undefined>();
 	const favicon = $derived(faviconFailed ? undefined : safeUrl(bookmark.favicon));
-	const image = $derived(imageFailed || view !== 'cards' ? undefined : safeUrl(bookmark.ogImage));
+	const source = $derived(previewImage(bookmark));
+	const image = $derived(view !== 'cards' || source === failedImage ? undefined : source);
 </script>
 
 {#snippet faviconIcon(size: string)}
@@ -294,7 +297,7 @@
 				loading="lazy"
 				referrerpolicy="no-referrer"
 				class="aspect-[2.4/1] w-full rounded-t-[11px] bg-gray-100 object-cover dark:bg-gray-800"
-				onerror={() => (imageFailed = true)}
+				onerror={() => (failedImage = source)}
 			/>
 		{/if}
 

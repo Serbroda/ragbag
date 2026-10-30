@@ -39,6 +39,14 @@ export interface UpdateBookmarkDto {
      * Moves the link to another collection of the same space
      */
     collectionId?: string;
+    /**
+     * An own preview image address (replaces an upload); an empty string removes it
+     */
+    customImageUrl?: string;
+    /**
+     * Show no preview image at all
+     */
+    imageHidden?: boolean;
 }
 
 /**
@@ -64,6 +72,8 @@ export function UpdateBookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'description': json['description'] == null ? undefined : json['description'],
         'tags': json['tags'] == null ? undefined : json['tags'],
         'collectionId': json['collectionId'] == null ? undefined : json['collectionId'],
+        'customImageUrl': json['customImageUrl'] == null ? undefined : json['customImageUrl'],
+        'imageHidden': json['imageHidden'] == null ? undefined : json['imageHidden'],
     };
 }
 
@@ -83,6 +93,8 @@ export function UpdateBookmarkDtoToJSONTyped(value?: UpdateBookmarkDto | null, i
         'description': value['description'],
         'tags': value['tags'],
         'collectionId': value['collectionId'],
+        'customImageUrl': value['customImageUrl'],
+        'imageHidden': value['imageHidden'],
     };
 }
 

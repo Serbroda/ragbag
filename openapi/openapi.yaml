@@ -1681,6 +1681,64 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /v1/bookmarks/{bookmarkId}/image:
+    put:
+      summary: Upload an own preview image for the link (replaces the page's image)
+      operationId: setBookmarkImage
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/ImageUpload'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Back to the page's own preview image (removes an upload, an own image URL and hiding)
+      operationId: resetBookmarkImage
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BookmarkDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/bookmarks/{bookmarkId}/reactions:
     put:
       summary: Add or remove a reaction of the current user
@@ -2556,6 +2614,15 @@ components:
         favorite:
           type: boolean
           description: Whether the current user marked this bookmark as favorite
+        customImageId:
+          $ref: '#/components/schemas/ID'
+          description: An uploaded preview image (/api/v1/images/{id}); wins over everything else
+        customImageUrl:
+          type: string
+          description: An own preview image address, loaded from there; wins over ogImage
+        imageHidden:
+          type: boolean
+          description: Show no preview image at all
         isNew:
           type: boolean
           description: >
@@ -2769,6 +2836,9 @@ components:
             type: string
         ogImage:
           type: string
+          description: The preview image to show (an own address or the page's), unless customImageId is set
+        customImageId:
+          $ref: '#/components/schemas/ID'
         favicon:
           type: string
         createdAt:
@@ -2958,6 +3028,12 @@ components:
         collectionId:
           $ref: '#/components/schemas/ID'
           description: Moves the link to another collection of the same space
+        customImageUrl:
+          type: string
+          description: An own preview image address (replaces an upload); an empty string removes it
+        imageHidden:
+          type: boolean
+          description: Show no preview image at all
       required:
         - url
 
