@@ -66,7 +66,9 @@ func newEnv(t *testing.T) *env {
 	}
 	srv := server.New(cfg, store.New(database, dialect), "test")
 	require.NoError(t, srv.SeedDemo(ctx))
-	httpServer := httptest.NewServer(srv.Handler(fstest.MapFS{}))
+	// A stand-in for the frontend build: link previews are written into its head
+	frontend := fstest.MapFS{"index.html": {Data: []byte("<html><head><title>Ragbag</title></head><body></body></html>")}}
+	httpServer := httptest.NewServer(srv.Handler(frontend))
 	t.Cleanup(httpServer.Close)
 	return &env{t: t, url: httpServer.URL}
 }

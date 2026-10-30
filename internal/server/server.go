@@ -205,6 +205,6 @@ func (s *Server) serveFrontend(e *echo.Echo, frontend fs.FS) {
 			return err
 		}
 		c.Response().Header().Set("Cache-Control", "no-cache")
-		return c.HTMLBlob(http.StatusOK, index)
+		return c.HTMLBlob(http.StatusOK, s.withMeta(c, name, index))
 	})
 }
