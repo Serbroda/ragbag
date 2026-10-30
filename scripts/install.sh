@@ -170,6 +170,9 @@ build_binary() {
 	echo "Building $APP $version with $(basename "$engine") (this takes a few minutes the first time)..."
 	"$engine" build --target binary --build-arg VERSION="$version" --output "$repo/bin" "$repo"
 	binary="$repo/bin/$APP"
+	# Every build leaves the layers of the previous one behind as untagged images; base images (node, golang)
+	# stay as build cache. Only untagged ("dangling") images go, nothing other stacks use.
+	"$engine" image prune -f >/dev/null 2>&1 || true
 }
 
 install_app() {
