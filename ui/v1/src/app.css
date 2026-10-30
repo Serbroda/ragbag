@@ -64,6 +64,14 @@
         -webkit-font-smoothing: antialiased;
     }
 
+    /* The page behind the app: mobile browsers show it around the app (below Safari's address bar, when
+       scrolling past the edges, around the notch), so it has to be dark as well */
+    html.dark,
+    html.dark body {
+        background-color: var(--color-gray-850);
+        color-scheme: dark;
+    }
+
     /* Thin scrollbars that match the warm dark theme */
     * {
         scrollbar-width: thin;
