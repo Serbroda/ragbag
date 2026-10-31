@@ -56,6 +56,7 @@
 	import { checkExpiry, keepUnlocked, lock, lockState, resetLock } from '../stores/lock.svelte';
 	import LockDialog from '../components/LockDialog.svelte';
 	import Toasts from '../components/Toasts.svelte';
+	import PullToRefresh from '../components/PullToRefresh.svelte';
 	import { copyText } from '../utils/clipboard';
 	import { loadMe, loadSpaces, rememberSpace, resetSession, session } from '../stores/spaces.svelte';
 
@@ -106,6 +107,26 @@
 	fetchFeatureFlags()
 		.then((flags) => (appVersion = flags['version'] ?? ''))
 		.catch(() => {});
+
+	// An installed app can stay open for days: offer a reload once the server runs another version
+	let offeredVersion = '';
+	async function checkForUpdate() {
+		if (!appVersion || document.visibilityState !== 'visible') return;
+		const version = (await fetchFeatureFlags().catch(() => ({}) as Record<string, string>))['version'];
+		if (!version || version === appVersion || version === offeredVersion) return;
+		offeredVersion = version;
+		showToast(`Ragbag ${version} is available`, { label: 'Reload', run: () => location.reload() }, 0);
+	}
+	$effect(() => {
+		const timer = setInterval(checkForUpdate, 30 * 60 * 1000);
+		document.addEventListener('visibilitychange', checkForUpdate);
+		return () => {
+			clearInterval(timer);
+			document.removeEventListener('visibilitychange', checkForUpdate);
+		};
+	});
+
+	let scrollRoot = $state<HTMLElement>();
 
 	$effect(() => {
 		if (session.me) loadPreferences(session.me.id);
@@ -942,7 +963,8 @@
 			</div>
 		{/if}
 
-		<main class="flex-1 overflow-y-auto" data-scroll-root>
+		<main class="relative flex-1 overflow-y-auto overscroll-y-contain" data-scroll-root bind:this={scrollRoot}>
+			<PullToRefresh root={scrollRoot} />
 			<div class="mx-auto w-full max-w-6xl px-4 py-6 md:px-8">
 				{#key lockState.version}
 					{@render children()}
