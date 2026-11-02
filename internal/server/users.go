@@ -13,8 +13,12 @@ import (
 
 func (s *Server) userDto(user *store.User) api.UserDto {
 	admin := s.isAdmin(user)
-	return api.UserDto{Id: user.ID, Username: user.Username, Email: user.Email, AvatarId: user.AvatarImageID,
+	dto := api.UserDto{Id: user.ID, Username: user.Username, Email: user.Email, AvatarId: user.AvatarImageID,
 		InstanceAdmin: &admin}
+	if user.MustChangePassword {
+		dto.MustChangePassword = &user.MustChangePassword
+	}
+	return dto
 }
 
 func (s *Server) Me(c echo.Context) error {

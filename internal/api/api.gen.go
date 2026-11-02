@@ -233,6 +233,17 @@ type AdminUserDto struct {
 	Username string `json:"username"`
 }
 
+// BackupSummaryDto defines model for BackupSummaryDto.
+type BackupSummaryDto struct {
+	// AppVersion The version of Ragbag that made the backup
+	AppVersion string    `json:"appVersion"`
+	CreatedAt  time.Time `json:"createdAt"`
+
+	// Rows Rows per table
+	Rows          map[string]int `json:"rows"`
+	SchemaVersion int64          `json:"schemaVersion"`
+}
+
 // BookmarkDto defines model for BookmarkDto.
 type BookmarkDto struct {
 	Canonical *string `json:"canonical,omitempty"`
@@ -368,6 +379,14 @@ type CollectionShareDto struct {
 // CollectionVisibilityDto defines model for CollectionVisibilityDto.
 type CollectionVisibilityDto string
 
+// CompleteSetupRequest defines model for CompleteSetupRequest.
+type CompleteSetupRequest struct {
+	// CurrentPassword The initial password from the file
+	CurrentPassword string `json:"currentPassword"`
+	Email           string `json:"email"`
+	NewPassword     string `json:"newPassword"`
+}
+
 // CreateBookmarkDto defines model for CreateBookmarkDto.
 type CreateBookmarkDto struct {
 	Description *string   `json:"description,omitempty"`
@@ -487,6 +506,12 @@ type ImportResultDto struct {
 	CollectionsMerged int  `json:"collectionsMerged"`
 	FormatVersion     int  `json:"formatVersion"`
 	Preview           bool `json:"preview"`
+}
+
+// InstanceDto defines model for InstanceDto.
+type InstanceDto struct {
+	// Empty No spaces and no accounts besides the setup admin, so a backup can be restored
+	Empty bool `json:"empty"`
 }
 
 // InviteDto defines model for InviteDto.
@@ -864,8 +889,11 @@ type UserDto struct {
 	// Id UUID
 	Id ID `json:"id"`
 
-	// InstanceAdmin Listed in ADMIN_USERS, may manage all users of this installation
+	// InstanceAdmin Listed in ADMIN_USERS (or the setup admin while it is empty), may manage all users of this installation
 	InstanceAdmin *bool `json:"instanceAdmin,omitempty"`
+
+	// MustChangePassword The setup admin still has its random initial password; everything else answers 403
+	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
 
 	// StartSpaceId Opened on start instead of the last visited space; unset when the user leaves it
 	StartSpaceId *ID    `json:"startSpaceId,omitempty"`
@@ -885,6 +913,12 @@ type TooManyRequests = Error
 type RefreshParams struct {
 	// RefreshToken Missing when signed out; the server then answers 401
 	RefreshToken *string `form:"refresh_token,omitempty" json:"refresh_token,omitempty"`
+}
+
+// RestoreBackupParams defines parameters for RestoreBackup.
+type RestoreBackupParams struct {
+	// DryRun Only check the backup and report what it holds, without changing anything
+	DryRun *bool `form:"dryRun,omitempty" json:"dryRun,omitempty"`
 }
 
 // ImportCollectionJSONBody defines parameters for ImportCollection.
@@ -938,6 +972,9 @@ type ResetPasswordJSONRequestBody = ResetPasswordRequest
 
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
+
+// CompleteSetupJSONRequestBody defines body for CompleteSetup for application/json ContentType.
+type CompleteSetupJSONRequestBody = CompleteSetupRequest
 
 // UpdateBookmarkJSONRequestBody defines body for UpdateBookmark for application/json ContentType.
 type UpdateBookmarkJSONRequestBody = UpdateBookmarkDto
@@ -1040,9 +1077,21 @@ type ServerInterface interface {
 	// Register Register a new user. When the server sends email (feature flag "email"), the account must confirm its address with the link sent to it before it can sign in.
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
+	// CompleteSetup Replace the random initial password of the setup admin (created on the first start of an empty instance) and set its email address; returns new tokens
+	// (POST /auth/setup)
+	CompleteSetup(ctx echo.Context) error
 	// VerifyEmail Confirm the email address of a new account with the link from the email (public); signs in
 	// (POST /auth/verify-email/{token})
 	VerifyEmail(ctx echo.Context, token string) error
+	// DownloadBackup Backup of the whole installation (format "ragbag-instance", gzip compressed JSON): accounts with their password hashes, spaces, links, images, everything except pending reset and confirmation links
+	// (GET /v1/admin/backup)
+	DownloadBackup(ctx echo.Context) error
+	// RestoreBackup Replace the data of an empty installation (no spaces, no accounts but the setup admin) with a backup. Signs out the caller, whose account is replaced too
+	// (POST /v1/admin/backup/restore)
+	RestoreBackup(ctx echo.Context, params RestoreBackupParams) error
+	// GetInstance State of the installation (whether a backup can be restored)
+	// (GET /v1/admin/instance)
+	GetInstance(ctx echo.Context) error
 	// GetAllUsers All users of this installation
 	// (GET /v1/admin/users)
 	GetAllUsers(ctx echo.Context) error
@@ -1384,6 +1433,15 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 	return err
 }
 
+// CompleteSetup converts echo context to params.
+func (w *ServerInterfaceWrapper) CompleteSetup(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CompleteSetup(ctx)
+	return err
+}
+
 // VerifyEmail converts echo context to params.
 func (w *ServerInterfaceWrapper) VerifyEmail(ctx echo.Context) error {
 	var err error
@@ -1397,6 +1455,42 @@ func (w *ServerInterfaceWrapper) VerifyEmail(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.VerifyEmail(ctx, token)
+	return err
+}
+
+// DownloadBackup converts echo context to params.
+func (w *ServerInterfaceWrapper) DownloadBackup(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DownloadBackup(ctx)
+	return err
+}
+
+// RestoreBackup converts echo context to params.
+func (w *ServerInterfaceWrapper) RestoreBackup(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params RestoreBackupParams
+	// ------------- Optional query parameter "dryRun" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "dryRun", ctx.QueryParams(), &params.DryRun, runtime.BindQueryParameterOptions{Type: "boolean", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter dryRun: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RestoreBackup(ctx, params)
+	return err
+}
+
+// GetInstance converts echo context to params.
+func (w *ServerInterfaceWrapper) GetInstance(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetInstance(ctx)
 	return err
 }
 
@@ -2572,11 +2666,15 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/auth/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
 	router.GET(options.BaseURL+"/auth/logout/all", wrapper.LogoutAll, options.OperationMiddlewares["logoutAll"]...)
 	router.POST(options.BaseURL+"/auth/password", wrapper.ChangePassword, options.OperationMiddlewares["changePassword"]...)
+	router.POST(options.BaseURL+"/auth/setup", wrapper.CompleteSetup, options.OperationMiddlewares["completeSetup"]...)
 	router.POST(options.BaseURL+"/auth/password-reset", wrapper.RequestPasswordReset, options.OperationMiddlewares["requestPasswordReset"]...)
 	router.GET(options.BaseURL+"/auth/password-reset/:token", wrapper.GetPasswordReset, options.OperationMiddlewares["getPasswordReset"]...)
 	router.POST(options.BaseURL+"/auth/password-reset/:token", wrapper.ResetPassword, options.OperationMiddlewares["resetPassword"]...)
 	router.GET(options.BaseURL+"/v1/admin/users", wrapper.GetAllUsers, options.OperationMiddlewares["getAllUsers"]...)
 	router.POST(options.BaseURL+"/v1/admin/users/:userId/password-reset", wrapper.CreatePasswordReset, options.OperationMiddlewares["createPasswordReset"]...)
+	router.GET(options.BaseURL+"/v1/admin/instance", wrapper.GetInstance, options.OperationMiddlewares["getInstance"]...)
+	router.GET(options.BaseURL+"/v1/admin/backup", wrapper.DownloadBackup, options.OperationMiddlewares["downloadBackup"]...)
+	router.POST(options.BaseURL+"/v1/admin/backup/restore", wrapper.RestoreBackup, options.OperationMiddlewares["restoreBackup"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)

@@ -44,6 +44,10 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/SpaceSettingsPage.svelte'),
 		layout: () => import('./layouts/AuthLayout.svelte'),
 	},
+	// First login of the setup admin: own password, then start fresh or restore a backup
+	'/setup': {
+		'/': () => import('./pages/SetupPage.svelte'),
+	},
 	'/invite/:token': {
 		'/': () => import('./pages/InvitePage.svelte'),
 	},

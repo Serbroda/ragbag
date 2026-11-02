@@ -41,7 +41,9 @@ services:
       # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
       # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
       SECURE_COOKIE: ${SECURE_COOKIE:-false}
-      # Usernames (comma-separated) that may manage all users, e.g. create password reset links
+      # Usernames (comma-separated) that may manage all users, e.g. create password reset links and backups.
+      # The first start creates the first of them (or "admin") with a random password, see
+      # docker compose -f docker-compose.postgres.yaml exec app cat /data/initial-admin-password
       ADMIN_USERS: ${ADMIN_USERS:-}
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
       # Allow loading link titles from your own network (homelab dashboards)

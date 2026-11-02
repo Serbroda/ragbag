@@ -131,9 +131,22 @@ JWT_SECRET=$(openssl rand -base64 32) ./bin/ragbag
 
 ### First start
 
-Open Ragbag and **register** – every account gets its own first space. Put your username into `ADMIN_USERS` to
-manage all users (profile menu → *Manage users*), and set `REGISTRATION_ENABLED=false` once everybody has an
-account if your instance is reachable from the internet.
+The first start of an empty instance creates an **admin account** – named after the first entry of `ADMIN_USERS`,
+`admin` when that is empty – with a random password in a file next to the data (never in the log):
+
+```bash
+sudo cat /var/lib/ragbag/initial-admin-password              # systemd (install.sh prints it, too)
+docker compose exec app cat /data/initial-admin-password     # Docker
+cat data/initial-admin-password                              # from source (or $DATA_DIR)
+```
+
+Sign in with it and choose your own password and email address; the file is deleted then. Right after that you
+can start fresh or **restore a backup** of another Ragbag (see *Moving to another server*). While `ADMIN_USERS` is
+empty this account is the instance admin; otherwise the ones listed there are.
+
+Everybody else **registers** – every account gets its own first space. Admins manage all users in the profile menu
+(→ *Manage users*). Set `REGISTRATION_ENABLED=false` once everybody has an account if your instance is reachable
+from the internet.
 
 Database migrations run automatically on start-up.
 
@@ -162,7 +175,8 @@ Everything is configured with environment variables. For local runs the server a
 | `JWT_SECRET`            | Signs the login tokens, at least 32 characters. **Required**         | –                       |
 | `DATABASE_URL`          | `sqlite:<file>` or `postgres://user:password@host:5432/db?sslmode=disable` | `sqlite:data/ragbag.db` (Docker: `/data/ragbag.db`) |
 | `RAGBAG_ADDR`           | HTTP address                                                         | `:8080`                 |
-| `ADMIN_USERS`           | Comma-separated usernames that may manage all users                  | –                       |
+| `ADMIN_USERS`           | Comma-separated usernames that may manage all users and download backups; the first start creates the first of them | – (the account created on the first start) |
+| `DATA_DIR`              | Where the first start puts `initial-admin-password`                  | the SQLite file's directory, systemd's state directory, else `data` (Docker: `/data`) |
 | `REGISTRATION_ENABLED`  | Whether new accounts can be registered                               | `true`                  |
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Sending email: account confirmation and password reset (see below) | – (no email), port `587` |
@@ -263,10 +277,39 @@ and images, `LOG_FORMAT=json` suits Loki, Graylog & co.
 
 ### Backups
 
-- **SQLite:** stop Ragbag and copy the database file (with the `-wal` file if present), or copy it while running
-  with `sqlite3 ragbag.db ".backup backup.db"`.
-- **PostgreSQL:** `docker compose -f docker-compose.postgres.yaml exec db pg_dump -U ragbag ragbag > backup.sql`
-- Collections can additionally be exported as JSON (collection menu → *Export as JSON*).
+Ragbag backs up the whole instance into one file, the same for SQLite and PostgreSQL: every account (with its
+password hash and PIN), space, collection, link, reaction, public link and image, with their ids. Left out are
+only pending reset and confirmation links.
+
+- **In the app:** profile menu → *Manage users* → *Download backup* (instance admins)
+- **On the command line**, with the same environment as the server (it may keep running):
+  ```bash
+  ragbag backup ragbag-backup.json.gz            # or without a file to stdout
+  sudo sh -c 'set -a; . /etc/ragbag/ragbag.env; ragbag backup' > ragbag-backup.json.gz   # systemd, while it runs
+  docker compose exec app ragbag backup > ragbag-backup.json.gz                           # Docker
+  ```
+
+The file holds password hashes: keep it as safe as the database. It is gzip compressed JSON (format
+`ragbag-instance`); backups of older versions can be restored by newer ones, which migrate them on the way.
+
+Copying the database itself works too: for SQLite stop Ragbag and copy the file (with the `-wal` file if present)
+or use `sqlite3 ragbag.db ".backup backup.db"`, for PostgreSQL `pg_dump`. Single collections can additionally be
+exported as JSON (collection menu → *Export as JSON*).
+
+### Moving to another server
+
+E.g. from SQLite in the homelab to PostgreSQL on a VPS:
+
+1. On the old instance: *Download backup* (or `ragbag backup`).
+2. Install the new one with an empty database (`DATABASE_URL=postgres://…`) and start it.
+3. Sign in with the initial password (see *First start*), choose your own one and pick *Restore a backup*. Ragbag
+   checks the file and shows what it holds before replacing anything; the setup account is replaced, too.
+4. Sign in with your old account. Sessions do not move along (the new instance has its own `JWT_SECRET`), share
+   links and bookmarklets keep working. Set `ADMIN_USERS` (and `PUBLIC_URL` for emails) like before.
+
+Instead of step 3, `ragbag restore ragbag-backup.json.gz` restores into the empty database at `DATABASE_URL`
+(`-dry-run` only checks the file). A backup only ever goes into an instance without data: no spaces and no accounts
+besides the setup admin.
 
 ### Coming from the Java version
 

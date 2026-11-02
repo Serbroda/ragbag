@@ -181,6 +181,36 @@ paths:
         '401':
           $ref: '#/components/responses/Unauthorized'
 
+  /auth/setup:
+    post:
+      summary: >
+        Replace the random initial password of the setup admin (created on the first start of an empty instance)
+        and set its email address; returns new tokens
+      operationId: completeSetup
+      tags:
+        - Authentication
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CompleteSetupRequest'
+      responses:
+        '200':
+          description: OK, a new refresh token cookie is set
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /auth/password-reset:
     post:
       summary: >
@@ -298,6 +328,89 @@ paths:
           $ref: '#/components/responses/Forbidden'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /v1/admin/instance:
+    get:
+      summary: State of the installation (whether a backup can be restored)
+      operationId: getInstance
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InstanceDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/backup:
+    get:
+      summary: >
+        Backup of the whole installation (format "ragbag-instance", gzip compressed JSON): accounts with their
+        password hashes, spaces, links, images, everything except pending reset and confirmation links
+      operationId: downloadBackup
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: The backup file
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/backup/restore:
+    post:
+      summary: >
+        Replace the data of an empty installation (no spaces, no accounts but the setup admin) with a backup.
+        Signs out the caller, whose account is replaced too
+      operationId: restoreBackup
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: query
+          name: dryRun
+          description: Only check the backup and report what it holds, without changing anything
+          required: false
+          schema:
+            type: boolean
+      requestBody:
+        required: true
+        content:
+          application/octet-stream:
+            schema:
+              type: string
+              format: binary
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupSummaryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   # Users
   /v1/users/me:
@@ -2267,6 +2380,54 @@ components:
         - email
         - instanceAdmin
 
+    CompleteSetupRequest:
+      type: object
+      properties:
+        currentPassword:
+          type: string
+          description: The initial password from the file
+        newPassword:
+          type: string
+          minLength: 8
+        email:
+          type: string
+      required:
+        - currentPassword
+        - newPassword
+        - email
+
+    InstanceDto:
+      type: object
+      properties:
+        empty:
+          type: boolean
+          description: No spaces and no accounts besides the setup admin, so a backup can be restored
+      required:
+        - empty
+
+    BackupSummaryDto:
+      type: object
+      properties:
+        appVersion:
+          type: string
+          description: The version of Ragbag that made the backup
+        schemaVersion:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+        rows:
+          type: object
+          description: Rows per table
+          additionalProperties:
+            type: integer
+      required:
+        - appVersion
+        - schemaVersion
+        - createdAt
+        - rows
+
     ChangePasswordRequest:
       type: object
       properties:
@@ -2305,13 +2466,18 @@ components:
           $ref: '#/components/schemas/ID'
         instanceAdmin:
           type: boolean
-          description: Listed in ADMIN_USERS, may manage all users of this installation
+          description: >
+            Listed in ADMIN_USERS (or the setup admin while it is empty), may manage all users of this
+            installation
         hasPin:
           type: boolean
           description: Has a PIN to unlock locked collections
         startSpaceId:
           $ref: '#/components/schemas/ID'
           description: Opened on start instead of the last visited space; unset when the user leaves it
+        mustChangePassword:
+          type: boolean
+          description: The setup admin still has its random initial password; everything else answers 403
       required:
         - id
         - username

@@ -208,6 +208,9 @@ func (s *Server) ChangePassword(c echo.Context) error {
 	if err := s.store.SetPassword(ctxOf(c), user.ID, hash); err != nil {
 		return err
 	}
+	if user.MustChangePassword {
+		s.removeInitialPassword()
+	}
 	if user, err = s.store.UserByID(ctxOf(c), user.ID); err != nil {
 		return err
 	}

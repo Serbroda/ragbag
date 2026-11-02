@@ -19,6 +19,11 @@ import {
     ChangePasswordRequestToJSON,
 } from '../models/ChangePasswordRequest';
 import {
+    type CompleteSetupRequest,
+    CompleteSetupRequestFromJSON,
+    CompleteSetupRequestToJSON,
+} from '../models/CompleteSetupRequest';
+import {
     type LoginRequest,
     LoginRequestFromJSON,
     LoginRequestToJSON,
@@ -59,6 +64,13 @@ export interface ChangePasswordOperationRequest {
      * 
      */
     changePasswordRequest: ChangePasswordRequest;
+}
+
+export interface CompleteSetupOperationRequest {
+    /**
+     * 
+     */
+    completeSetupRequest: CompleteSetupRequest;
 }
 
 export interface GetPasswordResetRequest {
@@ -171,6 +183,61 @@ export class AuthenticationApi extends runtime.BaseAPI {
      */
     async changePassword(requestParameters: ChangePasswordOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse> {
         const response = await this.changePasswordRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for completeSetup without sending the request
+     */
+    async completeSetupRequestOpts(requestParameters: CompleteSetupOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['completeSetupRequest'] == null) {
+            throw new runtime.RequiredError(
+                'completeSetupRequest',
+                'Required parameter "completeSetupRequest" was null or undefined when calling completeSetup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/auth/setup`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CompleteSetupRequestToJSON(requestParameters['completeSetupRequest']),
+        };
+    }
+
+    /**
+     * Replace the random initial password of the setup admin (created on the first start of an empty instance) and set its email address; returns new tokens 
+     */
+    async completeSetupRaw(requestParameters: CompleteSetupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResponse>> {
+        const requestOptions = await this.completeSetupRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LoginResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Replace the random initial password of the setup admin (created on the first start of an empty instance) and set its email address; returns new tokens 
+     */
+    async completeSetup(requestParameters: CompleteSetupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse> {
+        const response = await this.completeSetupRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

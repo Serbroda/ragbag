@@ -1,6 +1,7 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AdminUserDto';
+export * from './BackupSummaryDto';
 export * from './BookmarkDto';
 export * from './BookmarkMetadataDto';
 export * from './ChangePasswordRequest';
@@ -10,6 +11,7 @@ export * from './CollectionDto';
 export * from './CollectionNewsDto';
 export * from './CollectionShareDto';
 export * from './CollectionVisibilityDto';
+export * from './CompleteSetupRequest';
 export * from './CreateBookmarkDto';
 export * from './CreateCollectionDto';
 export * from './CreateInviteRequest';
@@ -20,6 +22,7 @@ export * from './DashboardSectionTypeEnum';
 export * from './DiscoverableSpaceDto';
 export * from './FetchMetadataRequest';
 export * from './ImportResultDto';
+export * from './InstanceDto';
 export * from './InviteDto';
 export * from './InvitePreviewDto';
 export * from './InviteRoleEnum';

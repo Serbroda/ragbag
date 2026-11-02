@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"log/slog"
 	"os"
+	"path/filepath"
 	"strconv"
 	"strings"
 	"time"
@@ -22,6 +23,8 @@ type Config struct {
 	Addr string
 	// DatabaseURL is "sqlite:<path>" or a "postgres://" URL.
 	DatabaseURL string
+	// DataDir holds files next to the database: the initial password of the setup admin
+	DataDir string
 
 	JWTSecret          []byte
 	JWTIssuer          string
@@ -69,6 +72,8 @@ func Load() (Config, error) {
 		CORSAllowedOrigins: envList("CORS_ALLOWED_ORIGINS"),
 		RateLimits:         envBool("RATE_LIMIT_ENABLED", true),
 	}
+
+	cfg.DataDir = DataDir(cfg.DatabaseURL)
 
 	cfg.Quotas = Quotas{
 		LinksPerUser:        envInt("QUOTA_LINKS_PER_USER", 0),
@@ -143,6 +148,20 @@ func Load() (Config, error) {
 		}
 	}
 	return cfg, nil
+}
+
+// DataDir: DATA_DIR, else systemd's StateDirectory, else the SQLite database's directory, else ./data.
+func DataDir(databaseURL string) string {
+	if dir := env("DATA_DIR", ""); dir != "" {
+		return dir
+	}
+	if dir, _, _ := strings.Cut(os.Getenv("STATE_DIRECTORY"), ":"); dir != "" {
+		return dir
+	}
+	if path, ok := strings.CutPrefix(databaseURL, "sqlite:"); ok {
+		return filepath.Dir(path)
+	}
+	return "data"
 }
 
 func env(key, fallback string) string {

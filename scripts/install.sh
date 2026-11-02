@@ -105,7 +105,8 @@ RAGBAG_ADDR=:$port
 DATABASE_URL=sqlite:$DATA_DIR/$APP.db
 JWT_SECRET=$(random_secret)
 
-# Usernames that may manage all users and create password reset links (comma-separated)
+# Usernames that may manage all users, create password reset links and backups (comma-separated). The first
+# start creates the first of them ("admin" when empty) with a random password in $DATA_DIR/initial-admin-password.
 ADMIN_USERS=
 
 # Disable after creating your accounts if the instance is publicly reachable
@@ -216,6 +217,10 @@ install_app() {
 	echo "  Binary:  $BIN_PATH"
 	echo "  Config:  $ENV_FILE (then: sudo systemctl restart $APP)"
 	echo "  Logs:    journalctl -u $APP -f"
+	if [ -f "$DATA_DIR/initial-admin-password" ]; then
+		echo "  First login: the admin account with the password from: sudo cat $DATA_DIR/initial-admin-password"
+		echo "               (then choose your own one; a backup of another Ragbag can be restored right there)"
+	fi
 }
 
 case "$action" in

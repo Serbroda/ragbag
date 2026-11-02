@@ -84,14 +84,17 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	e.Use(s.logRequests)
 	e.Use(middleware.Recover())
-	// Uploads are limited to 5 MB, imports can be larger
-	e.Use(middleware.BodyLimit("25M"))
+	// Uploads are limited to 5 MB, imports can be larger; backups (instance admins only) have no limit
+	e.Use(middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{Limit: "25M", Skipper: func(c echo.Context) bool {
+		return c.Request().URL.Path == "/api/v1/admin/backup/restore"
+	}}))
 	if len(s.cfg.CORSAllowedOrigins) > 0 {
 		e.Use(middleware.CORSWithConfig(middleware.CORSConfig{
 			AllowOrigins: s.cfg.CORSAllowedOrigins,
 			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 			// No AllowHeaders: the requested headers are echoed; browsers ignore "*" for requests with credentials
 			AllowCredentials: true,
+			ExposeHeaders:    []string{"X-Ragbag-Setup", "Retry-After"},
 		}))
 	}
 
@@ -142,6 +145,11 @@ func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 		}
 		c.Set(userIDKey, user.ID)
 		c.Set(usernameKey, user.Username)
+		if user.MustChangePassword && !allowedDuringSetup(c.Request().Method, c.Request().URL.Path) {
+			// The frontend opens the setup page from wherever it was
+			c.Response().Header().Set("X-Ragbag-Setup", "password")
+			return forbidden("Choose your own password first")
+		}
 		s.withUnlock(c, user)
 		return next(c)
 	}
@@ -188,7 +196,11 @@ func (s *Server) cookie(c echo.Context, value string, maxAge time.Duration) *htt
 	return cookie
 }
 
+// isAdmin: listed in ADMIN_USERS or, while that is empty, the setup admin.
 func (s *Server) isAdmin(user *store.User) bool {
+	if len(s.admins) == 0 {
+		return user.SetupAdmin
+	}
 	return s.admins[strings.ToLower(user.Username)]
 }
 

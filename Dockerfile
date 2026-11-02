@@ -37,7 +37,9 @@ COPY --from=server /ragbag /usr/local/bin/ragbag
 COPY --chmod=755 docker/entrypoint.sh /entrypoint.sh
 
 # SQLite in /data by default; set DATABASE_URL=postgres://... to use PostgreSQL instead
+# (the first start of an empty instance puts the admin's initial password into /data as well)
 ENV DATABASE_URL=sqlite:/data/ragbag.db \
+    DATA_DIR=/data \
     RAGBAG_ADDR=:8080
 VOLUME /data
 EXPOSE 8080
