@@ -177,7 +177,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Setup** (`setup.go`): `Bootstrap` (from main) creates the setup admin when there are no accounts, named after
   the first of `ADMIN_USERS` (else `admin`), with a random password in `DATA_DIR/initial-admin-password` (0600,
   never logged). Until `POST /auth/setup` (or a password change) replaces it, `must_change_password` makes every
-  other request answer 403 with `X-Ragbag-Setup` (the frontend opens `/setup`); then the file is deleted.
+  other request answer 403 with `X-Ragbag-Setup` (the frontend opens `/setup`), except what a restore needs
+  (`allowedDuringSetup`): the wizard asks first, and only starting fresh sets a password. Then the file is deleted.
 - **Backups** (`internal/backup`, `GET /admin/backup`, `POST /admin/backup/restore`, `ragbag backup|restore`):
   every table as gzip JSON (format `ragbag-instance`) with the ids, values normalized (RFC 3339 times, base64
   blobs, booleans converted for the target), so SQLite and PostgreSQL restore each other. Tables are listed in

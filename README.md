@@ -142,9 +142,10 @@ docker compose exec app cat /data/initial-admin-password     # Docker
 cat data/initial-admin-password                              # from source (or $DATA_DIR)
 ```
 
-Sign in with it and choose your own password and email address; the file is deleted then. Right after that you
-can start fresh or **restore a backup** of another Ragbag (see *Moving to another server*). While `ADMIN_USERS` is
-empty this account is the instance admin; otherwise the ones listed there are.
+Sign in with it and choose: **start fresh** (then you set your own password and email address) or **restore a
+backup** of another Ragbag (see *Moving to another server*), which replaces this account with those of the backup.
+Either way the file is deleted. While `ADMIN_USERS` is empty this account is the instance admin; otherwise the
+ones listed there are.
 
 Everybody else **registers** – every account gets its own first space. Admins manage all users in the profile menu
 (→ *Administration*). Set `REGISTRATION_ENABLED=false` once everybody has an account if your instance is reachable
@@ -326,8 +327,9 @@ E.g. from SQLite in the homelab to PostgreSQL on a VPS:
 
 1. On the old instance: *Download backup* (or `ragbag backup`).
 2. Install the new one with an empty database (`DATABASE_URL=postgres://…`) and start it.
-3. Sign in with the initial password (see *First start*), choose your own one and pick *Restore a backup*. Ragbag
-   checks the file and shows what it holds before replacing anything; the setup account is replaced, too.
+3. Sign in with the initial password (see *First start*) and pick *Restore a backup*. Ragbag checks the file and
+   shows what it holds before replacing anything; the setup account is replaced, so it needs no password of its
+   own.
 4. Sign in with your old account. Sessions do not move along (the new instance has its own `JWT_SECRET`), share
    links and bookmarklets keep working. Set `ADMIN_USERS` (and `PUBLIC_URL` for emails) like before.
 

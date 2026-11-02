@@ -60,9 +60,11 @@ func TestTheFirstStartCreatesAnAdminWithARandomPassword(t *testing.T) {
 
 	admin := e.login("admin", initial)
 	e.req("GET", "/api/v1/users/me").as(admin).expect(200).has("mustChangePassword", true).has("instanceAdmin", true)
-	// Nothing else until the password is replaced
+	// Nothing else until the password is replaced, except what restoring a backup needs
 	e.req("GET", "/api/v1/spaces").as(admin).expect(403)
-	e.req("GET", "/api/v1/admin/instance").as(admin).expect(403)
+	e.req("GET", "/api/v1/admin/users").as(admin).expect(403)
+	e.req("GET", "/api/v1/admin/backup").as(admin).expect(403)
+	e.req("GET", "/api/v1/admin/instance").as(admin).expect(200).has("empty", true)
 	setup := func(current, next, email string) *request {
 		return e.req("POST", "/api/auth/setup").as(admin).
 			json(fmt.Sprintf(`{"currentPassword":%q,"newPassword":%q,"email":%q}`, current, next, email))
@@ -196,7 +198,9 @@ func TestMovingAnInstanceWithABackup(t *testing.T) {
 		targetURL = postgresSchema(t, base)
 	}
 	target := startEnv(t, targetURL, false)
-	setupAdmin := target.setUp("admin")
+	// Right after signing in with the initial password: an own one would be replaced with the account
+	require.NoError(t, target.srv.Bootstrap(context.Background()))
+	setupAdmin := target.login("admin", target.initialPassword())
 	target.restore(lena, backup, true).expect(401)
 	target.req("POST", "/api/v1/admin/backup/restore").as(setupAdmin).json(`{"format":"ragbag-collection"}`).expect(400)
 	summary := target.restore(setupAdmin, backup, true).expect(200)
@@ -204,6 +208,8 @@ func TestMovingAnInstanceWithABackup(t *testing.T) {
 	// The dry run changed nothing
 	target.req("GET", "/api/v1/users/me").as(setupAdmin).expect(200).has("username", "admin")
 	target.restore(setupAdmin, backup, false).expect(200)
+	_, err := os.Stat(filepath.Join(target.cfg.DataDir, "initial-admin-password"))
+	require.ErrorIs(t, err, os.ErrNotExist)
 
 	// Everything is there, with the same ids: sessions are not (another secret), the passwords are
 	target.req("GET", "/api/v1/users/me").as(setupAdmin).expect(401)
