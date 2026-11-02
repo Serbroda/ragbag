@@ -8,6 +8,14 @@ RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY ui/v1 ./
 RUN VITE_APP_BASE=/app npm run build
 
+# --- Version: the build argument, else git describe of the checkout (docker compose passes none) ---
+FROM docker.io/library/alpine:3.24 AS version
+RUN apk add --no-cache git
+ARG VERSION=
+# The context is only mounted for this step, .git never ends up in an image; without it the version is "dev"
+RUN --mount=type=bind,target=/src \
+    echo "${VERSION:-$(git -c safe.directory='*' -C /src describe --tags --always 2>/dev/null || echo dev)}" > /version
+
 # --- Server: a static binary with the frontend embedded ---------------------------------------
 FROM docker.io/library/golang:1.27-alpine AS server
 WORKDIR /build
@@ -17,9 +25,9 @@ COPY cmd cmd
 COPY internal internal
 COPY ui/ui.go ui/
 COPY --from=ui /build/ui/v1/dist ui/v1/dist
-ARG VERSION=dev
+COPY --from=version /version /version
 RUN --mount=type=cache,target=/go/pkg/mod --mount=type=cache,target=/root/.cache/go-build \
-    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=${VERSION}" -o /ragbag ./cmd/ragbag
+    CGO_ENABLED=0 go build -trimpath -ldflags "-s -w -X main.version=$(cat /version)" -o /ragbag ./cmd/ragbag
 
 # --- Binary only: builds bin/ragbag without Go, Node or make on the host -------------------------
 #   podman build --target binary --output bin .     (docker: docker build --target binary --output bin .)

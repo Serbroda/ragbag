@@ -1,5 +1,4 @@
-# Keep the build context small and free of local state
-.git
+# Keep the build context small and free of local state (.git stays: the version comes from git describe)
 .idea
 .claude
 .DS_Store
