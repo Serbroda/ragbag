@@ -12,20 +12,24 @@ type Space struct {
 	Description *string `db:"description"`
 	IconImageID *string `db:"icon_image_id"`
 	// Discoverable spaces are listed for every account, which can join them with JoinRole
-	Discoverable bool      `db:"discoverable"`
-	JoinRole     string    `db:"join_role"`
-	CreatedBy    string    `db:"created_by"`
-	CreatedAt    time.Time `db:"created_at"`
-	UpdatedAt    time.Time `db:"updated_at"`
+	Discoverable bool   `db:"discoverable"`
+	JoinRole     string `db:"join_role"`
+	// WelcomeMessage is Markdown shown to members when they first open the space
+	WelcomeMessage *string   `db:"welcome_message"`
+	CreatedBy      string    `db:"created_by"`
+	CreatedAt      time.Time `db:"created_at"`
+	UpdatedAt      time.Time `db:"updated_at"`
 }
 
-const spaceColumns = `s.id, s.name, s.description, s.icon_image_id, s.discoverable, s.join_role, s.created_by, s.created_at,
-	s.updated_at`
+const spaceColumns = `s.id, s.name, s.description, s.icon_image_id, s.discoverable, s.join_role, s.welcome_message,
+	s.created_by, s.created_at, s.updated_at`
 
 // SpaceWithRole is a space as one of its members sees it.
 type SpaceWithRole struct {
 	Space
 	Role string `db:"role"`
+	// WelcomedAt is when the member saw the welcome, nil before
+	WelcomedAt *time.Time `db:"welcomed_at"`
 }
 
 func (s *Store) CreateSpace(ctx context.Context, name string, description *string, createdBy string) (*Space, error) {
@@ -45,6 +49,18 @@ func (s *Store) SpaceByID(ctx context.Context, id string) (*Space, error) {
 
 func (s *Store) UpdateSpace(ctx context.Context, id, name string, description *string) error {
 	_, err := s.exec(ctx, `UPDATE spaces SET name = ?, description = ?, updated_at = ? WHERE id = ?`, name, description, now(), id)
+	return err
+}
+
+func (s *Store) SetSpaceWelcome(ctx context.Context, id string, message *string) error {
+	_, err := s.exec(ctx, `UPDATE spaces SET welcome_message = ?, updated_at = ? WHERE id = ?`, message, now(), id)
+	return err
+}
+
+// MarkWelcomed records that the member saw the welcome of the space (the first time only).
+func (s *Store) MarkWelcomed(ctx context.Context, spaceID, userID string) error {
+	_, err := s.exec(ctx, `UPDATE space_members SET welcomed_at = ? WHERE space_id = ? AND user_id = ? AND welcomed_at IS NULL`,
+		now(), spaceID, userID)
 	return err
 }
 
@@ -90,13 +106,13 @@ func (s *Store) DeleteSpace(ctx context.Context, id string) error {
 
 func (s *Store) SpaceForMember(ctx context.Context, spaceID, userID string) (*SpaceWithRole, error) {
 	var space SpaceWithRole
-	return &space, s.get(ctx, &space, `SELECT `+spaceColumns+`, m.role FROM spaces s
+	return &space, s.get(ctx, &space, `SELECT `+spaceColumns+`, m.role, m.welcomed_at FROM spaces s
 		JOIN space_members m ON m.space_id = s.id WHERE s.id = ? AND m.user_id = ?`, spaceID, userID)
 }
 
 func (s *Store) SpacesForUser(ctx context.Context, userID string) ([]SpaceWithRole, error) {
 	var spaces []SpaceWithRole
-	err := s.sel(ctx, &spaces, `SELECT `+spaceColumns+`, m.role FROM spaces s
+	err := s.sel(ctx, &spaces, `SELECT `+spaceColumns+`, m.role, m.welcomed_at FROM spaces s
 		JOIN space_members m ON m.space_id = s.id WHERE m.user_id = ?`, userID)
 	return spaces, err
 }

@@ -104,6 +104,11 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   counted at registration. While `REGISTRATION_ENABLED` is off, only invites of instance admins register
   (`inviteRegisters`). Signed-out visitors land on the login page with the remembered invite, which previews it
   via the public `GET /auth/invites/{token}` (`registration`).
+- **Welcome** (`spaces.go`, `WelcomeModal.svelte`): `space_members.welcomed_at` is null until the member first
+  opens the space (`POST /spaces/{id}/welcomed`, the layout calls it when showing the welcome). The owner of a new
+  account's first space gets an introduction and a random planet as icon (the server cannot draw them); spaces
+  created by hand count as welcomed. Other members see the space's `welcome_message` (Markdown by members with
+  `EDIT_SPACE`, rendered by goldmark without raw HTML or dangerous links into `welcomeHtml`), later via the space menu.
 - **Discoverable spaces** (`discoverable`, `join_role` VIEWER or CONTRIBUTOR) are listed by `GET /spaces/discover`
   for every account and joined via `POST /spaces/{id}/join`; other spaces answer 404 there. Joining never changes
   an existing membership, and changing the setting needs `MANAGE_MEMBERS`.

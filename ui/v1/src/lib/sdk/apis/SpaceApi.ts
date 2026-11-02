@@ -141,6 +141,13 @@ export interface MarkSpaceSeenRequest {
     spaceId: string;
 }
 
+export interface MarkSpaceWelcomedRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
 export interface PurgeTrashRequest {
     /**
      * 
@@ -852,6 +859,58 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async markSpaceSeen(requestParameters: MarkSpaceSeenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.markSpaceSeenRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for markSpaceWelcomed without sending the request
+     */
+    async markSpaceWelcomedRequestOpts(requestParameters: MarkSpaceWelcomedRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling markSpaceWelcomed().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/welcomed`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Mark the welcome of the space as seen by the current user
+     */
+    async markSpaceWelcomedRaw(requestParameters: MarkSpaceWelcomedRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.markSpaceWelcomedRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Mark the welcome of the space as seen by the current user
+     */
+    async markSpaceWelcomed(requestParameters: MarkSpaceWelcomedRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.markSpaceWelcomedRaw(requestParameters, initOverrides);
     }
 
     /**

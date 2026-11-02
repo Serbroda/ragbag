@@ -49,7 +49,7 @@
 		{#if legal}
 			<h1 class="mb-6 text-2xl font-bold tracking-tight">{legal.title}</h1>
 			<!-- Rendered by the server from the operator's Markdown, without raw HTML -->
-			<div class="legal">{@html legal.html}</div>
+			<div class="markdown">{@html legal.html}</div>
 		{:else if error}
 			<p class="text-gray-500 dark:text-gray-400">{error}</p>
 		{/if}

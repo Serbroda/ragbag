@@ -1,6 +1,7 @@
 package server
 
 import (
+	"bytes"
 	"context"
 	"errors"
 	"github.com/Serbroda/ragbag/internal/images"
@@ -14,6 +15,9 @@ import (
 	"github.com/labstack/echo/v4"
 )
 
+// maxWelcomeMessage limits the welcome message of a space (characters of Markdown).
+const maxWelcomeMessage = 10000
+
 func spaceDto(space *store.Space, role Role) api.SpaceDto {
 	apiRole := api.SpaceMemberRoleEnum(role)
 	permissions := []api.SpacePermissionEnum{}
@@ -23,8 +27,23 @@ func spaceDto(space *store.Space, role Role) api.SpaceDto {
 		}
 	}
 	joinRole := api.JoinRoleEnum(space.JoinRole)
-	return api.SpaceDto{Id: space.ID, Name: space.Name, Description: space.Description, IconId: space.IconImageID,
-		Role: &apiRole, Permissions: &permissions, Discoverable: &space.Discoverable, JoinRole: &joinRole}
+	dto := api.SpaceDto{Id: space.ID, Name: space.Name, Description: space.Description, IconId: space.IconImageID,
+		Role: &apiRole, Permissions: &permissions, Discoverable: &space.Discoverable, JoinRole: &joinRole,
+		WelcomeMessage: space.WelcomeMessage}
+	if space.WelcomeMessage != nil {
+		var html bytes.Buffer
+		if err := markdown.Convert([]byte(*space.WelcomeMessage), &html); err == nil {
+			dto.WelcomeHtml = ptr(html.String())
+		}
+	}
+	return dto
+}
+
+// memberSpaceDto is the space as the member sees it, with whether they saw its welcome.
+func memberSpaceDto(space *store.SpaceWithRole) api.SpaceDto {
+	dto := spaceDto(&space.Space, Role(space.Role))
+	dto.Welcomed = ptr(space.WelcomedAt != nil)
+	return dto
 }
 
 // maxDiscoverResults keeps the discover list short; the search narrows it down.
@@ -74,7 +93,7 @@ func (s *Server) GetSpaces(c echo.Context) error {
 	counts := newCounts(news, func(n store.NewBookmark) string { return n.SpaceID })
 	result := make([]api.SpaceDto, 0, len(spaces))
 	for _, space := range spaces {
-		dto := spaceDto(&space.Space, Role(space.Role))
+		dto := memberSpaceDto(&space)
 		count := counts[space.ID]
 		dto.NewCount = &count
 		result = append(result, dto)
@@ -99,13 +118,19 @@ func (s *Server) CreateSpace(c echo.Context) error {
 		if space, err = tx.CreateSpace(ctxOf(c), name, blankToNil(req.Description), currentUser(c)); err != nil {
 			return err
 		}
-		return tx.AddMember(ctxOf(c), space.ID, currentUser(c), string(RoleOwner))
+		if err := tx.AddMember(ctxOf(c), space.ID, currentUser(c), string(RoleOwner)); err != nil {
+			return err
+		}
+		// Whoever creates a space knows it; the introduction is for the first space of a new account
+		return tx.MarkWelcomed(ctxOf(c), space.ID, currentUser(c))
 	})
 	if err != nil {
 		return err
 	}
 	audit(c, slog.LevelInfo, "space created", "space", space.ID, "name", space.Name)
-	return c.JSON(http.StatusCreated, spaceDto(space, RoleOwner))
+	dto := spaceDto(space, RoleOwner)
+	dto.Welcomed = ptr(true)
+	return c.JSON(http.StatusCreated, dto)
 }
 
 func (s *Server) GetSpace(c echo.Context, spaceID api.ID) error {
@@ -117,11 +142,24 @@ func (s *Server) GetSpace(c echo.Context, spaceID api.ID) error {
 }
 
 func (s *Server) spaceView(c echo.Context, spaceID string, role Role) error {
-	space, err := s.store.SpaceByID(ctxOf(c), spaceID)
+	space, err := s.store.SpaceForMember(ctxOf(c), spaceID, currentUser(c))
 	if err != nil {
 		return err
 	}
-	return c.JSON(http.StatusOK, spaceDto(space, role))
+	dto := memberSpaceDto(space)
+	// The role checked by the handler, should the membership have changed since
+	dto.Role = ptr(api.SpaceMemberRoleEnum(role))
+	return c.JSON(http.StatusOK, dto)
+}
+
+func (s *Server) MarkSpaceWelcomed(c echo.Context, spaceID api.ID) error {
+	if _, err := s.requireSpace(ctxOf(c), s.store, spaceID, currentUser(c), PermRead); err != nil {
+		return err
+	}
+	if err := s.store.MarkWelcomed(ctxOf(c), spaceID, currentUser(c)); err != nil {
+		return err
+	}
+	return c.NoContent(http.StatusNoContent)
 }
 
 func (s *Server) UpdateSpace(c echo.Context, spaceID api.ID) error {
@@ -158,6 +196,14 @@ func (s *Server) UpdateSpace(c echo.Context, spaceID api.ID) error {
 				return forbidden("Missing permission %s", PermManageMembers)
 			}
 			if err := tx.SetSpaceDiscoverable(ctxOf(c), spaceID, discoverable, joinRole); err != nil {
+				return err
+			}
+		}
+		if req.WelcomeMessage != nil {
+			if len([]rune(*req.WelcomeMessage)) > maxWelcomeMessage {
+				return badRequest("The welcome message must be at most %d characters", maxWelcomeMessage)
+			}
+			if err := tx.SetSpaceWelcome(ctxOf(c), spaceID, blankToNil(req.WelcomeMessage)); err != nil {
 				return err
 			}
 		}
