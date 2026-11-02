@@ -14,7 +14,7 @@ const (
 	demoPassword = "test123"
 )
 
-// SeedDemo creates the demo account admin/test123 with a few collections. Only used with RAGBAG_DEV=true.
+// SeedDemo creates the demo account admin/test123 with a few collections, which the tests start from.
 func (s *Server) SeedDemo(ctx context.Context) error {
 	if _, err := s.store.UserByLogin(ctx, demoUser); err == nil {
 		return nil

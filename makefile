@@ -34,7 +34,7 @@ generate: ## Regenerate server interfaces and the TypeScript client from openapi
 		-i /local/openapi/openapi.yaml -g typescript-fetch -o /local/ui/v1/src/lib/sdk \
 		--additional-properties=supportsES6=true,typescriptThreePlus=true,useSingleRequestParameter=true
 
-dev: ## Run the server on :8080 with the settings from .env.local (demo account admin/test123)
+dev: ## Run the server on :8080 with the settings from .env.local (an empty database starts with the setup, like in production)
 	@test -f .env.local || (cp .env.local.example .env.local && echo "created .env.local from .env.local.example")
 	go run ./cmd/ragbag
 
