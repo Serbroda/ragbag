@@ -147,7 +147,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Link previews** (`meta.go`): the server writes title, description and Open Graph tags into `index.html` per
   page (chat apps do not run JavaScript). Shared collections go through the same `sharedCollection` as the API,
   so private, revoked or unknown links get the generic preview; pages behind a login never reveal anything.
-  The image is `ui/v1/public/og-image.png` (1200×630).
+  Usable invites name inviter and space (whoever has the link sees that on the invite page too). Addresses use
+  `PUBLIC_URL`, else the request's host. The image is `ui/v1/public/og-image.png` (1200×630).
 - **Locked collections** (`locks.go`) are personal: a user hides a collection (and everything below) from their
   own view; nobody else is affected. Locking needs a PIN (4–8 digits, BCrypt hash, set with the password; 5 wrong
   PINs pause unlocking for 5 minutes). Until unlocked they are part of `hiddenCollections`, so every list, search,

@@ -4,6 +4,7 @@ import (
 	"fmt"
 	"testing"
 
+	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -48,4 +49,26 @@ func TestOtherPagesGetAGenericPreview(t *testing.T) {
 
 	invite := e.req("GET", "/app/invite/some-token").expect(200).Body
 	require.Contains(t, invite, "You&#39;re invited to a space on Ragbag")
+}
+
+func TestInvitesNameTheInviterAndTheSpaceInTheirPreview(t *testing.T) {
+	e := newEnv(t, func(cfg *config.Config) { cfg.PublicURL = "https://ragbag.example.com" })
+	owner := e.register()
+	space := e.firstSpace(owner)
+	e.req("PUT", "/api/v1/spaces/%s", space).as(owner).json(`{"name":"WoW <Forever>","description":"Guides & Tools"}`).expect(200)
+	token := e.req("POST", "/api/v1/invites").as(owner).
+		json(fmt.Sprintf(`{"targetType":"SPACE","targetId":%q,"role":"VIEWER","maxUses":1}`, space)).expect(201).str("token")
+
+	page := e.req("GET", "/app/invite/%s", token).expect(200).Body
+	require.Contains(t, page, fmt.Sprintf(`<meta property="og:title" content="%s invited you to WoW &lt;Forever&gt;" />`, owner.Username))
+	require.Contains(t, page, `<meta property="og:description" content="Guides &amp; Tools · Ragbag is a collaborative link collection`)
+	// Addresses from PUBLIC_URL, not from the request's host (internal behind a reverse proxy)
+	require.Contains(t, page, fmt.Sprintf(`<meta property="og:url" content="https://ragbag.example.com/app/invite/%s" />`, token))
+	require.Contains(t, page, `<meta property="og:image" content="https://ragbag.example.com/app/og-image.png" />`)
+
+	// Used up: generic again
+	e.req("POST", "/api/v1/invites/%s", token).as(e.register()).expect(200)
+	used := e.req("GET", "/app/invite/%s", token).expect(200).Body
+	require.Contains(t, used, "You&#39;re invited to a space on Ragbag")
+	require.NotContains(t, used, "Forever")
 }

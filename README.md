@@ -187,7 +187,7 @@ Everything is configured with environment variables. For local runs the server a
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Sending email: account confirmation and password reset (see below) | – (no email), port `587` |
 | `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | Legal pages elsewhere instead of files in `DATA_DIR/legal` (see *Legal pages*) | – |
-| `PUBLIC_URL`            | Address of the instance for links in emails, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
+| `PUBLIC_URL`            | Address of the instance for links in emails and chat previews, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
 | `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
@@ -208,8 +208,9 @@ Everything is configured with environment variables. For local runs the server a
 
 Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything to port 8080; the app lives under
 `/app`, the API under `/api`. When the proxy terminates HTTPS and sends `X-Forwarded-Proto: https`, the login cookie
-is marked `Secure` automatically. Link previews in chat apps (WhatsApp, Signal, Discord) use the `Host` and
-`X-Forwarded-Proto` headers the proxy passes on to build the image address.
+is marked `Secure` automatically. Link previews in chat apps (WhatsApp, Signal, Discord) need the public address
+for their image: set `PUBLIC_URL`, otherwise Ragbag builds it from the `Host` and `X-Forwarded-Proto` headers the
+proxy passes on.
 
 ### Security headers
 
