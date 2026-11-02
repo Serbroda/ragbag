@@ -6,6 +6,7 @@ import (
 	"testing"
 	"time"
 
+	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/stretchr/testify/require"
 )
 
@@ -186,4 +187,23 @@ func TestReportsAreRateLimited(t *testing.T) {
 		e.req("POST", "/api/v1/shares/%s/reports", token).json(body).expect(204)
 	}
 	e.req("POST", "/api/v1/shares/%s/reports", token).json(body).expect(429)
+}
+
+func TestAdminOverview(t *testing.T) {
+	e := newEnv(t, func(cfg *config.Config) { cfg.Quotas.LinksPerUser = 500 })
+	admin, user := e.login("admin", "test123"), e.register()
+	e.req("GET", "/api/v1/admin/overview").as(user).expect(403)
+
+	before := e.req("GET", "/api/v1/admin/overview").as(admin).expect(200)
+	before.has("version", "test").has("settings.quotaLinksPerUser", 500).has("settings.adminUsers.0", "admin").
+		has("settings.email", false).has("openReports", 0)
+	require.Contains(t, []string{"sqlite", "postgres"}, before.str("database"))
+	require.Positive(t, before.get("schemaVersion").Int())
+
+	e.createBookmark(user, e.createCollection(user, e.firstSpace(user), "More", ""))
+	e.req("PUT", "/api/v1/admin/users/%s/block", user.UserID).as(admin).json(`{}`).expect(200)
+	after := e.req("GET", "/api/v1/admin/overview").as(admin).expect(200)
+	after.has("blockedUsers", 1)
+	require.Equal(t, before.get("bookmarks").Int()+1, after.get("bookmarks").Int())
+	require.Equal(t, before.get("collections").Int()+1, after.get("collections").Int())
 }

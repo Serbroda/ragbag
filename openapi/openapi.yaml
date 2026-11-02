@@ -479,6 +479,26 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/admin/overview:
+    get:
+      summary: What the admin page shows first (version, database, counts and the effective configuration)
+      operationId: getAdminOverview
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminOverviewDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /v1/admin/instance:
     get:
       summary: State of the installation (whether a backup can be restored)
@@ -2590,6 +2610,97 @@ components:
         - username
         - email
         - instanceAdmin
+
+    AdminOverviewDto:
+      type: object
+      properties:
+        version:
+          type: string
+        database:
+          type: string
+          enum: [ sqlite, postgres ]
+        schemaVersion:
+          type: integer
+          format: int64
+        users:
+          type: integer
+        blockedUsers:
+          type: integer
+        unconfirmedUsers:
+          type: integer
+          description: Accounts waiting for their email address to be confirmed
+        spaces:
+          type: integer
+        collections:
+          type: integer
+        bookmarks:
+          type: integer
+          description: Links, trashed ones included
+        publicLinks:
+          type: integer
+        imageBytes:
+          type: integer
+          format: int64
+          description: Size of all stored images
+        openReports:
+          type: integer
+        settings:
+          $ref: '#/components/schemas/AdminSettingsDto'
+      required:
+        - version
+        - database
+        - schemaVersion
+        - users
+        - blockedUsers
+        - unconfirmedUsers
+        - spaces
+        - collections
+        - bookmarks
+        - publicLinks
+        - imageBytes
+        - openReports
+        - settings
+
+    AdminSettingsDto:
+      description: The configuration in effect (environment variables), read-only
+      type: object
+      properties:
+        publicUrl:
+          type: string
+        registrationOpen:
+          type: boolean
+        email:
+          type: boolean
+          description: SMTP_HOST is set
+        rateLimits:
+          type: boolean
+        allowPrivateHosts:
+          type: boolean
+        adminUsers:
+          type: array
+          items:
+            type: string
+          description: ADMIN_USERS; empty means the setup admin
+        quotaLinksPerUser:
+          type: integer
+          description: 0 is unlimited
+        quotaSpacesPerUser:
+          type: integer
+        quotaCollectionsPerSpace:
+          type: integer
+        quotaUploadMbPerUser:
+          type: integer
+      required:
+        - publicUrl
+        - registrationOpen
+        - email
+        - rateLimits
+        - allowPrivateHosts
+        - adminUsers
+        - quotaLinksPerUser
+        - quotaSpacesPerUser
+        - quotaCollectionsPerSpace
+        - quotaUploadMbPerUser
 
     BlockUserRequest:
       type: object

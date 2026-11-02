@@ -34,6 +34,24 @@ func (e AbuseReportDtoResolution) Valid() bool {
 	}
 }
 
+// Defines values for AdminOverviewDtoDatabase.
+const (
+	Postgres AdminOverviewDtoDatabase = "postgres"
+	Sqlite   AdminOverviewDtoDatabase = "sqlite"
+)
+
+// Valid indicates whether the value is a known member of the AdminOverviewDtoDatabase enum.
+func (e AdminOverviewDtoDatabase) Valid() bool {
+	switch e {
+	case Postgres:
+		return true
+	case Sqlite:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CollectionVisibilityDto.
 const (
 	INTERNAL CollectionVisibilityDto = "INTERNAL"
@@ -330,6 +348,53 @@ type AbuseReportDto struct {
 
 // AbuseReportDtoResolution defines model for AbuseReportDto.Resolution.
 type AbuseReportDtoResolution string
+
+// AdminOverviewDto defines model for AdminOverviewDto.
+type AdminOverviewDto struct {
+	BlockedUsers int `json:"blockedUsers"`
+
+	// Bookmarks Links, trashed ones included
+	Bookmarks   int                      `json:"bookmarks"`
+	Collections int                      `json:"collections"`
+	Database    AdminOverviewDtoDatabase `json:"database"`
+
+	// ImageBytes Size of all stored images
+	ImageBytes    int64 `json:"imageBytes"`
+	OpenReports   int   `json:"openReports"`
+	PublicLinks   int   `json:"publicLinks"`
+	SchemaVersion int64 `json:"schemaVersion"`
+
+	// Settings The configuration in effect (environment variables), read-only
+	Settings AdminSettingsDto `json:"settings"`
+	Spaces   int              `json:"spaces"`
+
+	// UnconfirmedUsers Accounts waiting for their email address to be confirmed
+	UnconfirmedUsers int    `json:"unconfirmedUsers"`
+	Users            int    `json:"users"`
+	Version          string `json:"version"`
+}
+
+// AdminOverviewDtoDatabase defines model for AdminOverviewDto.Database.
+type AdminOverviewDtoDatabase string
+
+// AdminSettingsDto The configuration in effect (environment variables), read-only
+type AdminSettingsDto struct {
+	// AdminUsers ADMIN_USERS; empty means the setup admin
+	AdminUsers        []string `json:"adminUsers"`
+	AllowPrivateHosts bool     `json:"allowPrivateHosts"`
+
+	// Email SMTP_HOST is set
+	Email                    bool   `json:"email"`
+	PublicUrl                string `json:"publicUrl"`
+	QuotaCollectionsPerSpace int    `json:"quotaCollectionsPerSpace"`
+
+	// QuotaLinksPerUser 0 is unlimited
+	QuotaLinksPerUser    int  `json:"quotaLinksPerUser"`
+	QuotaSpacesPerUser   int  `json:"quotaSpacesPerUser"`
+	QuotaUploadMbPerUser int  `json:"quotaUploadMbPerUser"`
+	RateLimits           bool `json:"rateLimits"`
+	RegistrationOpen     bool `json:"registrationOpen"`
+}
 
 // AdminUserDto defines model for AdminUserDto.
 type AdminUserDto struct {
@@ -1272,6 +1337,9 @@ type ServerInterface interface {
 	// GetInstance State of the installation (whether a backup can be restored)
 	// (GET /v1/admin/instance)
 	GetInstance(ctx echo.Context) error
+	// GetAdminOverview What the admin page shows first (version, database, counts and the effective configuration)
+	// (GET /v1/admin/overview)
+	GetAdminOverview(ctx echo.Context) error
 	// GetReports Reports of public links, open ones first
 	// (GET /v1/admin/reports)
 	GetReports(ctx echo.Context) error
@@ -1692,6 +1760,15 @@ func (w *ServerInterfaceWrapper) GetInstance(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetInstance(ctx)
+	return err
+}
+
+// GetAdminOverview converts echo context to params.
+func (w *ServerInterfaceWrapper) GetAdminOverview(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetAdminOverview(ctx)
 	return err
 }
 
@@ -2976,6 +3053,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/admin/users/:userId/block", wrapper.BlockUser, options.OperationMiddlewares["blockUser"]...)
 	router.GET(options.BaseURL+"/v1/admin/reports", wrapper.GetReports, options.OperationMiddlewares["getReports"]...)
 	router.POST(options.BaseURL+"/v1/admin/reports/:reportId/resolve", wrapper.ResolveReport, options.OperationMiddlewares["resolveReport"]...)
+	router.GET(options.BaseURL+"/v1/admin/overview", wrapper.GetAdminOverview, options.OperationMiddlewares["getAdminOverview"]...)
 	router.GET(options.BaseURL+"/v1/admin/instance", wrapper.GetInstance, options.OperationMiddlewares["getInstance"]...)
 	router.GET(options.BaseURL+"/v1/admin/backup", wrapper.DownloadBackup, options.OperationMiddlewares["downloadBackup"]...)
 	router.POST(options.BaseURL+"/v1/admin/backup/restore", wrapper.RestoreBackup, options.OperationMiddlewares["restoreBackup"]...)

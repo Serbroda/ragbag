@@ -12,6 +12,8 @@ apis/UserApi.ts
 apis/index.ts
 index.ts
 models/AbuseReportDto.ts
+models/AdminOverviewDto.ts
+models/AdminSettingsDto.ts
 models/AdminUserDto.ts
 models/BackupSummaryDto.ts
 models/BlockUserRequest.ts

@@ -40,7 +40,6 @@
 	import Avatar from '../components/Avatar.svelte';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
-	import AdminUsersModal from '../components/AdminUsersModal.svelte';
 	import { collectionsToTree, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
@@ -286,7 +285,6 @@
 	let showCreateOrJoin = $state(false);
 	let showInvite = $state(false);
 	let showProfile = $state(false);
-	let showAdminUsers = $state(false);
 
 	function closeMenus() {
 		spaceMenuOpen = false;
@@ -796,10 +794,10 @@
 							<button
 								role="menuitem"
 								class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
-								onclick={() => (closeMenus(), (showAdminUsers = true))}
+								onclick={() => (closeMenus(), navigate(session.me?.openReports ? '/admin/:tab' : '/admin', { params: { tab: 'reports' } }))}
 							>
 								<span>
-									Manage users
+									Administration
 									{#if session.me.openReports}
 										<span class="ms-1 rounded-full bg-red-500 px-1.5 text-xs text-white" title="Open reports"
 											>{session.me.openReports}</span
@@ -1157,6 +1155,3 @@
 
 <ProfileModal bind:open={showProfile} />
 
-{#if session.me?.instanceAdmin}
-	<AdminUsersModal bind:open={showAdminUsers} />
-{/if}

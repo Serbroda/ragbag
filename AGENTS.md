@@ -163,7 +163,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   carry `token_version`; logout everywhere, password changes and resets increment it.
 - **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users, create
   one-time password reset links (only SHA-256 hashes stored, 24 h, one per user) and download backups. The one
-  exception: while `ADMIN_USERS` is empty, the setup admin (`users.setup_admin`) is the admin.
+  exception: while `ADMIN_USERS` is empty, the setup admin (`users.setup_admin`) is the admin. Everything they do lives on
+  `/admin/:tab` (`AdminPage.svelte`: overview from `GET /admin/overview` with counts and the effective
+  configuration, accounts, reports, backup), outside the space layout.
 - **Moderation** (`moderation.go`): deleting an account (`POST /users/me/delete`, password; admins
   `DELETE /admin/users/{id}`) deletes the spaces it alone is a member of, leaves the others (`RemoveMember`) and
   anonymizes the row (`AnonymizeUser`: `deleted-…`, no email, password or avatar, `deleted_at`), so `created_by`
