@@ -14,6 +14,7 @@ import (
 
 const (
 	defaultDescription = "Collect, organize and share links with your people. Self-hosted, like Discord for bookmarks."
+	inviteDescription  = "Ragbag is a collaborative link collection: collect, organize and share links together."
 	// ui/v1/public/og-image.png, 1200×630
 	previewImage = "/app/og-image.png"
 )
@@ -51,8 +52,21 @@ func (s *Server) pageMeta(c echo.Context, name string) pageMeta {
 			meta.description = strings.TrimSpace(*shared.Description) + " (" + meta.description + ")"
 		}
 	case len(parts) >= 2 && parts[0] == "invite":
+		// Who invites to which space: whoever has the link may see that on the invite page as well
 		meta.title = "You're invited to a space on Ragbag"
-		meta.description = "Open the link to join and share links together."
+		meta.description = inviteDescription
+		invite, err := s.store.InviteByToken(ctxOf(c), parts[1])
+		if err != nil || !invite.Usable() {
+			return meta
+		}
+		space, err := s.store.SpaceByID(ctxOf(c), invite.TargetID)
+		if err != nil {
+			return meta
+		}
+		meta.title = fmt.Sprintf("%s invited you to %s", invite.CreatedByName, space.Name)
+		if space.Description != nil && strings.TrimSpace(*space.Description) != "" {
+			meta.description = strings.TrimSpace(*space.Description) + " · " + inviteDescription
+		}
 	}
 	return meta
 }
@@ -67,7 +81,11 @@ func counted(n int, noun string) string {
 // withMeta puts the title and preview tags of the page into index.html.
 func (s *Server) withMeta(c echo.Context, name string, index []byte) []byte {
 	meta := s.pageMeta(c, name)
-	base := c.Scheme() + "://" + c.Request().Host
+	// Behind a reverse proxy the request's host may be an internal one, which chat apps cannot load
+	base := s.cfg.PublicURL
+	if base == "" {
+		base = c.Scheme() + "://" + c.Request().Host
+	}
 	tags := []string{
 		"<title>" + html.EscapeString(meta.title) + "</title>",
 		`<meta name="description" content="` + html.EscapeString(meta.description) + `" />`,
