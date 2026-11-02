@@ -5,6 +5,7 @@
 	import { Button, Input, Label, Modal, Select } from 'flowbite-svelte';
 	import { apiConfig, appBase, errorMessage } from '../api/client';
 	import { copyText } from '../utils/clipboard';
+	import { session } from '../stores/spaces.svelte';
 
 	let {
 		open = $bindable(false),
@@ -112,6 +113,12 @@
 		{#if copyFailed}
 			<p class="mt-2 text-xs text-amber-600 dark:text-amber-400">
 				Your browser blocked copying. The link is selected, press Ctrl+C (⌘C on Mac).
+			</p>
+		{/if}
+		{#if session.me?.instanceAdmin}
+			<!-- Invites of instance admins create accounts even while registration is disabled -->
+			<p class="mt-2 text-xs text-gray-500 dark:text-gray-400">
+				People without an account can create one with this link.
 			</p>
 		{/if}
 	</div>

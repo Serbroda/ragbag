@@ -2,7 +2,10 @@
 	import { Label, Input, Button, Alert } from 'flowbite-svelte';
 	import { ResponseError } from 'ragbag-frontend-sdk';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
-	import { errorMessage, login, register, fetchFeatureFlags, requestPasswordReset } from '../api/client';
+	import type { InvitePreviewDto } from 'ragbag-frontend-sdk';
+	import {
+		errorMessage, login, register, fetchFeatureFlags, requestPasswordReset, pendingInvite, getRegistrationInvite,
+	} from '../api/client';
 	import { route } from '../router';
 	import { continueAfterSignIn } from '../utils/signin';
 	import { legalLinks, type LegalLink } from '../utils/legal';
@@ -20,6 +23,18 @@
 		terms = links.find((link) => link.page === 'terms');
 		privacy = links.find((link) => link.page === 'privacy');
 	});
+
+	// An invite opened while signed out; it may create an account even while registration is disabled
+	const inviteToken = pendingInvite();
+	let invite = $state<InvitePreviewDto | null>(null);
+	const inviteRegisters = $derived(invite?.registration === true);
+	if (inviteToken) {
+		getRegistrationInvite(inviteToken).then((preview) => {
+			invite = preview;
+			// Mostly people new here: start with the registration
+			if (preview.registration && !isForgot && !username) isRegister = true;
+		}).catch(() => {});
+	}
 
 	$effect(() => {
 		fetchFeatureFlags().then((flags) => {
@@ -78,10 +93,11 @@
 					loading = false;
 					return;
 				}
-				await register(username, email, password, acceptTerms);
+				await register(username, email, password, acceptTerms, inviteRegisters ? inviteToken ?? undefined : undefined);
+				const space = inviteRegisters ? invite?.targetName ?? 'the space' : '';
 				success = emailEnabled
-					? `Almost done: we sent a confirmation link to ${email}. Open it to start using Ragbag.`
-					: 'Registration successful! You can now sign in.';
+					? `Almost done: we sent a confirmation link to ${email}. Open it to start using Ragbag${space ? ` and join ${space}` : ''}.`
+					: `Registration successful! You can now sign in${space ? ` and open ${space}` : ''}.`;
 				isRegister = false;
 				username = '';
 				email = '';
@@ -110,6 +126,13 @@
 	subtitle={isForgot ? 'Reset your password' : isRegister ? 'Create your account' : 'Welcome back! Sign in to continue.'}
 >
 
+		{#if invite?.valid && !success}
+			<p class="mb-4 text-center text-sm text-gray-500 dark:text-gray-400">
+				{invite.invitedBy ?? 'Someone'} invited you to join
+				<span class="font-semibold text-gray-900 dark:text-white">{invite.targetName ?? 'a space'}</span>.
+				{inviteRegisters ? 'Create an account or sign in to accept.' : 'Sign in to accept.'}
+			</p>
+		{/if}
 		{#if error}
 			<Alert color="red" class="mb-4">{error}</Alert>
 		{/if}
@@ -201,7 +224,7 @@
 			{/if}
 		{/if}
 
-		{#if registrationEnabled && !isForgot}
+		{#if (registrationEnabled || inviteRegisters) && !isForgot}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				{#if isRegister}
 					Already have an account?

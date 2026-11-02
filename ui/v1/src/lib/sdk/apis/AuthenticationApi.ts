@@ -24,6 +24,11 @@ import {
     CompleteSetupRequestToJSON,
 } from '../models/CompleteSetupRequest';
 import {
+    type InvitePreviewDto,
+    InvitePreviewDtoFromJSON,
+    InvitePreviewDtoToJSON,
+} from '../models/InvitePreviewDto';
+import {
     type LoginRequest,
     LoginRequestFromJSON,
     LoginRequestToJSON,
@@ -74,6 +79,13 @@ export interface CompleteSetupOperationRequest {
 }
 
 export interface GetPasswordResetRequest {
+    /**
+     * 
+     */
+    token: string;
+}
+
+export interface GetRegistrationInviteRequest {
     /**
      * 
      */
@@ -283,6 +295,51 @@ export class AuthenticationApi extends runtime.BaseAPI {
      */
     async getPasswordReset(requestParameters: GetPasswordResetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PasswordResetPreviewDto> {
         const response = await this.getPasswordResetRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getRegistrationInvite without sending the request
+     */
+    async getRegistrationInviteRequestOpts(requestParameters: GetRegistrationInviteRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getRegistrationInvite().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/auth/invites/{token}`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Preview an invite without being signed in; registration says whether it can be used to create an account (registration enabled, or an invite of an instance admin) 
+     */
+    async getRegistrationInviteRaw(requestParameters: GetRegistrationInviteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InvitePreviewDto>> {
+        const requestOptions = await this.getRegistrationInviteRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InvitePreviewDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Preview an invite without being signed in; registration says whether it can be used to create an account (registration enabled, or an invite of an instance admin) 
+     */
+    async getRegistrationInvite(requestParameters: GetRegistrationInviteRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InvitePreviewDto> {
+        const response = await this.getRegistrationInviteRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

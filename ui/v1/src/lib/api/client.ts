@@ -13,6 +13,7 @@ import type {
 	BookmarkDto,
 	CreateReportRequest,
 	GetLegalPagePageEnum,
+	InvitePreviewDto,
 	LegalPageDto,
 	Middleware,
 	SharedCollectionDto,
@@ -108,9 +109,16 @@ function anonConfig(): Configuration {
 	});
 }
 
-export async function register(username: string, email: string, password: string, acceptTerms = false): Promise<void> {
+export async function register(
+	username: string, email: string, password: string, acceptTerms = false, inviteToken?: string,
+): Promise<void> {
 	const api = new AuthenticationApi(anonConfig());
-	await api.register({ registerRequest: { username, email, password, acceptTerms } });
+	await api.register({ registerRequest: { username, email, password, acceptTerms, inviteToken } });
+}
+
+/** An invite opened while signed out: where it leads and whether it can create an account. */
+export async function getRegistrationInvite(token: string): Promise<InvitePreviewDto> {
+	return new AuthenticationApi(anonConfig()).getRegistrationInvite({ token });
 }
 
 /** Imprint, privacy policy or terms of use of this instance; works without being signed in. */
@@ -301,6 +309,11 @@ export function takePendingAdd(): string | null {
 	const search = sessionStorage.getItem(PENDING_ADD_KEY);
 	sessionStorage.removeItem(PENDING_ADD_KEY);
 	return search;
+}
+
+/** The invite a signed-out visitor opened, without using it up (the login page offers registering with it). */
+export function pendingInvite(): string | null {
+	return sessionStorage.getItem(PENDING_INVITE_KEY);
 }
 
 export function takePendingInvite(): string | null {

@@ -380,6 +380,11 @@ func (s *Store) InviteByToken(ctx context.Context, token string) (*Invite, error
 	return &invite, s.get(ctx, &invite, inviteSelect+` WHERE i.token = ?`, token)
 }
 
+func (s *Store) InviteByID(ctx context.Context, id string) (*Invite, error) {
+	var invite Invite
+	return &invite, s.get(ctx, &invite, inviteSelect+` WHERE i.id = ?`, id)
+}
+
 func (s *Store) InvitesForSpace(ctx context.Context, spaceID string) ([]Invite, error) {
 	var invites []Invite
 	err := s.sel(ctx, &invites, inviteSelect+` WHERE i.target_type = 'SPACE' AND i.target_id = ? ORDER BY i.created_at DESC`, spaceID)

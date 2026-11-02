@@ -55,6 +55,10 @@ export interface InvitePreviewDto {
      * 
      */
     alreadyMember: boolean;
+    /**
+     * Whether a new account can be created with this invite (only in the signed-out preview)
+     */
+    registration?: boolean;
 }
 
 
@@ -96,6 +100,7 @@ export function InvitePreviewDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'invitedBy': json['invitedBy'] == null ? undefined : json['invitedBy'],
         'valid': json['valid'],
         'alreadyMember': json['alreadyMember'],
+        'registration': json['registration'] == null ? undefined : json['registration'],
     };
 }
 
@@ -117,6 +122,7 @@ export function InvitePreviewDtoToJSONTyped(value?: InvitePreviewDto | null, ign
         'invitedBy': value['invitedBy'],
         'valid': value['valid'],
         'alreadyMember': value['alreadyMember'],
+        'registration': value['registration'],
     };
 }
 

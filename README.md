@@ -151,7 +151,8 @@ ones listed there are.
 
 Everybody else **registers** – every account gets its own first space. Admins manage all users in the profile menu
 (→ *Administration*). Set `REGISTRATION_ENABLED=false` once everybody has an account if your instance is reachable
-from the internet.
+from the internet. Invite links of admins still let new people register (and join the space right away); invite
+links of everybody else then only work for existing accounts.
 
 Database migrations run automatically on start-up.
 
@@ -182,7 +183,7 @@ Everything is configured with environment variables. For local runs the server a
 | `RAGBAG_ADDR`           | HTTP address                                                         | `:8080`                 |
 | `ADMIN_USERS`           | Comma-separated usernames that may manage all users and download backups; the first start creates the first of them | – (the account created on the first start) |
 | `DATA_DIR`              | Where the first start puts `initial-admin-password`; legal pages in `legal/` | the SQLite file's directory, systemd's state directory, else `data` (Docker: `/data`) |
-| `REGISTRATION_ENABLED`  | Whether new accounts can be registered                               | `true`                  |
+| `REGISTRATION_ENABLED`  | Whether anybody can register; when off, only with an admin's invite  | `true`                  |
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Sending email: account confirmation and password reset (see below) | – (no email), port `587` |
 | `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | Legal pages elsewhere instead of files in `DATA_DIR/legal` (see *Legal pages*) | – |

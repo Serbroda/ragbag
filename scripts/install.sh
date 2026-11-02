@@ -109,7 +109,8 @@ JWT_SECRET=$(random_secret)
 # start creates the first of them ("admin" when empty) with a random password in $DATA_DIR/initial-admin-password.
 ADMIN_USERS=
 
-# Disable after creating your accounts if the instance is publicly reachable
+# Disable after creating your accounts if the instance is publicly reachable; invite links of admins still
+# let new people register
 REGISTRATION_ENABLED=true
 
 # Email (confirming new accounts, "Forgot your password?"); off while SMTP_HOST is empty.

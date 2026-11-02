@@ -1,6 +1,7 @@
 package server
 
 import (
+	"cmp"
 	"crypto/rand"
 	"crypto/sha256"
 	"encoding/base64"
@@ -39,12 +40,16 @@ func (s *Server) FeatureFlags(c echo.Context) error {
 }
 
 func (s *Server) Register(c echo.Context) error {
-	if !s.cfg.RegistrationOpen {
-		return forbidden("Registration is disabled")
-	}
 	var req api.RegisterRequest
 	if err := bind(c, &req); err != nil {
 		return err
+	}
+	inviteToken := ""
+	if req.InviteToken != nil {
+		inviteToken = *req.InviteToken
+	}
+	if !s.cfg.RegistrationOpen && inviteToken == "" {
+		return forbidden("Registration is disabled")
 	}
 	if err := auth.ValidatePassword(req.Password); err != nil {
 		return badRequest("%s", err.Error())
@@ -53,7 +58,7 @@ func (s *Server) Register(c echo.Context) error {
 	if terms && (req.AcceptTerms == nil || !*req.AcceptTerms) {
 		return badRequest("Please accept the terms of use")
 	}
-	user, err := s.createUser(c, req.Username, req.Email, req.Password, !s.mailEnabled())
+	user, invite, err := s.createUser(c, req.Username, req.Email, req.Password, inviteToken, !s.mailEnabled())
 	if err != nil {
 		return err
 	}
@@ -63,31 +68,42 @@ func (s *Server) Register(c echo.Context) error {
 		}
 	}
 	c.Set(usernameKey, user.Username)
-	audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil)
+	if invite != nil {
+		audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil,
+			"invite_by", invite.CreatedByName, "space", invite.TargetID, "role", invite.Role)
+	} else {
+		audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil)
+	}
 	return c.JSON(http.StatusOK, s.userDto(user))
 }
 
-// createUser registers an account with its own first space, like Discord gives you a server. Unconfirmed ones
-// get a confirmation link instead and their space with the confirmation.
-func (s *Server) createUser(c echo.Context, username, email, password string, confirmed bool) (*store.User, error) {
+// createUser registers an account with its own first space, like Discord gives you a server, and joins the
+// space of the invite (if any). Unconfirmed ones get a confirmation link instead and both with the confirmation.
+func (s *Server) createUser(c echo.Context, username, email, password, inviteToken string, confirmed bool) (*store.User, *store.Invite, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
 	email = strings.ToLower(strings.TrimSpace(email))
 	if username == "" || len(username) > 80 || strings.ContainsFunc(username, unicode.IsSpace) {
-		return nil, badRequest("Usernames must have 1 to 80 characters without spaces")
+		return nil, nil, badRequest("Usernames must have 1 to 80 characters without spaces")
 	}
 	// The names deleted accounts leave behind
 	if strings.HasPrefix(username, "deleted-") {
-		return nil, badRequest("Usernames cannot start with \"deleted-\"")
+		return nil, nil, badRequest("Usernames cannot start with \"deleted-\"")
 	}
 	if !strings.Contains(email, "@") || len(email) > 250 {
-		return nil, badRequest("Invalid email address")
+		return nil, nil, badRequest("Invalid email address")
 	}
 	hash, err := auth.HashPassword(password)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	var user *store.User
+	var invite *store.Invite
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		if inviteToken != "" {
+			if invite, err = s.registrationInvite(c, tx, inviteToken); err != nil {
+				return err
+			}
+		}
 		taken, err := tx.UsernameOrEmailTaken(ctxOf(c), username, email)
 		if err != nil {
 			return err
@@ -98,12 +114,65 @@ func (s *Server) createUser(c echo.Context, username, email, password string, co
 		if user, err = tx.CreateUser(ctxOf(c), username, email, hash, confirmed); err != nil {
 			return err
 		}
-		if !confirmed {
-			return s.sendVerification(c, tx, user)
+		if invite != nil {
+			// Counted now, so a single use invite cannot create several accounts waiting for their confirmation
+			if used, err := tx.UseInvite(ctxOf(c), invite.ID); err != nil || !used {
+				return cmp.Or(err, conflict("Invite is expired"))
+			}
 		}
-		return createFirstSpace(c, tx, user)
+		if !confirmed {
+			if err := s.sendVerification(c, tx, user); err != nil || invite == nil {
+				return err
+			}
+			return tx.SetVerificationInvite(ctxOf(c), user.ID, invite.ID)
+		}
+		if err := createFirstSpace(c, tx, user); err != nil || invite == nil {
+			return err
+		}
+		return joinSpace(ctxOf(c), tx, invite.TargetID, user.ID, Role(invite.Role))
 	})
-	return user, err
+	return user, invite, err
+}
+
+// registrationInvite checks an invite used to register: while registration is disabled, only invites of
+// instance admins let new people in (anybody may invite to their own spaces).
+func (s *Server) registrationInvite(c echo.Context, tx *store.Store, token string) (*store.Invite, error) {
+	invite, err := tx.InviteByToken(ctxOf(c), token)
+	if err != nil {
+		return nil, orNotFound(err, "Invite not found")
+	}
+	if !invite.Usable() {
+		return nil, conflict("Invite is expired")
+	}
+	if !s.inviteRegisters(c, tx, invite) {
+		return nil, forbidden("Registration is disabled")
+	}
+	return invite, nil
+}
+
+func (s *Server) inviteRegisters(c echo.Context, tx *store.Store, invite *store.Invite) bool {
+	if s.cfg.RegistrationOpen {
+		return true
+	}
+	creator, err := tx.UserByID(ctxOf(c), invite.CreatedBy)
+	return err == nil && creator.BlockedAt == nil && creator.DeletedAt == nil && s.isAdmin(creator)
+}
+
+// GetRegistrationInvite previews an invite for signed-out visitors: whether it can create their account.
+func (s *Server) GetRegistrationInvite(c echo.Context, token string) error {
+	invite, err := s.store.InviteByToken(ctxOf(c), token)
+	if err != nil {
+		return orNotFound(err, "Invite not found")
+	}
+	preview := api.InvitePreviewDto{
+		TargetType: api.InvitePreviewDtoTargetType(invite.TargetType), TargetId: invite.TargetID,
+		Role: ptr(api.InviteRoleEnum(invite.Role)), InvitedBy: &invite.CreatedByName, Valid: invite.Usable(),
+		Registration: ptr(invite.Usable() && s.inviteRegisters(c, s.store, invite)),
+	}
+	if space, err := s.store.SpaceByID(ctxOf(c), invite.TargetID); err == nil {
+		preview.TargetName = &space.Name
+	}
+	return c.JSON(http.StatusOK, preview)
 }
 
 func createFirstSpace(c echo.Context, tx *store.Store, user *store.User) error {

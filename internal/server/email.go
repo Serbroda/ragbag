@@ -101,12 +101,28 @@ func (s *Server) VerifyEmail(c echo.Context, token string) error {
 	return s.issueTokens(c, user)
 }
 
-// confirmUser marks the address as confirmed and creates the first space, which waits for the confirmation.
+// confirmUser marks the address as confirmed and creates the first space, which waits for the confirmation, like
+// joining the space of the invite the account registered with.
 func (s *Server) confirmUser(c echo.Context, tx *store.Store, user *store.User) error {
+	inviteID, err := tx.VerificationInvite(ctxOf(c), user.ID)
+	if err != nil {
+		return err
+	}
 	if err := tx.SetEmailVerified(ctxOf(c), user.ID); err != nil {
 		return err
 	}
-	return createFirstSpace(c, tx, user)
+	if err := createFirstSpace(c, tx, user); err != nil || inviteID == "" {
+		return err
+	}
+	// Revoked meanwhile (or its space deleted): nothing to join
+	invite, err := tx.InviteByID(ctxOf(c), inviteID)
+	if errors.Is(err, store.ErrNotFound) {
+		return nil
+	}
+	if err != nil {
+		return err
+	}
+	return joinSpace(ctxOf(c), tx, invite.TargetID, user.ID, Role(invite.Role))
 }
 
 // RequestPasswordReset mails a reset link; the answer is the same whether the account exists or not.
