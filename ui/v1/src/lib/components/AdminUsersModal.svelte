@@ -3,7 +3,7 @@
 	import type { AdminUserDto } from 'ragbag-frontend-sdk';
 	import { untrack } from 'svelte';
 	import { Button, Input, Modal } from 'flowbite-svelte';
-	import { apiConfig, appBase, errorMessage } from '../api/client';
+	import { apiConfig, appBase, downloadBackup, errorMessage } from '../api/client';
 	import { copyText } from '../utils/clipboard';
 	import { session } from '../stores/spaces.svelte';
 	import Avatar from './Avatar.svelte';
@@ -20,6 +20,7 @@
 	let created = $state<{ userId: string; link: string; expiresAt: Date } | null>(null);
 	let copied = $state(false);
 	let busyUserId = $state<string | null>(null);
+	let downloading = $state(false);
 
 	const visible = $derived(
 		users.filter((user) =>
@@ -61,6 +62,18 @@
 			error = await errorMessage(err, 'Failed to create a reset link.');
 		} finally {
 			busyUserId = null;
+		}
+	}
+
+	async function backup() {
+		downloading = true;
+		error = '';
+		try {
+			await downloadBackup();
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to create the backup.');
+		} finally {
+			downloading = false;
 		}
 	}
 
@@ -130,4 +143,13 @@
 			<li class="px-2 py-8 text-center text-sm text-gray-500">{loading ? 'Loading…' : 'No users found.'}</li>
 		{/each}
 	</ul>
+	<div class="flex flex-wrap items-center gap-3 border-t border-gray-100 pt-4 dark:border-gray-800">
+		<p class="min-w-0 flex-1 text-xs text-gray-500 dark:text-gray-400">
+			A backup holds everything, password hashes included: keep it safe. Restore it on the first login of a new,
+			empty Ragbag (SQLite or PostgreSQL) or with <code>ragbag restore</code>.
+		</p>
+		<Button size="sm" color="light" disabled={downloading} onclick={backup}>
+			{downloading ? 'Preparing…' : 'Download backup'}
+		</Button>
+	</div>
 </Modal>

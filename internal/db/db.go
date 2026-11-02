@@ -10,6 +10,7 @@ import (
 	"log/slog"
 	"os"
 	"path/filepath"
+	"strconv"
 	"strings"
 	"time"
 
@@ -90,9 +91,13 @@ func migrate(ctx context.Context, database *sqlx.DB, dialect Dialect) error {
 	if err := database.GetContext(ctx, &liquibaseRows, "SELECT COUNT(*) FROM databasechangelog"); err == nil {
 		return ErrJavaDatabase
 	}
+	return MigrateTo(ctx, database, dialect, 0)
+}
+
+func provider(database *sqlx.DB, dialect Dialect) (*goose.Provider, error) {
 	dir, err := fs.Sub(migrations, "migrations/"+string(dialect))
 	if err != nil {
-		return err
+		return nil, err
 	}
 	gooseDialect := goose.DialectSQLite3
 	if dialect == Postgres {
@@ -100,9 +105,23 @@ func migrate(ctx context.Context, database *sqlx.DB, dialect Dialect) error {
 	}
 	provider, err := goose.NewProvider(gooseDialect, database.DB, dir)
 	if err != nil {
-		return fmt.Errorf("prepare migrations: %w", err)
+		return nil, fmt.Errorf("prepare migrations: %w", err)
 	}
-	results, err := provider.Up(ctx)
+	return provider, nil
+}
+
+// MigrateTo applies the pending migrations up to version, 0 meaning all of them.
+func MigrateTo(ctx context.Context, database *sqlx.DB, dialect Dialect, version int64) error {
+	provider, err := provider(database, dialect)
+	if err != nil {
+		return err
+	}
+	var results []*goose.MigrationResult
+	if version == 0 {
+		results, err = provider.Up(ctx)
+	} else {
+		results, err = provider.UpTo(ctx, version)
+	}
 	if err != nil {
 		return fmt.Errorf("migrate database: %w", err)
 	}
@@ -110,4 +129,46 @@ func migrate(ctx context.Context, database *sqlx.DB, dialect Dialect) error {
 		slog.Info("applied migration", "version", result.Source.Version, "file", result.Source.Path)
 	}
 	return nil
+}
+
+// SchemaVersion is the version of the last applied migration.
+func SchemaVersion(ctx context.Context, database *sqlx.DB, dialect Dialect) (int64, error) {
+	provider, err := provider(database, dialect)
+	if err != nil {
+		return 0, err
+	}
+	return provider.GetDBVersion(ctx)
+}
+
+// LatestVersion is the version of the newest migration this build knows.
+func LatestVersion(dialect Dialect) int64 {
+	entries, _ := fs.ReadDir(migrations, "migrations/"+string(dialect))
+	var latest int64
+	for _, entry := range entries {
+		number, _, _ := strings.Cut(entry.Name(), "_")
+		if version, err := strconv.ParseInt(number, 10, 64); err == nil && version > latest {
+			latest = version
+		}
+	}
+	return latest
+}
+
+// OpenSQLiteAt opens a database migrated only up to version (upgrading backups of older versions).
+func OpenSQLiteAt(ctx context.Context, path string, version int64) (*sqlx.DB, error) {
+	database, err := openSQLite(path)
+	if err != nil {
+		return nil, err
+	}
+	if err := MigrateTo(ctx, database, SQLite, version); err != nil {
+		database.Close()
+		return nil, err
+	}
+	return database, nil
+}
+
+// Handle is an open database with its dialect.
+type Handle struct {
+	DB      *sqlx.DB
+	Dialect Dialect
+	URL     string
 }

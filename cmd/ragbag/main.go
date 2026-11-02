@@ -24,6 +24,15 @@ var version = "dev"
 
 func main() {
 	slog.SetDefault(slog.New(slog.NewTextHandler(os.Stdout, nil)))
+	if len(os.Args) > 1 {
+		// Commands log to stderr: a backup may go to stdout
+		slog.SetDefault(slog.New(slog.NewTextHandler(os.Stderr, nil)))
+		if err := command(os.Args[1], os.Args[2:]); err != nil {
+			slog.Error(os.Args[1]+" failed", "error", err)
+			os.Exit(1)
+		}
+		return
+	}
 	if err := run(); err != nil {
 		slog.Error("ragbag stopped", "error", err)
 		os.Exit(1)
@@ -65,6 +74,10 @@ func run() error {
 		if err := srv.SeedDemo(ctx); err != nil {
 			return err
 		}
+	}
+	// The first start of an empty instance creates an admin with a random password in DATA_DIR
+	if err := srv.Bootstrap(ctx); err != nil {
+		return err
 	}
 	// What has been in the trash for 30 days is deleted for good, accounts never confirmed after 7 days
 	go func() {

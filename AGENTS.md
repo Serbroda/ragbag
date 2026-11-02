@@ -45,7 +45,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
@@ -62,7 +62,9 @@ as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), th
 When changing the API: edit the spec, `make generate`, implement the new method in `internal/server`.
 
 ### Packages
-- `cmd/ragbag` — main: config, database, demo seed (dev), HTTP server with graceful shutdown
+- `cmd/ragbag` — main: config, database, demo seed (dev), setup admin, HTTP server with graceful shutdown;
+  `ragbag backup|restore` commands (`commands.go`, only need `DATABASE_URL`)
+- `internal/backup` — backup and restore of the whole instance, independent of the database
 - `internal/config` — environment configuration
 - `internal/db` — opens SQLite (pure Go `modernc.org/sqlite`, `CGO_ENABLED=0`) or PostgreSQL (pgx) and runs goose
   migrations from `migrations/sqlite` and `migrations/postgres`. Refuses databases of the former Java version
@@ -159,8 +161,21 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.
-- **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users and create
-  one-time password reset links (only SHA-256 hashes stored, 24 h, one per user).
+- **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users, create
+  one-time password reset links (only SHA-256 hashes stored, 24 h, one per user) and download backups. The one
+  exception: while `ADMIN_USERS` is empty, the setup admin (`users.setup_admin`) is the admin.
+- **Setup** (`setup.go`): `Bootstrap` (from main) creates the setup admin when there are no accounts, named after
+  the first of `ADMIN_USERS` (else `admin`), with a random password in `DATA_DIR/initial-admin-password` (0600,
+  never logged). Until `POST /auth/setup` (or a password change) replaces it, `must_change_password` makes every
+  other request answer 403 with `X-Ragbag-Setup` (the frontend opens `/setup`); then the file is deleted.
+- **Backups** (`internal/backup`, `GET /admin/backup`, `POST /admin/backup/restore`, `ragbag backup|restore`):
+  every table as gzip JSON (format `ragbag-instance`) with the ids, values normalized (RFC 3339 times, base64
+  blobs, booleans converted for the target), so SQLite and PostgreSQL restore each other. Tables are listed in
+  foreign key order in `backup.tables` (a test fails for tables neither there nor in `Skipped`; self references
+  and cycles via `parent`/`deferred`). Restores replace everything in one transaction and only on an empty
+  instance (no spaces, no accounts besides the setup admin); older backups go through a temporary SQLite
+  database at their `schema_version` and are migrated there first. A new migration needs no backup code unless
+  it adds a table or a reference cycle.
 - **Export/import** (`exchange.go`): versioned JSON (`format: ragbag-collection`, `format_version`). Raise the
   version on incompatible changes and convert older files in `parseExchange`. The format is compatible with
   exports of the former Java version, which is the migration path to this one.

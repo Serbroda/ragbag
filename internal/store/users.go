@@ -16,11 +16,16 @@ type User struct {
 	AvatarImageID *string `db:"avatar_image_id"`
 	// EmailVerifiedAt is nil while the account waits for its email address to be confirmed
 	EmailVerifiedAt *time.Time `db:"email_verified_at"`
-	CreatedAt       time.Time  `db:"created_at"`
-	UpdatedAt       time.Time  `db:"updated_at"`
+	// SetupAdmin is the account created on the first start; an instance admin while ADMIN_USERS is empty
+	SetupAdmin bool `db:"setup_admin"`
+	// MustChangePassword: the random initial password still has to be replaced
+	MustChangePassword bool      `db:"must_change_password"`
+	CreatedAt          time.Time `db:"created_at"`
+	UpdatedAt          time.Time `db:"updated_at"`
 }
 
-const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, created_at, updated_at`
+const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, setup_admin, must_change_password, created_at,
+	updated_at`
 
 // CreateUser stores a new account; unverified ones wait for their email address to be confirmed.
 func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string, verified bool) (*User, error) {
@@ -29,8 +34,8 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 	if verified {
 		user.EmailVerifiedAt = &at
 	}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
-		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, at, at)
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?)`,
+		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, false, false, at, at)
 	return user, err
 }
 
@@ -53,9 +58,10 @@ func (s *Store) UsernameOrEmailTaken(ctx context.Context, username, email string
 	return count > 0, err
 }
 
+// SetPassword also ends a pending change of the initial password.
 func (s *Store) SetPassword(ctx context.Context, userID, passwordHash string) error {
-	_, err := s.exec(ctx, `UPDATE users SET password_hash = ?, token_version = token_version + 1, updated_at = ? WHERE id = ?`,
-		passwordHash, now(), userID)
+	_, err := s.exec(ctx, `UPDATE users SET password_hash = ?, must_change_password = ?, token_version = token_version + 1,
+		updated_at = ? WHERE id = ?`, passwordHash, false, now(), userID)
 	return err
 }
 
@@ -79,7 +85,7 @@ func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	var users []UserWithSpaces
 	err := s.sel(ctx, &users, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
-		       u.created_at, u.updated_at,
+		       u.setup_admin, u.must_change_password, u.created_at, u.updated_at,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
 		FROM users u ORDER BY u.username`)
 	return users, err
@@ -168,4 +174,35 @@ func (s *Store) PasswordResetByHash(ctx context.Context, tokenHash string) (*Pas
 func (s *Store) DeletePasswordReset(ctx context.Context, tokenHash string) error {
 	_, err := s.exec(ctx, `DELETE FROM password_resets WHERE token_hash = ?`, tokenHash)
 	return err
+}
+
+// CountUsers counts all accounts (an empty instance gets its setup admin).
+func (s *Store) CountUsers(ctx context.Context) (int, error) {
+	var count int
+	return count, s.get(ctx, &count, `SELECT COUNT(*) FROM users`)
+}
+
+// CreateSetupAdmin stores the first account of an empty instance; its password has to be changed on login.
+func (s *Store) CreateSetupAdmin(ctx context.Context, username, email, passwordHash string) (*User, error) {
+	at := now()
+	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, EmailVerifiedAt: &at,
+		SetupAdmin: true, MustChangePassword: true, CreatedAt: at, UpdatedAt: at}
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?)`,
+		user.ID, user.Username, user.Email, user.PasswordHash, at, true, true, at, at)
+	return user, err
+}
+
+// CompleteSetup sets the setup admin's own password and email address.
+func (s *Store) CompleteSetup(ctx context.Context, userID, email, passwordHash string) error {
+	_, err := s.exec(ctx, `UPDATE users SET email = ?, password_hash = ?, must_change_password = ?,
+		token_version = token_version + 1, updated_at = ? WHERE id = ?`, email, passwordHash, false, now(), userID)
+	return err
+}
+
+// InstanceEmpty: no spaces and no accounts besides the setup admin, so a backup may replace everything.
+func (s *Store) InstanceEmpty(ctx context.Context) (bool, error) {
+	var count int
+	err := s.get(ctx, &count, `SELECT (SELECT COUNT(*) FROM spaces) + (SELECT COUNT(*) FROM users WHERE setup_admin = ?)`,
+		false)
+	return count == 0, err
 }

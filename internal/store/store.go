@@ -31,6 +31,9 @@ func New(database *sqlx.DB, dialect db.Dialect) *Store {
 	return &Store{db: database, q: database, Dialect: dialect}
 }
 
+// DB is the connection backups read and write directly.
+func (s *Store) DB() *sqlx.DB { return s.db }
+
 // InTx runs fn in a transaction (or the current one) and commits unless fn fails.
 func (s *Store) InTx(ctx context.Context, fn func(tx *Store) error) error {
 	if s.inTx {

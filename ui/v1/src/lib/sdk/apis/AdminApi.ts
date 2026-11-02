@@ -19,6 +19,16 @@ import {
     AdminUserDtoToJSON,
 } from '../models/AdminUserDto';
 import {
+    type BackupSummaryDto,
+    BackupSummaryDtoFromJSON,
+    BackupSummaryDtoToJSON,
+} from '../models/BackupSummaryDto';
+import {
+    type InstanceDto,
+    InstanceDtoFromJSON,
+    InstanceDtoToJSON,
+} from '../models/InstanceDto';
+import {
     type PasswordResetDto,
     PasswordResetDtoFromJSON,
     PasswordResetDtoToJSON,
@@ -29,6 +39,17 @@ export interface CreatePasswordResetRequest {
      * 
      */
     userId: string;
+}
+
+export interface RestoreBackupRequest {
+    /**
+     * 
+     */
+    body: Blob;
+    /**
+     * Only check the backup and report what it holds, without changing anything
+     */
+    dryRun?: boolean;
 }
 
 /**
@@ -90,6 +111,51 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for downloadBackup without sending the request
+     */
+    async downloadBackupRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/backup`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Backup of the whole installation (format \"ragbag-instance\", gzip compressed JSON): accounts with their password hashes, spaces, links, images, everything except pending reset and confirmation links 
+     */
+    async downloadBackupRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<runtime.HttpFile>> {
+        const requestOptions = await this.downloadBackupRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.BlobApiResponse(response);
+    }
+
+    /**
+     * Backup of the whole installation (format \"ragbag-instance\", gzip compressed JSON): accounts with their password hashes, spaces, links, images, everything except pending reset and confirmation links 
+     */
+    async downloadBackup(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.HttpFile> {
+        const response = await this.downloadBackupRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getAllUsers without sending the request
      */
     async getAllUsersRequestOpts(): Promise<runtime.RequestOpts> {
@@ -131,6 +197,110 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async getAllUsers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AdminUserDto>> {
         const response = await this.getAllUsersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getInstance without sending the request
+     */
+    async getInstanceRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/instance`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * State of the installation (whether a backup can be restored)
+     */
+    async getInstanceRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<InstanceDto>> {
+        const requestOptions = await this.getInstanceRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => InstanceDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * State of the installation (whether a backup can be restored)
+     */
+    async getInstance(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<InstanceDto> {
+        const response = await this.getInstanceRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for restoreBackup without sending the request
+     */
+    async restoreBackupRequestOpts(requestParameters: RestoreBackupRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['body'] == null) {
+            throw new runtime.RequiredError(
+                'body',
+                'Required parameter "body" was null or undefined when calling restoreBackup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['dryRun'] != null) {
+            queryParameters['dryRun'] = requestParameters['dryRun'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/octet-stream';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/backup/restore`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: requestParameters['body'] as any,
+        };
+    }
+
+    /**
+     * Replace the data of an empty installation (no spaces, no accounts but the setup admin) with a backup. Signs out the caller, whose account is replaced too 
+     */
+    async restoreBackupRaw(requestParameters: RestoreBackupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BackupSummaryDto>> {
+        const requestOptions = await this.restoreBackupRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BackupSummaryDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Replace the data of an empty installation (no spaces, no accounts but the setup admin) with a backup. Signs out the caller, whose account is replaced too 
+     */
+    async restoreBackup(requestParameters: RestoreBackupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupSummaryDto> {
+        const response = await this.restoreBackupRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

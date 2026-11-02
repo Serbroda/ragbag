@@ -40,6 +40,7 @@ type env struct {
 	url string
 	srv *server.Server
 	db  *sqlx.DB
+	cfg config.Config
 }
 
 type session struct {
@@ -50,11 +51,17 @@ type session struct {
 // newEnv starts a server; options change its configuration (rate limits are off unless an option enables them).
 func newEnv(t *testing.T, options ...func(*config.Config)) *env {
 	t.Helper()
-	ctx := context.Background()
 	databaseURL := "sqlite:" + t.TempDir() + "/test.db"
 	if base := os.Getenv("RAGBAG_TEST_POSTGRES"); base != "" {
 		databaseURL = postgresSchema(t, base)
 	}
+	return startEnv(t, databaseURL, true, options...)
+}
+
+// startEnv starts a server on the database; seed adds the demo account (otherwise the instance is empty).
+func startEnv(t *testing.T, databaseURL string, seed bool, options ...func(*config.Config)) *env {
+	t.Helper()
+	ctx := context.Background()
 	database, dialect, err := db.Open(ctx, databaseURL)
 	require.NoError(t, err)
 	t.Cleanup(func() { database.Close() })
@@ -66,18 +73,21 @@ func newEnv(t *testing.T, options ...func(*config.Config)) *env {
 		RefreshTokenTTL:  time.Hour,
 		RegistrationOpen: true,
 		AdminUsers:       []string{"admin"},
+		DataDir:          t.TempDir(),
 	}
 	for _, option := range options {
 		option(&cfg)
 	}
 	srv, err := server.New(cfg, store.New(database, dialect), "test")
 	require.NoError(t, err)
-	require.NoError(t, srv.SeedDemo(ctx))
+	if seed {
+		require.NoError(t, srv.SeedDemo(ctx))
+	}
 	// A stand-in for the frontend build: link previews are written into its head
 	frontend := fstest.MapFS{"index.html": {Data: []byte("<html><head><title>Ragbag</title></head><body></body></html>")}}
 	httpServer := httptest.NewServer(srv.Handler(frontend))
 	t.Cleanup(httpServer.Close)
-	return &env{t: t, url: httpServer.URL, srv: srv, db: database}
+	return &env{t: t, url: httpServer.URL, srv: srv, db: database, cfg: cfg}
 }
 
 func postgresSchema(t *testing.T, base string) string {

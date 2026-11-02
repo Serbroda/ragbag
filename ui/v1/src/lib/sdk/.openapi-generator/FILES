@@ -12,6 +12,7 @@ apis/UserApi.ts
 apis/index.ts
 index.ts
 models/AdminUserDto.ts
+models/BackupSummaryDto.ts
 models/BookmarkDto.ts
 models/BookmarkMetadataDto.ts
 models/ChangePasswordRequest.ts
@@ -21,6 +22,7 @@ models/CollectionDto.ts
 models/CollectionNewsDto.ts
 models/CollectionShareDto.ts
 models/CollectionVisibilityDto.ts
+models/CompleteSetupRequest.ts
 models/CreateBookmarkDto.ts
 models/CreateCollectionDto.ts
 models/CreateInviteRequest.ts
@@ -31,6 +33,7 @@ models/DashboardSectionTypeEnum.ts
 models/DiscoverableSpaceDto.ts
 models/FetchMetadataRequest.ts
 models/ImportResultDto.ts
+models/InstanceDto.ts
 models/InviteDto.ts
 models/InvitePreviewDto.ts
 models/InviteRoleEnum.ts

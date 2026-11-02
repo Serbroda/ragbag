@@ -1,10 +1,18 @@
 import { appBase, takePendingAdd, takePendingInvite } from '../api/client';
 import { navigate } from '../router';
-import { resetSession } from '../stores/spaces.svelte';
+import { loadMe, resetSession } from '../stores/spaces.svelte';
 
-/** Continues where a signed-out visitor wanted to go (an invite, a link to add), else the start page. */
-export function continueAfterSignIn() {
+/**
+ * Continues where a signed-out visitor wanted to go (an invite, a link to add), else the start page; the setup
+ * admin first replaces its initial password.
+ */
+export async function continueAfterSignIn() {
 	resetSession();
+	const me = await loadMe().catch(() => null);
+	if (me?.mustChangePassword) {
+		navigate('/setup');
+		return;
+	}
 	const pendingInvite = takePendingInvite();
 	const pendingAdd = takePendingAdd();
 	if (pendingInvite) {

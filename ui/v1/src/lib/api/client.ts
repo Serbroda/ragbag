@@ -1,5 +1,5 @@
-import { AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError, ShareApi } from 'ragbag-frontend-sdk';
-import type { BookmarkDto, Middleware, SharedCollectionDto } from 'ragbag-frontend-sdk';
+import { AdminApi, AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError, ShareApi } from 'ragbag-frontend-sdk';
+import type { BackupSummaryDto, BookmarkDto, Middleware, SharedCollectionDto } from 'ragbag-frontend-sdk';
 
 const STORAGE_KEY = 'access_token';
 // Production builds are served by the backend itself, so the API lives on the same origin
@@ -40,6 +40,11 @@ const authMiddleware: Middleware = {
 		return { url: context.url, init: { ...context.init, headers: withUnlock(context.init.headers) } };
 	},
 	async post(context) {
+		// The setup admin replaces its initial password before anything else
+		if (context.response.status === 403 && context.response.headers.get('X-Ragbag-Setup')) {
+			if (!window.location.pathname.endsWith('/setup')) window.location.href = `${appBase()}/setup`;
+			return;
+		}
 		if (context.response.status !== 401) return;
 
 		// Don't retry auth endpoints (login, register, refresh)
@@ -91,10 +96,48 @@ export async function register(username: string, email: string, password: string
 	await api.register({ registerRequest: { username, email, password } });
 }
 
+/** The password of the last login, kept in memory only: the setup page needs the initial one once more. */
+let loginPassword: string | null = null;
+
 export async function login(username: string, password: string): Promise<void> {
 	const api = new AuthenticationApi(anonConfig());
 	const response = await api.login({ loginRequest: { username, password } });
 	setAccessToken(response.accessToken);
+	loginPassword = password;
+}
+
+export function takeLoginPassword(): string | null {
+	const password = loginPassword;
+	loginPassword = null;
+	return password;
+}
+
+/** Replaces the setup admin's initial password and sets its email address; returns new tokens. */
+export async function completeSetup(currentPassword: string, newPassword: string, email: string): Promise<void> {
+	const response = await new AuthenticationApi(apiConfig()).completeSetup({
+		completeSetupRequest: { currentPassword, newPassword, email },
+	});
+	setAccessToken(response.accessToken);
+}
+
+/** Downloads a backup of the whole installation (instance admins). */
+export async function downloadBackup(): Promise<void> {
+	const response = await new AdminApi(apiConfig()).downloadBackupRaw();
+	const blob = await response.value();
+	const name =
+		/filename="([^"]+)"/.exec(response.raw.headers.get('Content-Disposition') ?? '')?.[1] ?? 'ragbag-backup.json.gz';
+	const link = document.createElement('a');
+	link.href = URL.createObjectURL(blob);
+	link.download = name;
+	link.click();
+	setTimeout(() => URL.revokeObjectURL(link.href), 10_000);
+}
+
+/** Checks (dryRun) or restores a backup; restoring replaces the signed in account too, which is signed out. */
+export async function restoreBackup(file: File, dryRun: boolean): Promise<BackupSummaryDto> {
+	const summary = await new AdminApi(apiConfig()).restoreBackup({ body: file, dryRun });
+	if (!dryRun) setAccessToken(null);
+	return summary;
 }
 
 /** Changes the password; the server signs out all other devices and hands this one new tokens. */

@@ -36,7 +36,8 @@ export interface UserDto {
      */
     avatarId?: string;
     /**
-     * Listed in ADMIN_USERS, may manage all users of this installation
+     * Listed in ADMIN_USERS (or the setup admin while it is empty), may manage all users of this installation
+     * 
      */
     instanceAdmin?: boolean;
     /**
@@ -47,6 +48,10 @@ export interface UserDto {
      * Opened on start instead of the last visited space; unset when the user leaves it
      */
     startSpaceId?: string;
+    /**
+     * The setup admin still has its random initial password; everything else answers 403
+     */
+    mustChangePassword?: boolean;
 }
 
 /**
@@ -76,6 +81,7 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'instanceAdmin': json['instanceAdmin'] == null ? undefined : json['instanceAdmin'],
         'hasPin': json['hasPin'] == null ? undefined : json['hasPin'],
         'startSpaceId': json['startSpaceId'] == null ? undefined : json['startSpaceId'],
+        'mustChangePassword': json['mustChangePassword'] == null ? undefined : json['mustChangePassword'],
     };
 }
 
@@ -97,6 +103,7 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'instanceAdmin': value['instanceAdmin'],
         'hasPin': value['hasPin'],
         'startSpaceId': value['startSpaceId'],
+        'mustChangePassword': value['mustChangePassword'],
     };
 }
 
