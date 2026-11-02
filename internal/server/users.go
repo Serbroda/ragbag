@@ -3,6 +3,8 @@ package server
 import (
 	"io"
 	"net/http"
+	"strings"
+	"unicode"
 
 	"github.com/Serbroda/ragbag/internal/api"
 	"github.com/Serbroda/ragbag/internal/fetch"
@@ -13,8 +15,8 @@ import (
 
 func (s *Server) userDto(user *store.User) api.UserDto {
 	admin := s.isAdmin(user)
-	dto := api.UserDto{Id: user.ID, Username: user.Username, Email: user.Email, AvatarId: user.AvatarImageID,
-		InstanceAdmin: &admin}
+	dto := api.UserDto{Id: user.ID, Username: user.Username, DisplayName: user.DisplayName, Email: user.Email,
+		AvatarId: user.AvatarImageID, InstanceAdmin: &admin}
 	if user.MustChangePassword {
 		dto.MustChangePassword = &user.MustChangePassword
 	}
@@ -64,6 +66,48 @@ func (s *Server) SetStartSpace(c echo.Context) error {
 		}
 	}
 	if err := s.store.SetStartSpace(ctxOf(c), currentUser(c), req.SpaceId); err != nil {
+		return err
+	}
+	user, err := s.store.UserByID(ctxOf(c), currentUser(c))
+	if err != nil {
+		return err
+	}
+	pin, err := s.store.PinState(ctxOf(c), user.ID)
+	if err != nil {
+		return err
+	}
+	return s.meView(c, user, pin.Hash != nil)
+}
+
+// maxDisplayName limits display names (characters).
+const maxDisplayName = 50
+
+// displayName checks a display name: trimmed, 1 to 50 characters without control characters; empty is none.
+func displayName(value *string) (*string, error) {
+	if value == nil || strings.TrimSpace(*value) == "" {
+		return nil, nil
+	}
+	name := strings.TrimSpace(*value)
+	if len([]rune(name)) > maxDisplayName {
+		return nil, badRequest("Display names must be at most %d characters", maxDisplayName)
+	}
+	if strings.ContainsFunc(name, unicode.IsControl) {
+		return nil, badRequest("Display names cannot contain line breaks or control characters")
+	}
+	return &name, nil
+}
+
+// SetDisplayName sets the name shown instead of the username, or removes it.
+func (s *Server) SetDisplayName(c echo.Context) error {
+	var req api.DisplayNameDto
+	if err := bind(c, &req); err != nil {
+		return err
+	}
+	name, err := displayName(req.DisplayName)
+	if err != nil {
+		return err
+	}
+	if err := s.store.SetDisplayName(ctxOf(c), currentUser(c), name); err != nil {
 		return err
 	}
 	user, err := s.store.UserByID(ctxOf(c), currentUser(c))

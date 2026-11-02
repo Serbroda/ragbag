@@ -153,7 +153,7 @@ func (s *Server) reactionDtos(c echo.Context, bookmarkIDs []string) (map[string]
 			i = len(list) - 1
 		}
 		list[i].Count++
-		list[i].Users = append(list[i].Users, reaction.Username)
+		list[i].Users = append(list[i].Users, reaction.Name)
 		list[i].Reacted = list[i].Reacted || reaction.UserID == currentUser(c)
 		result[reaction.BookmarkID] = list
 	}

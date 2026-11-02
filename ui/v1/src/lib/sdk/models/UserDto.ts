@@ -28,6 +28,10 @@ export interface UserDto {
      */
     username: string;
     /**
+     * Shown instead of the username where set (not unique)
+     */
+    displayName?: string;
+    /**
      * 
      */
     email: string;
@@ -80,6 +84,7 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         
         'id': json['id'],
         'username': json['username'],
+        'displayName': json['displayName'] == null ? undefined : json['displayName'],
         'email': json['email'],
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
         'instanceAdmin': json['instanceAdmin'] == null ? undefined : json['instanceAdmin'],
@@ -103,6 +108,7 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         
         'id': value['id'],
         'username': value['username'],
+        'displayName': value['displayName'],
         'email': value['email'],
         'avatarId': value['avatarId'],
         'instanceAdmin': value['instanceAdmin'],

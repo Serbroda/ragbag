@@ -19,6 +19,11 @@ import {
     DeleteAccountRequestToJSON,
 } from '../models/DeleteAccountRequest';
 import {
+    type DisplayNameDto,
+    DisplayNameDtoFromJSON,
+    DisplayNameDtoToJSON,
+} from '../models/DisplayNameDto';
+import {
     type SetPinDto,
     SetPinDtoFromJSON,
     SetPinDtoToJSON,
@@ -65,6 +70,13 @@ export interface SetAvatarRequest {
      * 
      */
     url?: string;
+}
+
+export interface SetDisplayNameRequest {
+    /**
+     * 
+     */
+    displayNameDto: DisplayNameDto;
 }
 
 export interface SetPinRequest {
@@ -401,6 +413,61 @@ export class UserApi extends runtime.BaseAPI {
      */
     async setAvatar(requestParameters: SetAvatarRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
         const response = await this.setAvatarRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setDisplayName without sending the request
+     */
+    async setDisplayNameRequestOpts(requestParameters: SetDisplayNameRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['displayNameDto'] == null) {
+            throw new runtime.RequiredError(
+                'displayNameDto',
+                'Required parameter "displayNameDto" was null or undefined when calling setDisplayName().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/display-name`;
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DisplayNameDtoToJSON(requestParameters['displayNameDto']),
+        };
+    }
+
+    /**
+     * Set the display name, shown instead of the username; empty removes it
+     */
+    async setDisplayNameRaw(requestParameters: SetDisplayNameRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDto>> {
+        const requestOptions = await this.setDisplayNameRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => UserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Set the display name, shown instead of the username; empty removes it
+     */
+    async setDisplayName(requestParameters: SetDisplayNameRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
+        const response = await this.setDisplayNameRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

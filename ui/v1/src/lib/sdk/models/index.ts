@@ -28,6 +28,7 @@ export * from './DashboardSectionDto';
 export * from './DashboardSectionTypeEnum';
 export * from './DeleteAccountRequest';
 export * from './DiscoverableSpaceDto';
+export * from './DisplayNameDto';
 export * from './FetchMetadataRequest';
 export * from './HealthDto';
 export * from './ImportResultDto';

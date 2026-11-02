@@ -41,6 +41,7 @@
 	import SpaceRail from '../components/SpaceRail.svelte';
 	import NewsBell from '../components/NewsBell.svelte';
 	import Avatar from '../components/Avatar.svelte';
+	import { shownName } from '../utils/format';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
 	import LegalLinks from '../components/LegalLinks.svelte';
@@ -798,10 +799,10 @@
 						class="shrink-0 rounded-full transition-opacity hover:opacity-80"
 						onclick={(e) => (e.stopPropagation(), closeMenus(), (showProfile = true))}
 					>
-						<Avatar name={session.me.username} imageId={session.me.avatarId} />
+						<Avatar name={shownName(session.me)} imageId={session.me.avatarId} />
 					</button>
 					<div class="min-w-0 flex-1 leading-tight">
-						<p class="truncate text-sm font-semibold">{session.me.username}</p>
+						<p class="truncate text-sm font-semibold">{shownName(session.me)}</p>
 						{#if activeSpace?.role}
 							<p class="truncate text-xs capitalize text-gray-500">{activeSpace.role.toLowerCase()}</p>
 						{/if}

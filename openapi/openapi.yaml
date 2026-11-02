@@ -788,6 +788,30 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /v1/users/me/display-name:
+    put:
+      summary: Set the display name, shown instead of the username; empty removes it
+      operationId: setDisplayName
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DisplayNameDto'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/UserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
   /v1/users/me/pin:
     put:
       summary: Set or change the PIN that unlocks the user's locked collections (needs the account password)
@@ -2746,6 +2770,9 @@ components:
           $ref: '#/components/schemas/ID'
         username:
           type: string
+        displayName:
+          type: string
+          description: Shown instead of the username where set (not unique)
         email:
           type: string
         avatarId:
@@ -2977,7 +3004,7 @@ components:
           description: The collection's current link, if it still has one
         sharedBy:
           type: string
-          description: The username of who created the current link
+          description: The display name (else the username) of who created the current link
         sharedById:
           $ref: '#/components/schemas/ID'
         linkDisabled:
@@ -3085,6 +3112,9 @@ components:
         acceptTerms:
           type: boolean
           description: Required when the instance has terms of use (legal_terms in the feature flags)
+        displayName:
+          type: string
+          description: Optional, 1 to 50 characters; shown instead of the username
         inviteToken:
           type: string
           description: >
@@ -3171,6 +3201,9 @@ components:
           $ref: '#/components/schemas/ID'
         username:
           type: string
+        displayName:
+          type: string
+          description: Shown instead of the username where set (not unique)
         email:
           type: string
         avatarId:
@@ -3196,6 +3229,12 @@ components:
         - id
         - username
         - email
+
+    DisplayNameDto:
+      properties:
+        displayName:
+          type: string
+          description: 1 to 50 characters, any case, spaces and emojis; empty or left out removes it
 
     StartSpaceDto:
       properties:
@@ -3332,6 +3371,9 @@ components:
           $ref: '#/components/schemas/ID'
         username:
           type: string
+        displayName:
+          type: string
+          description: Shown instead of the username where set (not unique)
         avatarId:
           $ref: '#/components/schemas/ID'
         role:
@@ -3497,6 +3539,9 @@ components:
           $ref: '#/components/schemas/ID'
         username:
           type: string
+        displayName:
+          type: string
+          description: Shown instead of the username where set (not unique)
         avatarId:
           $ref: '#/components/schemas/ID'
       required:
@@ -3608,7 +3653,7 @@ components:
           format: date-time
         createdBy:
           type: string
-          description: Username of the member who added the bookmark
+          description: Display name (else username) of the member who added the bookmark
         favorite:
           type: boolean
           description: Whether the current user marked this bookmark as favorite
@@ -3645,7 +3690,7 @@ components:
           description: Whether the current user is one of them
         users:
           type: array
-          description: Usernames of everybody who reacted
+          description: Display names (else usernames) of everybody who reacted
           items:
             type: string
       required:
@@ -3860,7 +3905,7 @@ components:
           type: integer
         addedBy:
           type: array
-          description: Usernames of the members who added them
+          description: Display names (else usernames) of the members who added them
           items:
             type: string
         latestAt:

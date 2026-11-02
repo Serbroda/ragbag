@@ -70,3 +70,8 @@ export function timeAgo(date: Date | undefined | null): string {
 	}
 	return 'just now';
 }
+
+/** What others see of a person: the display name, else the username. */
+export function shownName(user: { username: string; displayName?: string | null }): string {
+	return user.displayName || user.username;
+}

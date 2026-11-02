@@ -374,7 +374,7 @@ type AbuseReportDto struct {
 	// ShareToken The token of the reported link (/app/share/{token})
 	ShareToken string `json:"shareToken"`
 
-	// SharedBy The username of who created the current link
+	// SharedBy The display name (else the username) of who created the current link
 	SharedBy *string `json:"sharedBy,omitempty"`
 
 	// SharedById UUID
@@ -458,7 +458,10 @@ type AdminUserDto struct {
 	BlockedAt     *time.Time `json:"blockedAt,omitempty"`
 	BlockedReason *string    `json:"blockedReason,omitempty"`
 	CreatedAt     *time.Time `json:"createdAt,omitempty"`
-	Email         string     `json:"email"`
+
+	// DisplayName Shown instead of the username where set (not unique)
+	DisplayName *string `json:"displayName,omitempty"`
+	Email       string  `json:"email"`
 
 	// Id UUID
 	Id            ID   `json:"id"`
@@ -521,7 +524,7 @@ type BookmarkDto struct {
 	CollectionId *ID        `json:"collectionId,omitempty"`
 	CreatedAt    *time.Time `json:"createdAt,omitempty"`
 
-	// CreatedBy Username of the member who added the bookmark
+	// CreatedBy Display name (else username) of the member who added the bookmark
 	CreatedBy *string `json:"createdBy,omitempty"`
 
 	// CustomImageId An uploaded preview image (/api/v1/images/{id}); wins over everything else
@@ -590,6 +593,9 @@ type CollectionAccessMemberDto struct {
 	// AvatarId UUID
 	AvatarId *ID `json:"avatarId,omitempty"`
 
+	// DisplayName Shown instead of the username where set (not unique)
+	DisplayName *string `json:"displayName,omitempty"`
+
 	// UserId UUID
 	UserId   ID     `json:"userId"`
 	Username string `json:"username"`
@@ -627,7 +633,7 @@ type CollectionDtoList = []CollectionDto
 
 // CollectionNewsDto defines model for CollectionNewsDto.
 type CollectionNewsDto struct {
-	// AddedBy Usernames of the members who added them
+	// AddedBy Display names (else usernames) of the members who added them
 	AddedBy []string `json:"addedBy"`
 
 	// CollectionId UUID
@@ -761,6 +767,12 @@ type DiscoverableSpaceDto struct {
 	MemberCount int                  `json:"memberCount"`
 	Name        string               `json:"name"`
 	Role        *SpaceMemberRoleEnum `json:"role,omitempty"`
+}
+
+// DisplayNameDto defines model for DisplayNameDto.
+type DisplayNameDto struct {
+	// DisplayName 1 to 50 characters, any case, spaces and emojis; empty or left out removes it
+	DisplayName *string `json:"displayName,omitempty"`
 }
 
 // Error defines model for Error.
@@ -922,15 +934,18 @@ type ReactionDto struct {
 	// Reacted Whether the current user is one of them
 	Reacted bool `json:"reacted"`
 
-	// Users Usernames of everybody who reacted
+	// Users Display names (else usernames) of everybody who reacted
 	Users []string `json:"users"`
 }
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
 	// AcceptTerms Required when the instance has terms of use (legal_terms in the feature flags)
-	AcceptTerms *bool  `json:"acceptTerms,omitempty"`
-	Email       string `json:"email"`
+	AcceptTerms *bool `json:"acceptTerms,omitempty"`
+
+	// DisplayName Optional, 1 to 50 characters; shown instead of the username
+	DisplayName *string `json:"displayName,omitempty"`
+	Email       string  `json:"email"`
 
 	// InviteToken A space invite: the new account joins that space (with email once it is confirmed). While registration is disabled only invites of instance admins allow registering.
 	InviteToken *string `json:"inviteToken,omitempty"`
@@ -1076,8 +1091,11 @@ type SpaceDtoList = []SpaceDto
 // SpaceMemberDto defines model for SpaceMemberDto.
 type SpaceMemberDto struct {
 	// AvatarId UUID
-	AvatarId *ID                 `json:"avatarId,omitempty"`
-	Role     SpaceMemberRoleEnum `json:"role"`
+	AvatarId *ID `json:"avatarId,omitempty"`
+
+	// DisplayName Shown instead of the username where set (not unique)
+	DisplayName *string             `json:"displayName,omitempty"`
+	Role        SpaceMemberRoleEnum `json:"role"`
 
 	// UserId UUID
 	UserId   ID     `json:"userId"`
@@ -1227,8 +1245,11 @@ type UpdateSpaceMemberDto struct {
 // UserDto defines model for UserDto.
 type UserDto struct {
 	// AvatarId UUID
-	AvatarId *ID    `json:"avatarId,omitempty"`
-	Email    string `json:"email"`
+	AvatarId *ID `json:"avatarId,omitempty"`
+
+	// DisplayName Shown instead of the username where set (not unique)
+	DisplayName *string `json:"displayName,omitempty"`
+	Email       string  `json:"email"`
 
 	// HasPin Has a PIN to unlock locked collections
 	HasPin *bool `json:"hasPin,omitempty"`
@@ -1397,6 +1418,9 @@ type SetAvatarMultipartRequestBody = ImageUpload
 
 // DeleteAccountJSONRequestBody defines body for DeleteAccount for application/json ContentType.
 type DeleteAccountJSONRequestBody = DeleteAccountRequest
+
+// SetDisplayNameJSONRequestBody defines body for SetDisplayName for application/json ContentType.
+type SetDisplayNameJSONRequestBody = DisplayNameDto
 
 // SetPinJSONRequestBody defines body for SetPin for application/json ContentType.
 type SetPinJSONRequestBody = SetPinDto
@@ -1700,6 +1724,9 @@ type ServerInterface interface {
 	// DeleteAccount Delete the own account (needs the password). Spaces without other members are deleted with it; owning a space with other members and no other owner answers 409 with the spaces in the detail
 	// (POST /v1/users/me/delete)
 	DeleteAccount(ctx echo.Context) error
+	// SetDisplayName Set the display name, shown instead of the username; empty removes it
+	// (PUT /v1/users/me/display-name)
+	SetDisplayName(ctx echo.Context) error
 	// SetPin Set or change the PIN that unlocks the user's locked collections (needs the account password)
 	// (PUT /v1/users/me/pin)
 	SetPin(ctx echo.Context) error
@@ -3165,6 +3192,15 @@ func (w *ServerInterfaceWrapper) DeleteAccount(ctx echo.Context) error {
 	return err
 }
 
+// SetDisplayName converts echo context to params.
+func (w *ServerInterfaceWrapper) SetDisplayName(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetDisplayName(ctx)
+	return err
+}
+
 // SetPin converts echo context to params.
 func (w *ServerInterfaceWrapper) SetPin(ctx echo.Context) error {
 	var err error
@@ -3298,6 +3334,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
 	router.POST(options.BaseURL+"/v1/users/me/delete", wrapper.DeleteAccount, options.OperationMiddlewares["deleteAccount"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
+	router.PUT(options.BaseURL+"/v1/users/me/display-name", wrapper.SetDisplayName, options.OperationMiddlewares["setDisplayName"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock", wrapper.Unlock, options.OperationMiddlewares["unlock"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock/renew", wrapper.RenewUnlock, options.OperationMiddlewares["renewUnlock"]...)

@@ -19,6 +19,7 @@
 	import { navigate, route } from '../router';
 	import LinkTile from '../components/LinkTile.svelte';
 	import Avatar from '../components/Avatar.svelte';
+	import { shownName } from '../utils/format';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
 	import QuickAddModal from '../components/QuickAddModal.svelte';
 	import FavoriteButton from '../components/FavoriteButton.svelte';
@@ -202,7 +203,7 @@
 			{/if}
 			<div class="min-w-0">
 			<p class="text-sm text-gray-500 dark:text-gray-400">
-				{greeting}{session.me ? `, ${session.me.username}` : ''} 👋
+				{greeting}{session.me ? `, ${shownName(session.me)}` : ''} 👋
 			</p>
 			<h1 class="truncate text-3xl font-bold tracking-tight">{space?.name ?? 'Dashboard'}</h1>
 			{#if space?.description}

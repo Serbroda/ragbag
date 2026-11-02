@@ -58,7 +58,11 @@ func (s *Server) Register(c echo.Context) error {
 	if terms && (req.AcceptTerms == nil || !*req.AcceptTerms) {
 		return badRequest("Please accept the terms of use")
 	}
-	user, invite, err := s.createUser(c, req.Username, req.Email, req.Password, inviteToken, !s.mailEnabled())
+	name, err := displayName(req.DisplayName)
+	if err != nil {
+		return err
+	}
+	user, invite, err := s.createUser(c, req.Username, req.Email, req.Password, name, inviteToken, !s.mailEnabled())
 	if err != nil {
 		return err
 	}
@@ -70,7 +74,7 @@ func (s *Server) Register(c echo.Context) error {
 	c.Set(usernameKey, user.Username)
 	if invite != nil {
 		audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil,
-			"invite_by", invite.CreatedByName, "space", invite.TargetID, "role", invite.Role)
+			"invite_by", invite.CreatedByUsername, "space", invite.TargetID, "role", invite.Role)
 	} else {
 		audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil)
 	}
@@ -79,7 +83,8 @@ func (s *Server) Register(c echo.Context) error {
 
 // createUser registers an account with its own first space, like Discord gives you a server, and joins the
 // space of the invite (if any). Unconfirmed ones get a confirmation link instead and both with the confirmation.
-func (s *Server) createUser(c echo.Context, username, email, password, inviteToken string, confirmed bool) (*store.User, *store.Invite, error) {
+func (s *Server) createUser(c echo.Context, username, email, password string, name *string, inviteToken string,
+	confirmed bool) (*store.User, *store.Invite, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
 	email = strings.ToLower(strings.TrimSpace(email))
 	if username == "" || len(username) > 80 || strings.ContainsFunc(username, unicode.IsSpace) {
@@ -111,7 +116,7 @@ func (s *Server) createUser(c echo.Context, username, email, password, inviteTok
 		if taken {
 			return conflict("User with same username or email already exists")
 		}
-		if user, err = tx.CreateUser(ctxOf(c), username, email, hash, confirmed); err != nil {
+		if user, err = tx.CreateUser(ctxOf(c), username, email, hash, name, confirmed); err != nil {
 			return err
 		}
 		if invite != nil {
@@ -176,7 +181,7 @@ func (s *Server) GetRegistrationInvite(c echo.Context, token string) error {
 }
 
 func createFirstSpace(c echo.Context, tx *store.Store, user *store.User) error {
-	space, err := tx.CreateSpace(ctxOf(c), capitalize(user.Username)+"'s Space", nil, user.ID)
+	space, err := tx.CreateSpace(ctxOf(c), capitalize(user.Name())+"'s Space", nil, user.ID)
 	if err != nil {
 		return err
 	}

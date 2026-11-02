@@ -8,11 +8,35 @@
 	import { LINK_VIEWS, preferences, setLinkView } from '../stores/preferences.svelte';
 	import { lockState } from '../stores/lock.svelte';
 	import ImagePicker from './ImagePicker.svelte';
+	import { shownName } from '../utils/format';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
 
 	const userApi = new UserApi(apiConfig());
 	const MIN_PASSWORD_LENGTH = 8;
+
+	// Shown instead of the username; the username stays the login
+	let displayName = $state('');
+	let nameBusy = $state(false);
+	let nameMessage = $state<{ ok: boolean; text: string } | null>(null);
+	$effect(() => {
+		if (open) displayName = session.me?.displayName ?? '';
+	});
+
+	async function saveDisplayName(e: Event) {
+		e.preventDefault();
+		nameBusy = true;
+		nameMessage = null;
+		try {
+			session.me = await userApi.setDisplayName({ displayNameDto: { displayName } });
+			displayName = session.me.displayName ?? '';
+			nameMessage = { ok: true, text: 'Saved.' };
+		} catch (err) {
+			nameMessage = { ok: false, text: await errorMessage(err, 'Failed to save the display name.') };
+		} finally {
+			nameBusy = false;
+		}
+	}
 
 	let currentPassword = $state('');
 	let newPassword = $state('');
@@ -110,7 +134,7 @@
 			<section>
 				<Label class="mb-3">Avatar</Label>
 				<ImagePicker
-					name={session.me.username}
+					name={shownName(session.me)}
 					imageId={session.me.avatarId}
 					onupload={async (file) => {
 						session.me = await userApi.setAvatar({ file });
@@ -121,6 +145,25 @@
 				/>
 				<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
 					Signed in as <strong>{session.me.username}</strong> ({session.me.email})
+				</p>
+			</section>
+
+			<section>
+				<Label for="display-name" class="mb-3">Display name</Label>
+				<form class="flex gap-2" onsubmit={saveDisplayName}>
+					<Input
+						id="display-name"
+						bind:value={displayName}
+						maxlength={50}
+						placeholder={session.me.username}
+						class="flex-1"
+					/>
+					<Button type="submit" color="light" disabled={nameBusy || displayName.trim() === (session.me.displayName ?? '')}>
+						{nameBusy ? 'Saving...' : 'Save'}
+					</Button>
+				</form>
+				<p class="mt-2 text-xs {nameMessage ? (nameMessage.ok ? 'text-green-600 dark:text-green-400' : 'text-red-500 dark:text-red-400') : 'text-gray-500 dark:text-gray-400'}">
+					{nameMessage?.text ?? 'How others see you, e.g. with capitals and spaces. You keep signing in with your username.'}
 				</p>
 			</section>
 

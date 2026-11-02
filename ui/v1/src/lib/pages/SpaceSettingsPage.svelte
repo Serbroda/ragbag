@@ -15,6 +15,7 @@
 	import { navigate, route } from '../router';
 	import RoleBadge from '../components/RoleBadge.svelte';
 	import Avatar from '../components/Avatar.svelte';
+	import { shownName } from '../utils/format';
 	import ImagePicker, { type ImageChange } from '../components/ImagePicker.svelte';
 	import { copyText } from '../utils/clipboard';
 
@@ -390,10 +391,10 @@
 			<ul class="divide-y divide-gray-100 dark:divide-gray-800">
 				{#each members as member (member.userId)}
 					<li class="flex items-center gap-3 py-3">
-						<Avatar name={member.username} imageId={member.avatarId} class="h-9 w-9 rounded-full text-sm" />
+						<Avatar name={shownName(member)} imageId={member.avatarId} class="h-9 w-9 rounded-full text-sm" />
 						<div class="min-w-0 flex-1">
 							<p class="truncate font-medium text-gray-900 dark:text-white">
-								{member.username}
+								{shownName(member)}{#if member.displayName}<span class="ms-1 text-xs font-normal text-gray-500 dark:text-gray-400">@{member.username}</span>{/if}
 								{#if member.userId === currentUserId}
 									<span class="text-sm font-normal text-gray-500 dark:text-gray-400">(you)</span>
 								{/if}
@@ -404,7 +405,7 @@
 								size="sm"
 								class="w-36"
 								value={member.role}
-								aria-label="Role of {member.username}"
+								aria-label="Role of {shownName(member)}"
 								onchange={(e: Event) =>
 									changeRole(member, (e.currentTarget as HTMLSelectElement).value as SpaceMemberRoleEnum)}
 							>
@@ -600,7 +601,7 @@
 
 <Modal title="Remove member" open={memberToRemove !== null} onclose={() => (memberToRemove = null)} size="sm">
 	<p class="text-gray-700 dark:text-gray-300">
-		Remove <strong>{memberToRemove?.username}</strong> from this space?
+		Remove <strong>{memberToRemove ? shownName(memberToRemove) : ''}</strong> from this space?
 	</p>
 	<div class="flex justify-end gap-2">
 		<Button color="light" onclick={() => (memberToRemove = null)}>Cancel</Button>

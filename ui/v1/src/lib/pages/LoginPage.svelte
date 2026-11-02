@@ -45,6 +45,7 @@
 		});
 	});
 	let username = $state('');
+	let displayName = $state('');
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
@@ -55,6 +56,7 @@
 
 	function resetForm() {
 		username = '';
+		displayName = '';
 		email = '';
 		password = '';
 		confirmPassword = '';
@@ -93,13 +95,17 @@
 					loading = false;
 					return;
 				}
-				await register(username, email, password, acceptTerms, inviteRegisters ? inviteToken ?? undefined : undefined);
+				await register(
+					username, email, password, acceptTerms, inviteRegisters ? inviteToken ?? undefined : undefined,
+					displayName.trim() || undefined,
+				);
 				const space = inviteRegisters ? invite?.targetName ?? 'the space' : '';
 				success = emailEnabled
 					? `Almost done: we sent a confirmation link to ${email}. Open it to start using Ragbag${space ? ` and join ${space}` : ''}.`
 					: `Registration successful! You can now sign in${space ? ` and open ${space}` : ''}.`;
 				isRegister = false;
 				username = '';
+				displayName = '';
 				email = '';
 				password = '';
 				confirmPassword = '';
@@ -144,8 +150,15 @@
 			<div>
 				<Label for="username" class="mb-2">{isForgot ? 'Username or email' : 'Username'}</Label>
 				<Input id="username" type="text" autocomplete="username" bind:value={username} required />
+				{#if isRegister}
+					<p class="mt-1 text-xs text-gray-500">For signing in: stored in lower case, without spaces.</p>
+				{/if}
 			</div>
 			{#if isRegister}
+				<div>
+					<Label for="displayName" class="mb-2">Display name <span class="font-normal text-gray-500">(optional)</span></Label>
+					<Input id="displayName" type="text" autocomplete="nickname" maxlength={50} placeholder="e.g. Max Power" bind:value={displayName} />
+				</div>
 				<div>
 					<Label for="email" class="mb-2">Email</Label>
 					<Input id="email" type="email" bind:value={email} required />

@@ -6,6 +6,7 @@
 	import { copyText } from '../utils/clipboard';
 	import { session } from '../stores/spaces.svelte';
 	import Avatar from './Avatar.svelte';
+	import { shownName } from '../utils/format';
 
 	/** The accounts of the instance: reset links, blocking and deleting. `focus` opens one account's block form. */
 	let { focus = null }: { focus?: string | null } = $props();
@@ -26,7 +27,7 @@
 
 	const visible = $derived(
 		users.filter((user) =>
-			`${user.username} ${user.email}`.toLowerCase().includes(filter.trim().toLowerCase()),
+			`${user.username} ${user.displayName ?? ''} ${user.email}`.toLowerCase().includes(filter.trim().toLowerCase()),
 		),
 	);
 
@@ -134,10 +135,10 @@
 		{#each visible as user (user.id)}
 			<li class="px-2 py-2.5">
 				<div class="flex items-center gap-3">
-					<Avatar name={user.username} imageId={user.avatarId} class="h-9 w-9 rounded-full text-sm" />
+					<Avatar name={shownName(user)} imageId={user.avatarId} class="h-9 w-9 rounded-full text-sm" />
 					<div class="min-w-0 flex-1">
 						<p class="truncate font-medium text-gray-900 dark:text-white">
-							{user.username}
+							{shownName(user)}{#if user.displayName}<span class="ms-1 text-xs font-normal text-gray-500 dark:text-gray-400">@{user.username}</span>{/if}
 							{#if user.id === session.me?.id}<span class="font-normal text-gray-500">(you)</span>{/if}
 							{#if user.instanceAdmin}
 								<span

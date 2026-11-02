@@ -1,6 +1,7 @@
 <script lang="ts">
 	import { Button } from 'flowbite-svelte';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
+	import { shownName } from '../utils/format';
 	import { logout } from '../api/client';
 	import { navigate } from '../router';
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
@@ -61,7 +62,7 @@
 	<CenteredScreen subtitle="Collect and share links with your people.">
 		<div class="text-center">
 			<p class="mb-1 text-lg font-semibold text-white">
-				Welcome{session.me ? `, ${session.me.username}` : ''}!
+				Welcome{session.me ? `, ${shownName(session.me)}` : ''}!
 			</p>
 			<p class="mb-6 text-sm text-gray-400">
 				You are not part of any space yet. Create your own or join one with an invite link.

@@ -25,22 +25,36 @@ type User struct {
 	// BlockedAt: blocked by an instance admin, for BlockedReason (told to the user)
 	BlockedAt     *time.Time `db:"blocked_at"`
 	BlockedReason *string    `db:"blocked_reason"`
-	CreatedAt     time.Time  `db:"created_at"`
-	UpdatedAt     time.Time  `db:"updated_at"`
+	// DisplayName is shown instead of the username where set; not unique
+	DisplayName *string   `db:"display_name"`
+	CreatedAt   time.Time `db:"created_at"`
+	UpdatedAt   time.Time `db:"updated_at"`
 }
 
+// Name is what others see: the display name, else the username.
+func (u *User) Name() string {
+	if u.DisplayName != nil {
+		return *u.DisplayName
+	}
+	return u.Username
+}
+
+// shownName is the SQL for Name() of the users row u.
+const shownName = `COALESCE(u.display_name, u.username)`
+
 const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, setup_admin, must_change_password,
-	deleted_at, blocked_at, blocked_reason, created_at, updated_at`
+	deleted_at, blocked_at, blocked_reason, display_name, created_at, updated_at`
 
 // CreateUser stores a new account; unverified ones wait for their email address to be confirmed.
-func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string, verified bool) (*User, error) {
+func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string, displayName *string, verified bool) (*User, error) {
 	at := now()
-	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, CreatedAt: at, UpdatedAt: at}
+	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, DisplayName: displayName,
+		CreatedAt: at, UpdatedAt: at}
 	if verified {
 		user.EmailVerifiedAt = &at
 	}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
-		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, false, false, at, at)
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)`,
+		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, false, false, displayName, at, at)
 	return user, err
 }
 
@@ -76,6 +90,11 @@ func (s *Store) BumpTokenVersion(ctx context.Context, userID string) error {
 	return err
 }
 
+func (s *Store) SetDisplayName(ctx context.Context, userID string, displayName *string) error {
+	_, err := s.exec(ctx, `UPDATE users SET display_name = ?, updated_at = ? WHERE id = ?`, displayName, now(), userID)
+	return err
+}
+
 func (s *Store) SetAvatar(ctx context.Context, userID string, imageID *string) error {
 	_, err := s.exec(ctx, `UPDATE users SET avatar_image_id = ?, updated_at = ? WHERE id = ?`, imageID, now(), userID)
 	return err
@@ -90,7 +109,8 @@ func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	var users []UserWithSpaces
 	err := s.sel(ctx, &users, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
-		       u.setup_admin, u.must_change_password, u.deleted_at, u.blocked_at, u.blocked_reason, u.created_at, u.updated_at,
+		       u.setup_admin, u.must_change_password, u.deleted_at, u.blocked_at, u.blocked_reason, u.display_name,
+		       u.created_at, u.updated_at,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
 		FROM users u WHERE u.deleted_at IS NULL ORDER BY u.username`)
 	return users, err
@@ -192,7 +212,7 @@ func (s *Store) CreateSetupAdmin(ctx context.Context, username, email, passwordH
 	at := now()
 	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, EmailVerifiedAt: &at,
 		SetupAdmin: true, MustChangePassword: true, CreatedAt: at, UpdatedAt: at}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, NULL, ?, ?)`,
 		user.ID, user.Username, user.Email, user.PasswordHash, at, true, true, at, at)
 	return user, err
 }

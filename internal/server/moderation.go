@@ -54,7 +54,7 @@ func (s *Server) DeleteAccount(c echo.Context) error {
 
 your Ragbag account and your personal data were deleted, as you asked. Spaces only you were a member of are
 gone; links you added to spaces shared with others stay there without your name.
-`, user.Username))
+`, user.Name()))
 	}
 	c.SetCookie(s.cookie(c, "", 0))
 	return c.NoContent(http.StatusNoContent)
@@ -76,7 +76,7 @@ func (s *Server) DeleteUser(c echo.Context, userID api.ID) error {
 		s.sendMail(user, "Your Ragbag account was deleted", fmt.Sprintf(`Hi %s,
 
 the administrators of %s deleted your Ragbag account and your personal data.
-`, user.Username, s.cfg.PublicURL))
+`, user.Name(), s.cfg.PublicURL))
 	}
 	return c.NoContent(http.StatusNoContent)
 }
@@ -182,7 +182,7 @@ longer work.
 Reason: %s
 
 If you think this is a mistake, answer this email or contact the administrators.
-`, user.Username, s.cfg.PublicURL, valueOr(reason, "none given")))
+`, user.Name(), s.cfg.PublicURL, valueOr(reason, "none given")))
 	}
 	return s.adminUserView(c, user.ID)
 }
@@ -200,7 +200,7 @@ func (s *Server) UnblockUser(c echo.Context, userID api.ID) error {
 		s.sendMail(user, "Your Ragbag account was unblocked", fmt.Sprintf(`Hi %s,
 
 your Ragbag account at %s is unblocked: you can sign in again.
-`, user.Username, s.cfg.PublicURL))
+`, user.Name(), s.cfg.PublicURL))
 	}
 	return s.adminUserView(c, user.ID)
 }
@@ -220,7 +220,8 @@ func (s *Server) adminUserView(c echo.Context, userID string) error {
 
 func (s *Server) adminUserDto(user store.UserWithSpaces) api.AdminUserDto {
 	createdAt, spaces := user.CreatedAt, user.Spaces
-	return api.AdminUserDto{Id: user.ID, Username: user.Username, Email: user.Email, AvatarId: user.AvatarImageID,
+	return api.AdminUserDto{Id: user.ID, Username: user.Username, DisplayName: user.DisplayName, Email: user.Email,
+		AvatarId:      user.AvatarImageID,
 		InstanceAdmin: s.isAdmin(&user.User), CreatedAt: &createdAt, Spaces: &spaces, BlockedAt: user.BlockedAt,
 		BlockedReason: user.BlockedReason}
 }
@@ -308,7 +309,7 @@ somebody reported the public link %s/app/share/%s ("%s") as %s:
 %s
 
 Decide in Ragbag: %s/app/admin/reports
-`, user.Username, s.cfg.PublicURL, report.ShareToken, report.CollectionName, report.Category, report.Details, s.cfg.PublicURL))
+`, user.Name(), s.cfg.PublicURL, report.ShareToken, report.CollectionName, report.Category, report.Details, s.cfg.PublicURL))
 	}
 }
 
@@ -443,12 +444,12 @@ collection itself is unchanged, but it cannot be shared publicly anymore.
 Reasons: %s
 
 If you think this is a mistake, answer this email or contact the administrators.
-`, creator.Username, s.cfg.PublicURL, link, reasons))
+`, creator.Name(), s.cfg.PublicURL, link, reasons))
 	case api.ResolveReportRequestActionENABLELINK:
 		s.sendMail(creator, "Your public link works again", fmt.Sprintf(`Hi %s,
 
 the administrators enabled your public link %s again.
-`, creator.Username, link))
+`, creator.Name(), link))
 	}
 }
 

@@ -124,10 +124,19 @@ type Member struct {
 	UserID        string  `db:"user_id"`
 	Role          string  `db:"role"`
 	Username      string  `db:"username"`
+	DisplayName   *string `db:"display_name"`
 	AvatarImageID *string `db:"avatar_image_id"`
 }
 
-const memberSelect = `SELECT m.space_id, m.user_id, m.role, u.username, u.avatar_image_id
+// Name is the display name, else the username.
+func (m *Member) Name() string {
+	if m.DisplayName != nil {
+		return *m.DisplayName
+	}
+	return m.Username
+}
+
+const memberSelect = `SELECT m.space_id, m.user_id, m.role, u.username, u.display_name, u.avatar_image_id
 	FROM space_members m JOIN users u ON u.id = m.user_id`
 
 // MemberRole returns ErrNotFound if the user is not a member.

@@ -50,8 +50,9 @@ func memberSpaceDto(space *store.SpaceWithRole) api.SpaceDto {
 const maxDiscoverResults = 100
 
 func memberDto(member store.Member) api.SpaceMemberDto {
-	return api.SpaceMemberDto{UserId: member.UserID, Username: member.Username, AvatarId: member.AvatarImageID,
-		Role: api.SpaceMemberRoleEnum(member.Role)}
+	return api.SpaceMemberDto{UserId: member.UserID, Username: member.Username, DisplayName: member.DisplayName,
+		AvatarId: member.AvatarImageID,
+		Role:     api.SpaceMemberRoleEnum(member.Role)}
 }
 
 func requireName(name, what string) (string, error) {
@@ -375,7 +376,7 @@ func (s *Server) GetSpaceMembers(c echo.Context, spaceID api.ID) error {
 		if ri != rj {
 			return ri < rj
 		}
-		return members[i].Username < members[j].Username
+		return strings.ToLower(members[i].Name()) < strings.ToLower(members[j].Name())
 	})
 	result := make([]api.SpaceMemberDto, 0, len(members))
 	for _, member := range members {

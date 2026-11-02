@@ -112,6 +112,11 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   account's first space gets an introduction and a random planet as icon (the server cannot draw them); spaces
   created by hand count as welcomed. Other members see the space's `welcome_message` (Markdown by members with
   `EDIT_SPACE`, rendered by goldmark without raw HTML or dangerous links into `welcomeHtml`), later via the space menu.
+- **Display names** (`users.display_name`, `PUT /users/me/display-name`, optional at registration): 1–50
+  characters, any case, not unique; the username stays the login and identity (logs, audit, admin dialogs). Fields
+  that only name somebody (link author, reactions, news, inviter, reports, trash) carry the display name, else the
+  username (`shownName` in SQL, `User.Name()`, `shownName()` in the frontend); lists of people (members, admin)
+  carry both and show `@username` next to a display name. Deleting an account clears it.
 - **Discoverable spaces** (`discoverable`, `join_role` VIEWER or CONTRIBUTOR) are listed by `GET /spaces/discover`
   for every account and joined via `POST /spaces/{id}/join`; other spaces answer 404 there. Joining never changes
   an existing membership, and changing the setting needs `MANAGE_MEMBERS`.
