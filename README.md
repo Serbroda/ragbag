@@ -193,7 +193,6 @@ Everything is configured with environment variables. For local runs the server a
 | `LOG_FILE`              | Log into this file instead of stdout, e.g. `/var/log/ragbag/ragbag.log` (rotated) | – (stdout) |
 | `LOG_FORMAT`            | `text` or `json` (one object per line, for log shippers)             | `text`                  |
 | `LOG_MAX_SIZE_MB`, `LOG_MAX_FILES` | Rotation of `LOG_FILE`: size per file, compressed old files kept | `10`, `5`       |
-| `RAGBAG_DEV`            | Development mode: generated JWT secret, CORS for the Vite dev server. Never in production | `false` |
 
 ### Reverse proxy
 
