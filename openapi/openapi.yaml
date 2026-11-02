@@ -22,7 +22,9 @@ paths:
   # Authentication
   /auth/register:
     post:
-      summary: Register a new user
+      summary: >
+        Register a new user. When the server sends email (feature flag "email"), the account must confirm its
+        address with the link sent to it before it can sign in.
       operationId: register
       tags:
         - Authentication
@@ -41,6 +43,8 @@ paths:
                 $ref: '#/components/schemas/UserDto'
         '409':
           $ref: '#/components/responses/Conflict'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/login:
     post:
@@ -68,6 +72,39 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/LoginResponse'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          description: The email address is not confirmed yet; a new confirmation link was sent
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
+
+  /auth/verify-email/{token}:
+    post:
+      summary: Confirm the email address of a new account with the link from the email (public); signs in
+      operationId: verifyEmail
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK, with the refresh token cookie like a login
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '400':
+          $ref: '#/components/responses/BadRequest'
 
   /auth/refresh:
     post:
@@ -143,6 +180,29 @@ paths:
           $ref: '#/components/responses/BadRequest'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /auth/password-reset:
+    post:
+      summary: >
+        Send a password reset link to the account's email address (public, only when the server sends email).
+        Answers 204 whether the account exists or not.
+      operationId: requestPasswordReset
+      tags:
+        - Authentication
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RequestPasswordResetRequest'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /auth/password-reset/{token}:
     get:
@@ -2140,6 +2200,15 @@ components:
       required:
         - access_token
 
+    RequestPasswordResetRequest:
+      type: object
+      properties:
+        login:
+          type: string
+          description: Username or email address
+      required:
+        - login
+
     ResetPasswordRequest:
       type: object
       properties:
@@ -3140,6 +3209,12 @@ components:
             $ref: '#/components/schemas/Error'
     Conflict:
       description: Conflict
+    TooManyRequests:
+      description: Too many requests, try again after the Retry-After header's seconds
+      content:
+        application/json:
+          schema:
+            $ref: '#/components/schemas/Error'
 
   securitySchemes:
     bearerAuth:

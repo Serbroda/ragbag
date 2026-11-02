@@ -8,23 +8,29 @@ import (
 )
 
 type User struct {
-	ID            string    `db:"id"`
-	Username      string    `db:"username"`
-	Email         string    `db:"email"`
-	PasswordHash  string    `db:"password_hash"`
-	TokenVersion  int       `db:"token_version"`
-	AvatarImageID *string   `db:"avatar_image_id"`
-	CreatedAt     time.Time `db:"created_at"`
-	UpdatedAt     time.Time `db:"updated_at"`
+	ID            string  `db:"id"`
+	Username      string  `db:"username"`
+	Email         string  `db:"email"`
+	PasswordHash  string  `db:"password_hash"`
+	TokenVersion  int     `db:"token_version"`
+	AvatarImageID *string `db:"avatar_image_id"`
+	// EmailVerifiedAt is nil while the account waits for its email address to be confirmed
+	EmailVerifiedAt *time.Time `db:"email_verified_at"`
+	CreatedAt       time.Time  `db:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at"`
 }
 
-const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, created_at, updated_at`
+const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, created_at, updated_at`
 
-func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string) (*User, error) {
+// CreateUser stores a new account; unverified ones wait for their email address to be confirmed.
+func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string, verified bool) (*User, error) {
 	at := now()
 	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, CreatedAt: at, UpdatedAt: at}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?)`,
-		user.ID, user.Username, user.Email, user.PasswordHash, at, at)
+	if verified {
+		user.EmailVerifiedAt = &at
+	}
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?)`,
+		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, at, at)
 	return user, err
 }
 
@@ -72,7 +78,8 @@ type UserWithSpaces struct {
 func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	var users []UserWithSpaces
 	err := s.sel(ctx, &users, `
-		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.created_at, u.updated_at,
+		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
+		       u.created_at, u.updated_at,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
 		FROM users u ORDER BY u.username`)
 	return users, err

@@ -45,7 +45,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
@@ -149,6 +149,13 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   included), spaces owned per user (not the first one at registration), collections per space, uploaded image
   bytes per user (`images.created_by`). Checked before creating, or at the end of the transaction with
   `adding = 0` (imports, replaced images); 403 "Limit reached".
+- **Email** (`internal/mail`, `email.go`, only with `SMTP_HOST`; tests use `UseMailer` with a fake): new
+  accounts get `email_verified_at` only by `POST /auth/verify-email/{token}` (48 h, hash in
+  `email_verifications`), which also creates their first space and signs them in; until then login answers 403
+  and resends the link. Unconfirmed accounts are deleted after 7 days (hourly job). `POST /auth/password-reset`
+  mails a 1 h link in `password_resets` and always answers 204. Mails go out in the background, at most 3 per
+  account per hour (`Server.mails`, also without rate limits); links use `PUBLIC_URL`, never the request's host. Without SMTP accounts are
+  confirmed at once, waiting ones on their next login.
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

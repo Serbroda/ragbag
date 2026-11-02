@@ -56,19 +56,23 @@ func run() error {
 	}
 	defer database.Close()
 
-	srv := server.New(cfg, store.New(database, dialect), version)
+	srv, err := server.New(cfg, store.New(database, dialect), version)
+	if err != nil {
+		return err
+	}
 	if cfg.Dev {
 		slog.Warn("RAGBAG_DEV=true: demo account admin/test123, not for production")
 		if err := srv.SeedDemo(ctx); err != nil {
 			return err
 		}
 	}
-	// What has been in the trash for 30 days is deleted for good
+	// What has been in the trash for 30 days is deleted for good, accounts never confirmed after 7 days
 	go func() {
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
 		for {
 			srv.PurgeOldTrash(ctx)
+			srv.DeleteUnverifiedAccounts(ctx)
 			select {
 			case <-ctx.Done():
 				return

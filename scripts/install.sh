@@ -111,6 +111,15 @@ ADMIN_USERS=
 # Disable after creating your accounts if the instance is publicly reachable
 REGISTRATION_ENABLED=true
 
+# Email (confirming new accounts, "Forgot your password?"); off while SMTP_HOST is empty.
+# PUBLIC_URL is the address users open, used for the links in the mails.
+#SMTP_HOST=smtp.example.com
+#SMTP_PORT=587
+#SMTP_USERNAME=
+#SMTP_PASSWORD=
+#SMTP_FROM=Ragbag <ragbag@example.com>
+#PUBLIC_URL=https://ragbag.example.com
+
 # Let "Fetch details" load pages from your own network (192.168.x.x)
 ALLOW_PRIVATE_HOSTS=false
 

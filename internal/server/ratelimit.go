@@ -139,7 +139,7 @@ func (s *Server) rateLimit(next echo.HandlerFunc) echo.HandlerFunc {
 			err = l.check(c, l.login, ip, "Too many login attempts, try again in a minute")
 		case req.Method == http.MethodPost && path == "/api/auth/register":
 			err = l.check(c, l.register, ip, "Too many new accounts from your network, try again later")
-		case strings.HasPrefix(path, "/api/auth/password-reset/"):
+		case strings.HasPrefix(path, "/api/auth/password-reset"), strings.HasPrefix(path, "/api/auth/verify-email/"):
 			err = l.check(c, l.passwordReset, ip, "Too many attempts, try again in a minute")
 		}
 		if err != nil {

@@ -12,7 +12,7 @@ import (
 
 // secretPath matches the path segments that are secrets themselves: public share links, invites and password
 // reset links. They never go into a log.
-var secretPath = regexp.MustCompile(`(/(?:shares?|invites?|password-reset|reset-password)/)[^/]+`)
+var secretPath = regexp.MustCompile(`(/(?:shares?|invites?|password-reset|reset-password|verify-email)/)[^/]+`)
 
 // logPath is the request path for logs: without the query (search terms stay private) and with secrets masked.
 func logPath(path string) string {

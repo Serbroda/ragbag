@@ -48,7 +48,8 @@
 		<p class="text-center text-gray-400">Checking link…</p>
 	{:else if linkState === 'invalid'}
 		<p class="mb-4 text-center text-gray-300">
-			This reset link is invalid, expired or has already been used. Ask your administrator for a new one.
+			This reset link is invalid, expired or has already been used. Request a new one on the sign-in page or ask
+			your administrator.
 		</p>
 		<a href={p('/login')} class="block text-center text-sm text-primary-500 hover:underline">Back to sign in</a>
 	{:else}

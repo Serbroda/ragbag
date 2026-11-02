@@ -32,6 +32,7 @@ export * from './PasswordResetDto';
 export * from './PasswordResetPreviewDto';
 export * from './ReactionDto';
 export * from './RegisterRequest';
+export * from './RequestPasswordResetRequest';
 export * from './ResetPasswordRequest';
 export * from './SetPinDto';
 export * from './SetReactionDto';

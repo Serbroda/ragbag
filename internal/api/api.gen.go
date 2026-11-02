@@ -592,6 +592,12 @@ type RegisterRequest struct {
 	Username string `json:"username"`
 }
 
+// RequestPasswordResetRequest defines model for RequestPasswordResetRequest.
+type RequestPasswordResetRequest struct {
+	// Login Username or email address
+	Login string `json:"login"`
+}
+
 // ResetPasswordRequest defines model for ResetPasswordRequest.
 type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword"`
@@ -872,6 +878,9 @@ type BadRequest = Error
 // NotFound defines model for NotFound.
 type NotFound = Error
 
+// TooManyRequests defines model for TooManyRequests.
+type TooManyRequests = Error
+
 // RefreshParams defines parameters for Refresh.
 type RefreshParams struct {
 	// RefreshToken Missing when signed out; the server then answers 401
@@ -920,6 +929,9 @@ type LoginJSONRequestBody = LoginRequest
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = ChangePasswordRequest
+
+// RequestPasswordResetJSONRequestBody defines body for RequestPasswordReset for application/json ContentType.
+type RequestPasswordResetJSONRequestBody = RequestPasswordResetRequest
 
 // ResetPasswordJSONRequestBody defines body for ResetPassword for application/json ContentType.
 type ResetPasswordJSONRequestBody = ResetPasswordRequest
@@ -1013,6 +1025,9 @@ type ServerInterface interface {
 	// ChangePassword Change the own password; signs out all other devices and returns new tokens for this one
 	// (POST /auth/password)
 	ChangePassword(ctx echo.Context) error
+	// RequestPasswordReset Send a password reset link to the account's email address (public, only when the server sends email). Answers 204 whether the account exists or not.
+	// (POST /auth/password-reset)
+	RequestPasswordReset(ctx echo.Context) error
 	// GetPasswordReset Check a password reset link (public)
 	// (GET /auth/password-reset/{token})
 	GetPasswordReset(ctx echo.Context, token string) error
@@ -1022,9 +1037,12 @@ type ServerInterface interface {
 	// Refresh Refresh access token
 	// (POST /auth/refresh)
 	Refresh(ctx echo.Context, params RefreshParams) error
-	// Register Register a new user
+	// Register Register a new user. When the server sends email (feature flag "email"), the account must confirm its address with the link sent to it before it can sign in.
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
+	// VerifyEmail Confirm the email address of a new account with the link from the email (public); signs in
+	// (POST /auth/verify-email/{token})
+	VerifyEmail(ctx echo.Context, token string) error
 	// GetAllUsers All users of this installation
 	// (GET /v1/admin/users)
 	GetAllUsers(ctx echo.Context) error
@@ -1293,6 +1311,15 @@ func (w *ServerInterfaceWrapper) ChangePassword(ctx echo.Context) error {
 	return err
 }
 
+// RequestPasswordReset converts echo context to params.
+func (w *ServerInterfaceWrapper) RequestPasswordReset(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RequestPasswordReset(ctx)
+	return err
+}
+
 // GetPasswordReset converts echo context to params.
 func (w *ServerInterfaceWrapper) GetPasswordReset(ctx echo.Context) error {
 	var err error
@@ -1354,6 +1381,22 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Register(ctx)
+	return err
+}
+
+// VerifyEmail converts echo context to params.
+func (w *ServerInterfaceWrapper) VerifyEmail(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", ctx.Param("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter token: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.VerifyEmail(ctx, token)
 	return err
 }
 
@@ -2524,10 +2567,12 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/app/config/features", wrapper.FeatureFlags, options.OperationMiddlewares["featureFlags"]...)
 	router.POST(options.BaseURL+"/auth/register", wrapper.Register, options.OperationMiddlewares["register"]...)
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login, options.OperationMiddlewares["login"]...)
+	router.POST(options.BaseURL+"/auth/verify-email/:token", wrapper.VerifyEmail, options.OperationMiddlewares["verifyEmail"]...)
 	router.POST(options.BaseURL+"/auth/refresh", wrapper.Refresh, options.OperationMiddlewares["refresh"]...)
 	router.POST(options.BaseURL+"/auth/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
 	router.GET(options.BaseURL+"/auth/logout/all", wrapper.LogoutAll, options.OperationMiddlewares["logoutAll"]...)
 	router.POST(options.BaseURL+"/auth/password", wrapper.ChangePassword, options.OperationMiddlewares["changePassword"]...)
+	router.POST(options.BaseURL+"/auth/password-reset", wrapper.RequestPasswordReset, options.OperationMiddlewares["requestPasswordReset"]...)
 	router.GET(options.BaseURL+"/auth/password-reset/:token", wrapper.GetPasswordReset, options.OperationMiddlewares["getPasswordReset"]...)
 	router.POST(options.BaseURL+"/auth/password-reset/:token", wrapper.ResetPassword, options.OperationMiddlewares["resetPassword"]...)
 	router.GET(options.BaseURL+"/v1/admin/users", wrapper.GetAllUsers, options.OperationMiddlewares["getAllUsers"]...)

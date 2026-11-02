@@ -16,6 +16,7 @@ import (
 	"github.com/Serbroda/ragbag/internal/auth"
 	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/Serbroda/ragbag/internal/fetch"
+	"github.com/Serbroda/ragbag/internal/mail"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/labstack/echo/v4"
 	"github.com/labstack/echo/v4/middleware"
@@ -35,13 +36,17 @@ type Server struct {
 	fetch  *fetch.Client
 	admins map[string]bool
 	limits *limits
+	// mailer sends confirmation and reset links, nil without SMTP_HOST
+	mailer mail.Sender
+	// mails paces them per account, also without rate limits: nobody fills somebody else's inbox
+	mails *limiter
 	// version is written into exports and shown in the frontend
 	version string
 }
 
 var _ api.ServerInterface = (*Server)(nil)
 
-func New(cfg config.Config, st *store.Store, version string) *Server {
+func New(cfg config.Config, st *store.Store, version string) (*Server, error) {
 	admins := map[string]bool{}
 	for _, name := range cfg.AdminUsers {
 		admins[strings.ToLower(name)] = true
@@ -52,12 +57,20 @@ func New(cfg config.Config, st *store.Store, version string) *Server {
 		tokens:  auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
 		fetch:   fetch.NewClient(cfg.AllowPrivateHosts),
 		admins:  admins,
+		mails:   newLimiter(20*time.Minute, 3),
 		version: version,
 	}
 	if cfg.RateLimits {
 		srv.limits = newLimits()
 	}
-	return srv
+	if cfg.Mail.Host != "" {
+		sender, err := mail.NewSMTP(cfg.Mail)
+		if err != nil {
+			return nil, err
+		}
+		srv.mailer = sender
+	}
+	return srv, nil
 }
 
 // Handler wires the API under /api and the frontend under /app.
@@ -93,7 +106,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 // publicPaths can be used without being signed in.
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
-	"/api/auth/password-reset/*", "/api/v1/images/*", "/api/v1/shares/*",
+	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/v1/images/*", "/api/v1/shares/*",
 }
 
 func isPublic(requestPath string) bool {

@@ -2,16 +2,20 @@
 	import { Label, Input, Button, Alert } from 'flowbite-svelte';
 	import { ResponseError } from 'ragbag-frontend-sdk';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
-	import { appBase, errorMessage, login, register, fetchFeatureFlags, takePendingAdd, takePendingInvite } from '../api/client';
-	import { navigate, route } from '../router';
-	import { resetSession } from '../stores/spaces.svelte';
+	import { errorMessage, login, register, fetchFeatureFlags, requestPasswordReset } from '../api/client';
+	import { route } from '../router';
+	import { continueAfterSignIn } from '../utils/signin';
 
 	let registrationEnabled = $state(false);
+	// The server sends mails: new accounts confirm their address, passwords can be reset by mail
+	let emailEnabled = $state(false);
 	let isRegister = $state(false);
+	let isForgot = $state(false);
 
 	$effect(() => {
 		fetchFeatureFlags().then((flags) => {
 			registrationEnabled = flags['registration_enabled'] === 'true';
+			emailEnabled = flags['email'] === 'true';
 		}).catch(() => {
 			registrationEnabled = false;
 		});
@@ -36,6 +40,13 @@
 
 	function toggleMode() {
 		isRegister = !isRegister;
+		isForgot = false;
+		resetForm();
+	}
+
+	function toggleForgot() {
+		isForgot = !isForgot;
+		isRegister = false;
 		resetForm();
 	}
 
@@ -46,14 +57,21 @@
 		loading = true;
 
 		try {
-			if (isRegister) {
+			if (isForgot) {
+				await requestPasswordReset(username);
+				success = 'If an account exists for this, we sent it a link to reset the password. Check your inbox (and the spam folder).';
+				isForgot = false;
+				username = '';
+			} else if (isRegister) {
 				if (password !== confirmPassword) {
 					error = 'Passwords do not match.';
 					loading = false;
 					return;
 				}
 				await register(username, email, password);
-				success = 'Registration successful! You can now sign in.';
+				success = emailEnabled
+					? `Almost done: we sent a confirmation link to ${email}. Open it to start using Ragbag.`
+					: 'Registration successful! You can now sign in.';
 				isRegister = false;
 				username = '';
 				email = '';
@@ -61,30 +79,26 @@
 				confirmPassword = '';
 			} else {
 				await login(username, password);
-				resetSession();
-				const pendingInvite = takePendingInvite();
-				const pendingAdd = takePendingAdd();
-				if (pendingInvite) {
-					navigate('/invite/:token', { params: { token: pendingInvite } });
-				} else if (pendingAdd !== null) {
-					window.location.href = `${appBase()}/add${pendingAdd}`;
-				} else {
-					navigate('/');
-				}
+				continueAfterSignIn();
 			}
 		} catch (err) {
-			error = isRegister
-				? await errorMessage(err, 'Registration failed. Please try again.')
-				: err instanceof ResponseError && err.response.status === 429
-					? await errorMessage(err, 'Too many login attempts, please wait a moment.')
-					: 'Login failed. Please check your credentials.';
+			// Wrong credentials get the friendly text; unconfirmed addresses and rate limits the server's
+			error = isForgot
+				? await errorMessage(err, 'The reset link could not be sent. Please try again.')
+				: isRegister
+					? await errorMessage(err, 'Registration failed. Please try again.')
+					: err instanceof ResponseError && err.response.status !== 401
+						? await errorMessage(err, 'Login failed. Please try again.')
+						: 'Login failed. Please check your credentials.';
 		} finally {
 			loading = false;
 		}
 	}
 </script>
 
-<CenteredScreen subtitle={isRegister ? 'Create your account' : 'Welcome back! Sign in to continue.'}>
+<CenteredScreen
+	subtitle={isForgot ? 'Reset your password' : isRegister ? 'Create your account' : 'Welcome back! Sign in to continue.'}
+>
 
 		{#if error}
 			<Alert color="red" class="mb-4">{error}</Alert>
@@ -95,7 +109,7 @@
 
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 			<div>
-				<Label for="username" class="mb-2">Username</Label>
+				<Label for="username" class="mb-2">{isForgot ? 'Username or email' : 'Username'}</Label>
 				<Input id="username" type="text" autocomplete="username" bind:value={username} required />
 			</div>
 			{#if isRegister}
@@ -104,18 +118,20 @@
 					<Input id="email" type="email" bind:value={email} required />
 				</div>
 			{/if}
-			<div>
-				<Label for="password" class="mb-2">Password</Label>
-				<Input
-					id="password"
-					type="password"
-					autocomplete={isRegister ? 'new-password' : 'current-password'}
-					minlength={isRegister ? 8 : undefined}
-					placeholder={isRegister ? 'At least 8 characters' : undefined}
-					bind:value={password}
-					required
-				/>
-			</div>
+			{#if !isForgot}
+				<div>
+					<Label for="password" class="mb-2">Password</Label>
+					<Input
+						id="password"
+						type="password"
+						autocomplete={isRegister ? 'new-password' : 'current-password'}
+						minlength={isRegister ? 8 : undefined}
+						placeholder={isRegister ? 'At least 8 characters' : undefined}
+						bind:value={password}
+						required
+					/>
+				</div>
+			{/if}
 			{#if isRegister}
 				<div>
 					<Label for="confirmPassword" class="mb-2">Confirm Password</Label>
@@ -124,20 +140,34 @@
 			{/if}
 			<Button type="submit" class="mt-2" disabled={loading}>
 				{#if loading}
-					{isRegister ? 'Creating account...' : 'Signing in...'}
+					{isForgot ? 'Sending...' : isRegister ? 'Creating account...' : 'Signing in...'}
 				{:else}
-					{isRegister ? 'Create account' : 'Sign in'}
+					{isForgot ? 'Send reset link' : isRegister ? 'Create account' : 'Sign in'}
 				{/if}
 			</Button>
 		</form>
 
-		{#if !isRegister}
-			<p class="mt-4 text-center text-xs text-gray-500">
-				Forgot your password? Ask the administrator of this Ragbag for a reset link.
-			</p>
+		{#if isForgot}
+			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
+				<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleForgot}>
+					Back to sign in
+				</button>
+			</div>
+		{:else if !isRegister}
+			{#if emailEnabled}
+				<div class="mt-4 text-center text-sm">
+					<button type="button" class="text-gray-500 hover:underline dark:text-gray-400" onclick={toggleForgot}>
+						Forgot your password?
+					</button>
+				</div>
+			{:else}
+				<p class="mt-4 text-center text-xs text-gray-500">
+					Forgot your password? Ask the administrator of this Ragbag for a reset link.
+				</p>
+			{/if}
 		{/if}
 
-		{#if registrationEnabled}
+		{#if registrationEnabled && !isForgot}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				{#if isRegister}
 					Already have an account?

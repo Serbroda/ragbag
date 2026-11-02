@@ -70,7 +70,8 @@ func newEnv(t *testing.T, options ...func(*config.Config)) *env {
 	for _, option := range options {
 		option(&cfg)
 	}
-	srv := server.New(cfg, store.New(database, dialect), "test")
+	srv, err := server.New(cfg, store.New(database, dialect), "test")
+	require.NoError(t, err)
 	require.NoError(t, srv.SeedDemo(ctx))
 	// A stand-in for the frontend build: link previews are written into its head
 	frontend := fstest.MapFS{"index.html": {Data: []byte("<html><head><title>Ragbag</title></head><body></body></html>")}}
