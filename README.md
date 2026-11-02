@@ -165,6 +165,7 @@ Everything is configured with environment variables. For local runs the server a
 | `ADMIN_USERS`           | Comma-separated usernames that may manage all users                  | –                       |
 | `REGISTRATION_ENABLED`  | Whether new accounts can be registered                               | `true`                  |
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
+| `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
 | `CORS_ALLOWED_ORIGINS`  | Comma-separated origins of frontends served elsewhere (dev server)   | –                       |
@@ -202,6 +203,21 @@ IPv6 addresses count by their /64. When the page limit is reached, new links are
 loading title and preview. The client IP comes from `X-Forwarded-For` only when the proxy is in your own network
 (loopback or private addresses, e.g. nginx proxy manager or a Cloudflare tunnel on the same host); otherwise every
 visitor would share the proxy's address.
+
+### Quotas
+
+Unlimited unless set; on a public instance they keep single accounts from filling the disk. Reaching one answers
+`403` with a message the app shows.
+
+| Variable                      | Counts                                                                     | E.g.    |
+|-------------------------------|----------------------------------------------------------------------------|---------|
+| `QUOTA_LINKS_PER_USER`        | Links a user added in any space, trashed ones until the trash is emptied   | `10000` |
+| `QUOTA_SPACES_PER_USER`       | Spaces a user owns (the first one of a new account is always created)      | `10`    |
+| `QUOTA_COLLECTIONS_PER_SPACE` | Collections of a space, trashed ones included                              | `500`   |
+| `QUOTA_UPLOAD_MB_PER_USER`    | Uploaded images: avatar, space icons and preview images (about 100–600 KB each) | `200` |
+
+Imports count as well; one that would exceed a quota is refused as a whole (the preview already says so).
+Images uploaded before Ragbag 0.15 count for nobody.
 
 ### Logs
 

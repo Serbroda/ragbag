@@ -45,7 +45,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
@@ -145,6 +145,10 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   memory per IP (all of `/api`, login, register, password reset), per account (failed logins, by user id so
   username and email count together) and per user (password change, loading user supplied URLs; creating or
   editing a link then skips the details instead of failing). The limits are listed in the README.
+- **Quotas** (`quotas.go`, `config.Quotas`, 0 = unlimited, the default): links per user (`created_by`, trash
+  included), spaces owned per user (not the first one at registration), collections per space, uploaded image
+  bytes per user (`images.created_by`). Checked before creating, or at the end of the transaction with
+  `adding = 0` (imports, replaced images); 403 "Limit reached".
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

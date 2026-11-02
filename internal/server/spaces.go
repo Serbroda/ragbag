@@ -93,6 +93,9 @@ func (s *Server) CreateSpace(c echo.Context) error {
 	}
 	var space *store.Space
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		if err := s.checkSpaceQuota(ctxOf(c), tx, currentUser(c)); err != nil {
+			return err
+		}
 		if space, err = tx.CreateSpace(ctxOf(c), name, blankToNil(req.Description), currentUser(c)); err != nil {
 			return err
 		}
@@ -252,14 +255,17 @@ func (s *Server) SetSpaceIcon(c echo.Context, spaceID api.ID) error {
 		if err != nil {
 			return err
 		}
-		imageID, err := tx.CreateImage(ctxOf(c), contentType, data)
+		imageID, err := tx.CreateImage(ctxOf(c), contentType, data, currentUser(c))
 		if err != nil {
 			return err
 		}
 		if err := tx.SetSpaceIcon(ctxOf(c), spaceID, &imageID); err != nil {
 			return err
 		}
-		return tx.DeleteImage(ctxOf(c), space.IconImageID)
+		if err := tx.DeleteImage(ctxOf(c), space.IconImageID); err != nil {
+			return err
+		}
+		return s.checkUploadQuota(ctxOf(c), tx, currentUser(c))
 	})
 	if err != nil {
 		return err

@@ -113,6 +113,9 @@ func (s *Server) CreateCollection(c echo.Context, spaceID api.ID) error {
 	}
 	collection := &store.Collection{SpaceID: spaceID, Name: name, CreatedBy: currentUser(c)}
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
+		if err := s.checkCollectionQuota(ctxOf(c), tx, spaceID, 1); err != nil {
+			return err
+		}
 		if req.ParentId != nil {
 			parent, _, err := s.requireCollection(ctxOf(c), tx, *req.ParentId, currentUser(c), PermRead)
 			if err != nil {

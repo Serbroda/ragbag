@@ -77,7 +77,7 @@ func (s *Server) SetAvatar(c echo.Context) error {
 		if err != nil {
 			return err
 		}
-		imageID, err := tx.CreateImage(ctxOf(c), contentType, data)
+		imageID, err := tx.CreateImage(ctxOf(c), contentType, data, currentUser(c))
 		if err != nil {
 			return err
 		}
@@ -85,6 +85,9 @@ func (s *Server) SetAvatar(c echo.Context) error {
 			return err
 		}
 		if err := tx.DeleteImage(ctxOf(c), previous.AvatarImageID); err != nil {
+			return err
+		}
+		if err := s.checkUploadQuota(ctxOf(c), tx, previous.ID); err != nil {
 			return err
 		}
 		user, err = tx.UserByID(ctxOf(c), previous.ID)
