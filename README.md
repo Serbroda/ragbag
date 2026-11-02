@@ -66,11 +66,13 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 ```bash
 git clone https://github.com/Serbroda/ragbag.git
 cd ragbag
-cp .env.example .env        # set JWT_SECRET (openssl rand -base64 32) and ADMIN_USERS
+cp .env.example .env        # set JWT_SECRET (openssl rand -base64 32), ADMIN_USERS and PUBLIC_URL
 docker compose up -d --build
+docker compose exec app cat /data/initial-admin-password
 ```
 
-Open <http://localhost:8080>. The database lives in the `ragbag-data` volume.
+Open <http://localhost:8080> and sign in with that password (see *First start*). The database lives in the
+`ragbag-data` volume. Every setting in `.env` is passed to the container, the same list in both compose files.
 
 - **PostgreSQL** instead of SQLite: `docker compose -f docker-compose.postgres.yaml up -d --build`
   (set `DB_PASSWORD` in `.env` as well).

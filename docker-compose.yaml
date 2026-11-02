@@ -4,8 +4,10 @@
 #   cp .env.example .env    # then change the secrets
 #   docker compose up -d --build
 #
-# Open http://localhost:8080 and register the first account. The database lives in the
-# ragbag-data volume (/data/ragbag.db inside the container).
+# Open http://localhost:8080, sign in as "admin" (or the first of ADMIN_USERS) with the password from
+#   docker compose exec app cat /data/initial-admin-password
+# and start fresh or restore a backup of another Ragbag. The database lives in the ragbag-data volume
+# (/data/ragbag.db inside the container).
 # Every value below has a dummy default so the stack starts out of the box. Do not use the
 # defaults for anything reachable from the internet.
 
@@ -30,16 +32,35 @@ services:
     environment:
       # At least 32 characters, e.g. `openssl rand -base64 32`
       JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
-      # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
-      # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
-      SECURE_COOKIE: ${SECURE_COOKIE:-false}
-      # Usernames (comma-separated) that may manage all users, e.g. create password reset links and backups.
+      # The address Ragbag is reached at (links in emails), e.g. https://ragbag.example.com
+      PUBLIC_URL: ${PUBLIC_URL:-}
+      # Usernames (comma-separated) that may manage all users, decide on reports and download backups.
       # The first start creates the first of them (or "admin") with a random password, see
       # docker compose exec app cat /data/initial-admin-password
       ADMIN_USERS: ${ADMIN_USERS:-}
       REGISTRATION_ENABLED: ${REGISTRATION_ENABLED:-true}
+      RATE_LIMIT_ENABLED: ${RATE_LIMIT_ENABLED:-true}
+      # The refresh cookie is marked Secure automatically when Ragbag is reached via HTTPS, also behind a
+      # reverse proxy like nginx proxy manager (it sends X-Forwarded-Proto). true forces it.
+      SECURE_COOKIE: ${SECURE_COOKIE:-false}
       # Allow loading link titles from your own network (homelab dashboards)
       ALLOW_PRIVATE_HOSTS: ${ALLOW_PRIVATE_HOSTS:-false}
+      # Email (optional, see .env.example)
+      SMTP_HOST: ${SMTP_HOST:-}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USERNAME: ${SMTP_USERNAME:-}
+      SMTP_PASSWORD: ${SMTP_PASSWORD:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      SMTP_TLS: ${SMTP_TLS:-starttls}
+      # Quotas (empty: unlimited)
+      QUOTA_LINKS_PER_USER: ${QUOTA_LINKS_PER_USER:-}
+      QUOTA_SPACES_PER_USER: ${QUOTA_SPACES_PER_USER:-}
+      QUOTA_COLLECTIONS_PER_SPACE: ${QUOTA_COLLECTIONS_PER_SPACE:-}
+      QUOTA_UPLOAD_MB_PER_USER: ${QUOTA_UPLOAD_MB_PER_USER:-}
+      # Logs to stdout unless LOG_FILE is set (e.g. /data/logs/ragbag.log)
+      LOG_FILE: ${LOG_FILE:-}
+      LOG_LEVEL: ${LOG_LEVEL:-info}
+      LOG_FORMAT: ${LOG_FORMAT:-text}
 
 volumes:
   ragbag-data:
