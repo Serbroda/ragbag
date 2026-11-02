@@ -197,6 +197,11 @@ func (s *Server) RestoreBackup(c echo.Context, params api.RestoreBackupParams) e
 		audit(c, slog.LevelWarn, "backup restored: all data replaced", "backup_version", summary.AppVersion,
 			"backup_created", summary.CreatedAt, "users", summary.Rows["users"])
 	}
+	usernames := []string{}
+	for _, account := range summary.Accounts[:min(len(summary.Accounts), 20)] {
+		usernames = append(usernames, account.Username)
+	}
 	return c.JSON(http.StatusOK, api.BackupSummaryDto{AppVersion: summary.AppVersion,
-		SchemaVersion: summary.SchemaVersion, CreatedAt: summary.CreatedAt, Rows: summary.Rows})
+		SchemaVersion: summary.SchemaVersion, CreatedAt: summary.CreatedAt, Rows: summary.Rows,
+		Admins: summary.Admins(s.cfg.AdminUsers), Usernames: usernames})
 }

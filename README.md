@@ -329,7 +329,8 @@ E.g. from SQLite in the homelab to PostgreSQL on a VPS:
 2. Install the new one with an empty database (`DATABASE_URL=postgres://…`) and start it.
 3. Sign in with the initial password (see *First start*) and pick *Restore a backup*. Ragbag checks the file and
    shows what it holds before replacing anything; the setup account is replaced, so it needs no password of its
-   own.
+   own. The preview also says who will be an admin afterwards (the accounts in `ADMIN_USERS`) and
+   warns when nobody would be.
 4. Sign in with your old account. Sessions do not move along (the new instance has its own `JWT_SECRET`), share
    links and bookmarklets keep working. Set `ADMIN_USERS` (and `PUBLIC_URL` for emails) like before.
 

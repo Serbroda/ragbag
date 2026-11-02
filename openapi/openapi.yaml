@@ -2864,11 +2864,23 @@ components:
           description: Rows per table
           additionalProperties:
             type: integer
+        admins:
+          type: array
+          items:
+            type: string
+          description: The restored accounts that will be instance admins (ADMIN_USERS, or the backup's setup admin)
+        usernames:
+          type: array
+          items:
+            type: string
+          description: The first restored accounts by name (at most 20)
       required:
         - appVersion
         - schemaVersion
         - createdAt
         - rows
+        - admins
+        - usernames
 
     ChangePasswordRequest:
       type: object

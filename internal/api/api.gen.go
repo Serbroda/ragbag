@@ -418,6 +418,9 @@ type AdminUserDto struct {
 
 // BackupSummaryDto defines model for BackupSummaryDto.
 type BackupSummaryDto struct {
+	// Admins The restored accounts that will be instance admins (ADMIN_USERS, or the backup's setup admin)
+	Admins []string `json:"admins"`
+
 	// AppVersion The version of Ragbag that made the backup
 	AppVersion string    `json:"appVersion"`
 	CreatedAt  time.Time `json:"createdAt"`
@@ -425,6 +428,9 @@ type BackupSummaryDto struct {
 	// Rows Rows per table
 	Rows          map[string]int `json:"rows"`
 	SchemaVersion int64          `json:"schemaVersion"`
+
+	// Usernames The first restored accounts by name (at most 20)
+	Usernames []string `json:"usernames"`
 }
 
 // BlockUserRequest defines model for BlockUserRequest.

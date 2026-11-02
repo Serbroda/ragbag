@@ -10,6 +10,7 @@ import (
 	"os"
 	"os/signal"
 	"path/filepath"
+	"strings"
 	"syscall"
 
 	"github.com/Serbroda/ragbag/internal/backup"
@@ -118,5 +119,20 @@ func restoreCommand(args []string) error {
 	}
 	slog.Info("backup "+verb, "made_by", summary.AppVersion, "created", summary.CreatedAt, "users", summary.Rows["users"],
 		"spaces", summary.Rows["spaces"], "links", summary.Rows["bookmarks"], "images", summary.Rows["images"])
+	if admins := summary.Admins(config.AdminUsers()); len(admins) > 0 {
+		slog.Info("instance admins after the restore", "admins", strings.Join(admins, ","))
+	} else {
+		slog.Warn("nobody is an instance admin after the restore: set ADMIN_USERS to one of the restored accounts "+
+			"and restart Ragbag", "accounts", firstNames(summary, 5))
+	}
 	return nil
+}
+
+// firstNames lists some restored accounts, e.g. for ADMIN_USERS.
+func firstNames(summary *backup.Summary, n int) string {
+	names := make([]string, 0, n)
+	for _, account := range summary.Accounts[:min(len(summary.Accounts), n)] {
+		names = append(names, account.Username)
+	}
+	return strings.Join(names, ",")
 }

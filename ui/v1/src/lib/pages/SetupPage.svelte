@@ -115,6 +115,8 @@
 		navigate('/login');
 	}
 
+	const more = $derived(summary && summary.usernames.length < count('users') ? ', …' : '');
+
 	function count(table: string): number {
 		return summary?.rows[table] ?? 0;
 	}
@@ -201,9 +203,21 @@
 							{count('bookmarks')} links · {count('images')} images
 						</p>
 					</div>
+					{#if summary.admins.length > 0}
+						<p class="mt-3 text-sm text-gray-300">
+							Admins afterwards: <strong class="text-white">{summary.admins.join(', ')}</strong>
+						</p>
+					{:else}
+						<Alert color="red" class="mt-3">
+							Nobody will be an admin afterwards: none of the accounts in the backup ({summary.usernames.join(', ')}{more})
+							is in ADMIN_USERS. Everything works, but without the administration. Set
+							<code>ADMIN_USERS</code> to your account (e.g. <code>ADMIN_USERS={summary.usernames[0] ?? 'you'}</code>)
+							and restart Ragbag, before or after restoring.
+						</Alert>
+					{/if}
 					<Alert color="yellow" class="mt-3">
 						Restoring replaces this setup account ({username}), so it needs no password of its own. Sign in
-						with your account from the backup afterwards; admins are the ones in ADMIN_USERS.
+						with your account from the backup afterwards.
 					</Alert>
 					<Button class="mt-3 w-full" disabled={busy} onclick={restore}>
 						{busy ? 'Restoring…' : 'Restore this backup'}
