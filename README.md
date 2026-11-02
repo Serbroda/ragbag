@@ -164,6 +164,7 @@ Everything is configured with environment variables. For local runs the server a
 | `RAGBAG_ADDR`           | HTTP address                                                         | `:8080`                 |
 | `ADMIN_USERS`           | Comma-separated usernames that may manage all users                  | –                       |
 | `REGISTRATION_ENABLED`  | Whether new accounts can be registered                               | `true`                  |
+| `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
 | `CORS_ALLOWED_ORIGINS`  | Comma-separated origins of frontends served elsewhere (dev server)   | –                       |
@@ -181,6 +182,26 @@ Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything
 `/app`, the API under `/api`. When the proxy terminates HTTPS and sends `X-Forwarded-Proto: https`, the login cookie
 is marked `Secure` automatically. Link previews in chat apps (WhatsApp, Signal, Discord) use the `Host` and
 `X-Forwarded-Proto` headers the proxy passes on to build the image address.
+
+### Rate limits
+
+On by default (`RATE_LIMIT_ENABLED`), kept in memory and reset by a restart. Refused requests answer `429` with a
+`Retry-After` header and show up in the log with the IP.
+
+| What                                | Limit                                   | Per              |
+|-------------------------------------|-----------------------------------------|------------------|
+| All API requests                    | 600 at once, then 20 per second         | IP               |
+| Logins                              | 10 at once, then one every 6 seconds    | IP               |
+| Failed logins                       | 10, then one every 3 minutes            | account          |
+| Registrations                       | 5, then one every 10 minutes            | IP               |
+| Password reset links                | 10, then one per minute                 | IP               |
+| Changing the password               | 5, then one per minute                  | user             |
+| Loading pages and images by address | 60, then one every 2 seconds            | user             |
+
+IPv6 addresses count by their /64. When the page limit is reached, new links are still saved, only without
+loading title and preview. The client IP comes from `X-Forwarded-For` only when the proxy is in your own network
+(loopback or private addresses, e.g. nginx proxy manager or a Cloudflare tunnel on the same host); otherwise every
+visitor would share the proxy's address.
 
 ### Logs
 

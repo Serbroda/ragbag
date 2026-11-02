@@ -1,5 +1,6 @@
 <script lang="ts">
 	import { Label, Input, Button, Alert } from 'flowbite-svelte';
+	import { ResponseError } from 'ragbag-frontend-sdk';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import { appBase, errorMessage, login, register, fetchFeatureFlags, takePendingAdd, takePendingInvite } from '../api/client';
 	import { navigate, route } from '../router';
@@ -74,7 +75,9 @@
 		} catch (err) {
 			error = isRegister
 				? await errorMessage(err, 'Registration failed. Please try again.')
-				: 'Login failed. Please check your credentials.';
+				: err instanceof ResponseError && err.response.status === 429
+					? await errorMessage(err, 'Too many login attempts, please wait a moment.')
+					: 'Login failed. Please check your credentials.';
 		} finally {
 			loading = false;
 		}

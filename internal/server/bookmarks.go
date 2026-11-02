@@ -224,7 +224,10 @@ func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return badRequest("%s", err.Error())
 	}
-	metadata := s.fetch.Metadata(ctxOf(c), url)
+	var metadata fetch.Metadata
+	if s.fetchAllowed(c) {
+		metadata = s.fetch.Metadata(ctxOf(c), url)
+	}
 	bookmark := &store.Bookmark{
 		CollectionID: collectionID,
 		URL:          url,
@@ -274,7 +277,10 @@ func (s *Server) UpdateBookmark(c echo.Context, bookmarkID api.ID) error {
 		bookmark.Tags = normalizeTags(req.Tags)
 	}
 	if urlChanged {
-		metadata := s.fetch.Metadata(ctxOf(c), url)
+		var metadata fetch.Metadata
+		if s.fetchAllowed(c) {
+			metadata = s.fetch.Metadata(ctxOf(c), url)
+		}
 		bookmark.OgImage, bookmark.Favicon, bookmark.Canonical =
 			nilIfEmpty(metadata.OgImage), nilIfEmpty(metadata.Favicon), nilIfEmpty(metadata.Canonical)
 		bookmark.Title = ptr(truncate(firstNonEmpty(deref(bookmark.Title), metadata.Title, url), maxTitleLength))
@@ -389,6 +395,9 @@ func (s *Server) FetchBookmarkMetadata(c echo.Context, collectionID api.ID) erro
 	url, err := fetch.NormalizeURL(req.Url)
 	if err != nil {
 		return badRequest("%s", err.Error())
+	}
+	if err := s.limitFetch(c); err != nil {
+		return err
 	}
 	metadata := s.fetch.Metadata(ctxOf(c), url)
 	keywords := metadata.Keywords

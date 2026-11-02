@@ -31,7 +31,9 @@ type Config struct {
 	AllowPrivateHosts  bool
 	AdminUsers         []string
 	CORSAllowedOrigins []string
-	Log                logging.Config
+	// RateLimits slow down password guessing, bot sign-ups and floods (per IP, user and account)
+	RateLimits bool
+	Log        logging.Config
 }
 
 // Load reads RAGBAG_* and the documented short variables (see .env.example).
@@ -48,6 +50,7 @@ func Load() (Config, error) {
 		AllowPrivateHosts:  envBool("ALLOW_PRIVATE_HOSTS", false),
 		AdminUsers:         envList("ADMIN_USERS"),
 		CORSAllowedOrigins: envList("CORS_ALLOWED_ORIGINS"),
+		RateLimits:         envBool("RATE_LIMIT_ENABLED", true),
 	}
 
 	level, err := logging.ParseLevel(env("LOG_LEVEL", "info"))

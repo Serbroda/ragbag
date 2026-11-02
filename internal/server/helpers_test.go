@@ -47,7 +47,8 @@ type session struct {
 	Refresh                 *http.Cookie
 }
 
-func newEnv(t *testing.T) *env {
+// newEnv starts a server; options change its configuration (rate limits are off unless an option enables them).
+func newEnv(t *testing.T, options ...func(*config.Config)) *env {
 	t.Helper()
 	ctx := context.Background()
 	databaseURL := "sqlite:" + t.TempDir() + "/test.db"
@@ -65,6 +66,9 @@ func newEnv(t *testing.T) *env {
 		RefreshTokenTTL:  time.Hour,
 		RegistrationOpen: true,
 		AdminUsers:       []string{"admin"},
+	}
+	for _, option := range options {
+		option(&cfg)
 	}
 	srv := server.New(cfg, store.New(database, dialect), "test")
 	require.NoError(t, srv.SeedDemo(ctx))

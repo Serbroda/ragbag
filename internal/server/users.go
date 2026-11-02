@@ -156,6 +156,9 @@ func (s *Server) readImage(c echo.Context, normalize func([]byte) (string, []byt
 		if err != nil {
 			return "", nil, badRequest("%s", err.Error())
 		}
+		if err := s.limitFetch(c); err != nil {
+			return "", nil, err
+		}
 		res, err := s.fetch.Get(ctxOf(c), normalized, images.MaxUploadBytes)
 		if err != nil {
 			return "", nil, badRequest("The image could not be loaded from this URL (unreachable, not allowed or larger than 5 MB)")
