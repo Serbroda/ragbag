@@ -110,6 +110,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
 	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/v1/images/*", "/api/v1/shares/*",
+	"/api/v1/shares/*/reports",
 }
 
 func isPublic(requestPath string) bool {
@@ -140,7 +141,7 @@ func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 		if err != nil {
 			return unauthorized("Invalid or expired token")
 		}
-		if claims.TokenVersion < user.TokenVersion {
+		if claims.TokenVersion < user.TokenVersion || user.BlockedAt != nil || user.DeletedAt != nil {
 			return unauthorized("Token has been revoked")
 		}
 		c.Set(userIDKey, user.ID)

@@ -31,6 +31,14 @@ export interface CollectionShareDto {
      * 
      */
     createdAt?: Date;
+    /**
+     * Disabled by the administrators after a report; the collection cannot be shared again
+     */
+    disabled?: boolean;
+    /**
+     * 
+     */
+    disabledReason?: string;
 }
 
 /**
@@ -54,6 +62,8 @@ export function CollectionShareDtoFromJSONTyped(json: any, ignoreDiscriminator: 
         'shared': json['shared'],
         'token': json['token'] == null ? undefined : json['token'],
         'createdAt': json['createdAt'] == null ? undefined : (parseDateTime(json['createdAt'])),
+        'disabled': json['disabled'] == null ? undefined : json['disabled'],
+        'disabledReason': json['disabledReason'] == null ? undefined : json['disabledReason'],
     };
 }
 
@@ -71,6 +81,8 @@ export function CollectionShareDtoToJSONTyped(value?: CollectionShareDto | null,
         'shared': value['shared'],
         'token': value['token'],
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'disabled': value['disabled'],
+        'disabledReason': value['disabledReason'],
     };
 }
 

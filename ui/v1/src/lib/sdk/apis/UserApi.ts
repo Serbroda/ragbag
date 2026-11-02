@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type DeleteAccountRequest,
+    DeleteAccountRequestFromJSON,
+    DeleteAccountRequestToJSON,
+} from '../models/DeleteAccountRequest';
+import {
     type SetPinDto,
     SetPinDtoFromJSON,
     SetPinDtoToJSON,
@@ -43,6 +48,13 @@ import {
     UserDtoFromJSON,
     UserDtoToJSON,
 } from '../models/UserDto';
+
+export interface DeleteAccountOperationRequest {
+    /**
+     * 
+     */
+    deleteAccountRequest: DeleteAccountRequest;
+}
 
 export interface SetAvatarRequest {
     /**
@@ -87,6 +99,60 @@ export interface UpdateSpaceBarRequest {
  * 
  */
 export class UserApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for deleteAccount without sending the request
+     */
+    async deleteAccountRequestOpts(requestParameters: DeleteAccountOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['deleteAccountRequest'] == null) {
+            throw new runtime.RequiredError(
+                'deleteAccountRequest',
+                'Required parameter "deleteAccountRequest" was null or undefined when calling deleteAccount().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/delete`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: DeleteAccountRequestToJSON(requestParameters['deleteAccountRequest']),
+        };
+    }
+
+    /**
+     * Delete the own account (needs the password). Spaces without other members are deleted with it; owning a space with other members and no other owner answers 409 with the spaces in the detail 
+     */
+    async deleteAccountRaw(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteAccountRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete the own account (needs the password). Spaces without other members are deleted with it; owning a space with other members and no other owner answers 409 with the spaces in the detail 
+     */
+    async deleteAccount(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteAccountRaw(requestParameters, initOverrides);
+    }
 
     /**
      * Creates request options for getSpaceBar without sending the request

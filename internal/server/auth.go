@@ -59,6 +59,10 @@ func (s *Server) createUser(c echo.Context, username, email, password string, co
 	if username == "" || len(username) > 80 || strings.ContainsFunc(username, unicode.IsSpace) {
 		return nil, badRequest("Usernames must have 1 to 80 characters without spaces")
 	}
+	// The names deleted accounts leave behind
+	if strings.HasPrefix(username, "deleted-") {
+		return nil, badRequest("Usernames cannot start with \"deleted-\"")
+	}
 	if !strings.Contains(email, "@") || len(email) > 250 {
 		return nil, badRequest("Invalid email address")
 	}
@@ -127,6 +131,10 @@ func (s *Server) Login(c echo.Context) error {
 		return unauthorized("Invalid credentials")
 	}
 	c.Set(usernameKey, user.Username)
+	if user.BlockedAt != nil {
+		audit(c, slog.LevelWarn, "login of a blocked account refused")
+		return blockedMessage(user)
+	}
 	if user.EmailVerifiedAt == nil {
 		if s.mailEnabled() {
 			// The password was right, so a new link is no help for strangers
@@ -156,7 +164,7 @@ func (s *Server) Refresh(c echo.Context, params api.RefreshParams) error {
 		return unauthorized("Invalid refresh token")
 	}
 	user, err := s.store.UserByID(ctxOf(c), claims.Subject)
-	if err != nil || claims.TokenVersion < user.TokenVersion {
+	if err != nil || claims.TokenVersion < user.TokenVersion || user.BlockedAt != nil || user.DeletedAt != nil {
 		return unauthorized("Invalid refresh token")
 	}
 	access, err := s.tokens.Access(user.ID, user.Username, user.TokenVersion)
@@ -273,7 +281,7 @@ func (s *Server) CreatePasswordReset(c echo.Context, userID api.ID) error {
 	if err := s.requireInstanceAdmin(c); err != nil {
 		return err
 	}
-	if _, err := s.store.UserByID(ctxOf(c), userID); err != nil {
+	if user, err := s.store.UserByID(ctxOf(c), userID); err != nil || user.DeletedAt != nil {
 		return orNotFound(err, "User not found: %s", userID)
 	}
 	token := randomToken()
@@ -299,11 +307,7 @@ func (s *Server) GetAllUsers(c echo.Context) error {
 	}
 	result := make([]api.AdminUserDto, 0, len(users))
 	for _, user := range users {
-		createdAt, spaces := user.CreatedAt, user.Spaces
-		result = append(result, api.AdminUserDto{
-			Id: user.ID, Username: user.Username, Email: user.Email, AvatarId: user.AvatarImageID,
-			InstanceAdmin: s.isAdmin(&user.User), CreatedAt: &createdAt, Spaces: &spaces,
-		})
+		result = append(result, s.adminUserDto(user))
 	}
 	return c.JSON(http.StatusOK, result)
 }

@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type AbuseReportDto,
+    AbuseReportDtoFromJSON,
+    AbuseReportDtoToJSON,
+} from '../models/AbuseReportDto';
+import {
     type AdminUserDto,
     AdminUserDtoFromJSON,
     AdminUserDtoToJSON,
@@ -24,6 +29,11 @@ import {
     BackupSummaryDtoToJSON,
 } from '../models/BackupSummaryDto';
 import {
+    type BlockUserRequest,
+    BlockUserRequestFromJSON,
+    BlockUserRequestToJSON,
+} from '../models/BlockUserRequest';
+import {
     type InstanceDto,
     InstanceDtoFromJSON,
     InstanceDtoToJSON,
@@ -33,12 +43,46 @@ import {
     PasswordResetDtoFromJSON,
     PasswordResetDtoToJSON,
 } from '../models/PasswordResetDto';
+import {
+    type ResolveReportRequest,
+    ResolveReportRequestFromJSON,
+    ResolveReportRequestToJSON,
+} from '../models/ResolveReportRequest';
+
+export interface BlockUserOperationRequest {
+    /**
+     * 
+     */
+    userId: string;
+    /**
+     * 
+     */
+    blockUserRequest: BlockUserRequest;
+}
 
 export interface CreatePasswordResetRequest {
     /**
      * 
      */
     userId: string;
+}
+
+export interface DeleteUserRequest {
+    /**
+     * 
+     */
+    userId: string;
+}
+
+export interface ResolveReportOperationRequest {
+    /**
+     * 
+     */
+    reportId: string;
+    /**
+     * 
+     */
+    resolveReportRequest: ResolveReportRequest;
 }
 
 export interface RestoreBackupRequest {
@@ -52,10 +96,80 @@ export interface RestoreBackupRequest {
     dryRun?: boolean;
 }
 
+export interface UnblockUserRequest {
+    /**
+     * 
+     */
+    userId: string;
+}
+
 /**
  * 
  */
 export class AdminApi extends runtime.BaseAPI {
+
+    /**
+     * Creates request options for blockUser without sending the request
+     */
+    async blockUserRequestOpts(requestParameters: BlockUserOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling blockUser().'
+            );
+        }
+
+        if (requestParameters['blockUserRequest'] == null) {
+            throw new runtime.RequiredError(
+                'blockUserRequest',
+                'Required parameter "blockUserRequest" was null or undefined when calling blockUser().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/users/{userId}/block`;
+        urlPath = urlPath.replace('{userId}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: BlockUserRequestToJSON(requestParameters['blockUserRequest']),
+        };
+    }
+
+    /**
+     * Block an account; it is signed out, cannot sign in and its public links stop working
+     */
+    async blockUserRaw(requestParameters: BlockUserOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminUserDto>> {
+        const requestOptions = await this.blockUserRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminUserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Block an account; it is signed out, cannot sign in and its public links stop working
+     */
+    async blockUser(requestParameters: BlockUserOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
+        const response = await this.blockUserRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
 
     /**
      * Creates request options for createPasswordReset without sending the request
@@ -108,6 +222,58 @@ export class AdminApi extends runtime.BaseAPI {
     async createPasswordReset(requestParameters: CreatePasswordResetRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<PasswordResetDto> {
         const response = await this.createPasswordResetRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for deleteUser without sending the request
+     */
+    async deleteUserRequestOpts(requestParameters: DeleteUserRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling deleteUser().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/users/{userId}`;
+        urlPath = urlPath.replace('{userId}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Delete an account like it deletes itself; spaces it is the last owner of go to the next member (highest role, longest membership), spaces without other members are deleted 
+     */
+    async deleteUserRaw(requestParameters: DeleteUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteUserRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Delete an account like it deletes itself; spaces it is the last owner of go to the next member (highest role, longest membership), spaces without other members are deleted 
+     */
+    async deleteUser(requestParameters: DeleteUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteUserRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -246,6 +412,114 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getReports without sending the request
+     */
+    async getReportsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/reports`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Reports of public links, open ones first
+     */
+    async getReportsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<AbuseReportDto>>> {
+        const requestOptions = await this.getReportsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(AbuseReportDtoFromJSON));
+    }
+
+    /**
+     * Reports of public links, open ones first
+     */
+    async getReports(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AbuseReportDto>> {
+        const response = await this.getReportsRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for resolveReport without sending the request
+     */
+    async resolveReportRequestOpts(requestParameters: ResolveReportOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['reportId'] == null) {
+            throw new runtime.RequiredError(
+                'reportId',
+                'Required parameter "reportId" was null or undefined when calling resolveReport().'
+            );
+        }
+
+        if (requestParameters['resolveReportRequest'] == null) {
+            throw new runtime.RequiredError(
+                'resolveReportRequest',
+                'Required parameter "resolveReportRequest" was null or undefined when calling resolveReport().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/reports/{reportId}/resolve`;
+        urlPath = urlPath.replace('{reportId}', encodeURIComponent(String(requestParameters['reportId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ResolveReportRequestToJSON(requestParameters['resolveReportRequest']),
+        };
+    }
+
+    /**
+     * Decide on a report: disable the reported public link, dismiss the report, or enable a disabled link again. The reporter and (for links) the one who shared it are told by email with the note 
+     */
+    async resolveReportRaw(requestParameters: ResolveReportOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AbuseReportDto>> {
+        const requestOptions = await this.resolveReportRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AbuseReportDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Decide on a report: disable the reported public link, dismiss the report, or enable a disabled link again. The reporter and (for links) the one who shared it are told by email with the note 
+     */
+    async resolveReport(requestParameters: ResolveReportOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AbuseReportDto> {
+        const response = await this.resolveReportRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for restoreBackup without sending the request
      */
     async restoreBackupRequestOpts(requestParameters: RestoreBackupRequest): Promise<runtime.RequestOpts> {
@@ -301,6 +575,59 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async restoreBackup(requestParameters: RestoreBackupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupSummaryDto> {
         const response = await this.restoreBackupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for unblockUser without sending the request
+     */
+    async unblockUserRequestOpts(requestParameters: UnblockUserRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling unblockUser().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/users/{userId}/block`;
+        urlPath = urlPath.replace('{userId}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Unblock an account
+     */
+    async unblockUserRaw(requestParameters: UnblockUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminUserDto>> {
+        const requestOptions = await this.unblockUserRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminUserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Unblock an account
+     */
+    async unblockUser(requestParameters: UnblockUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
+        const response = await this.unblockUserRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

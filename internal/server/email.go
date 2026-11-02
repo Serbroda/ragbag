@@ -33,15 +33,20 @@ func (s *Server) mailEnabled() bool { return s.mailer != nil }
 // sendMail delivers in the background: requests answer at once and take the same time whether a mail is sent
 // or not (nobody learns which accounts exist). Failures are logged without the message, which holds a link.
 func (s *Server) sendMail(user *store.User, subject, text string) {
+	s.deliver(user.Email, user.Username, subject, text)
+}
+
+// deliver sends to any address; who names the recipient in the log (never the address).
+func (s *Server) deliver(to, who, subject, text string) {
 	sender := s.mailer
 	go func() {
 		ctx, cancel := context.WithTimeout(context.Background(), time.Minute)
 		defer cancel()
-		if err := sender.Send(ctx, mail.Message{To: user.Email, Subject: subject, Text: text}); err != nil {
-			slog.Error("sending an email failed", "user", user.Username, "subject", subject, "error", err)
+		if err := sender.Send(ctx, mail.Message{To: to, Subject: subject, Text: text}); err != nil {
+			slog.Error("sending an email failed", "user", who, "subject", subject, "error", err)
 			return
 		}
-		slog.Info("email sent", "user", user.Username, "subject", subject)
+		slog.Info("email sent", "user", who, "subject", subject)
 	}()
 }
 
@@ -122,7 +127,7 @@ func (s *Server) RequestPasswordReset(c echo.Context) error {
 		return err
 	}
 	// Unconfirmed accounts get a new confirmation link when signing in instead
-	if user.EmailVerifiedAt == nil || !s.mailAllowed(user) {
+	if user.EmailVerifiedAt == nil || user.BlockedAt != nil || user.DeletedAt != nil || !s.mailAllowed(user) {
 		return c.NoContent(http.StatusNoContent)
 	}
 	token := randomToken()

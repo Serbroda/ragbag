@@ -83,6 +83,8 @@ type limits struct {
 	password *limiter
 	// fetch is loading user supplied URLs (page details, images) per user: the server is no free proxy
 	fetch *limiter
+	// report is reporting public links per IP
+	report *limiter
 }
 
 func newLimits() *limits {
@@ -94,6 +96,7 @@ func newLimits() *limits {
 		loginFailures: newLimiter(3*time.Minute, 10),
 		password:      newLimiter(time.Minute, 5),
 		fetch:         newLimiter(2*time.Second, 60),
+		report:        newLimiter(5*time.Minute, 5),
 	}
 }
 
@@ -139,6 +142,8 @@ func (s *Server) rateLimit(next echo.HandlerFunc) echo.HandlerFunc {
 			err = l.check(c, l.login, ip, "Too many login attempts, try again in a minute")
 		case req.Method == http.MethodPost && path == "/api/auth/register":
 			err = l.check(c, l.register, ip, "Too many new accounts from your network, try again later")
+		case req.Method == http.MethodPost && strings.HasPrefix(path, "/api/v1/shares/") && strings.HasSuffix(path, "/reports"):
+			err = l.check(c, l.report, ip, "Too many reports from your network, try again later")
 		case strings.HasPrefix(path, "/api/auth/password-reset"), strings.HasPrefix(path, "/api/auth/verify-email/"):
 			err = l.check(c, l.passwordReset, ip, "Too many attempts, try again in a minute")
 		}

@@ -1,5 +1,20 @@
-import { AdminApi, AppApi, AuthenticationApi, BookmarkApi, Configuration, ResponseError, ShareApi } from 'ragbag-frontend-sdk';
-import type { BackupSummaryDto, BookmarkDto, Middleware, SharedCollectionDto } from 'ragbag-frontend-sdk';
+import {
+	AdminApi,
+	AppApi,
+	AuthenticationApi,
+	BookmarkApi,
+	Configuration,
+	ResponseError,
+	ShareApi,
+	UserApi,
+} from 'ragbag-frontend-sdk';
+import type {
+	BackupSummaryDto,
+	BookmarkDto,
+	CreateReportRequest,
+	Middleware,
+	SharedCollectionDto,
+} from 'ragbag-frontend-sdk';
 
 const STORAGE_KEY = 'access_token';
 // Production builds are served by the backend itself, so the API lives on the same origin
@@ -151,6 +166,17 @@ export async function changePassword(currentPassword: string, newPassword: strin
 /** A collection shared by a public link (or one of its sub-collections); works without being signed in. */
 export async function getSharedCollection(token: string, collectionId?: string): Promise<SharedCollectionDto> {
 	return new ShareApi(anonConfig()).getSharedCollection({ token, collectionId });
+}
+
+/** Reports a public link to the administrators; works without being signed in. */
+export async function reportShare(token: string, createReportRequest: CreateReportRequest): Promise<void> {
+	await new ShareApi(anonConfig()).reportShare({ token, createReportRequest });
+}
+
+/** Deletes the own account for good and forgets the session. */
+export async function deleteAccount(password: string): Promise<void> {
+	await new UserApi(apiConfig()).deleteAccount({ deleteAccountRequest: { password } });
+	setAccessToken(null);
 }
 
 /** The public link of a shared collection, e.g. https://ragbag.example/app/share/abc… */

@@ -37,6 +37,8 @@ type table struct {
 	deferred []string
 	// parent references the same table: rows are inserted parents first
 	parent string
+	// since is the migration that added the table, when it is newer than the oldest backups (version 10)
+	since int64
 }
 
 var tables = []table{
@@ -57,6 +59,7 @@ var tables = []table{
 	{name: "collection_visits"},
 	{name: "collection_locks"},
 	{name: "space_bars"},
+	{name: "abuse_reports", since: 13},
 }
 
 // Skipped holds what a backup leaves out on purpose: pending reset and confirmation links, which are only
@@ -120,10 +123,16 @@ func write(ctx context.Context, database *sqlx.DB, w io.Writer, header Header) e
 	// The header first, so reading a backup can check it before going through the rows
 	out.Write(head[:len(head)-1])
 	out.WriteString(`,"tables":[`)
-	for i, t := range tables {
-		if i > 0 {
+	first := true
+	for _, t := range tables {
+		// Databases at an older schema (only a temporary one while upgrading a backup)
+		if t.since > header.SchemaVersion {
+			continue
+		}
+		if !first {
 			out.WriteString(",")
 		}
+		first = false
 		if err := writeTable(ctx, tx, out, t.name); err != nil {
 			return fmt.Errorf("backup of %s: %w", t.name, err)
 		}

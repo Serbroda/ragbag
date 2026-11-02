@@ -52,6 +52,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Users change their password themselves. Without email, **admins create one-time reset links** for people who
   forgot theirs.
 - Registration can be switched off once everybody has an account.
+- Users **delete their account** themselves; admins **block or delete accounts** and decide on **reports of public
+  links** (see *Moderation*).
 - Light and dark mode, works on phones and can be installed as an app.
 - The version is shown in the account menu.
 
@@ -214,6 +216,7 @@ On by default (`RATE_LIMIT_ENABLED`), kept in memory and reset by a restart. Ref
 | Password reset links                | 10, then one per minute                 | IP               |
 | Changing the password               | 5, then one per minute                  | user             |
 | Loading pages and images by address | 60, then one every 2 seconds            | user             |
+| Reports of public links             | 5, then one every 5 minutes             | IP               |
 
 IPv6 addresses count by their /64. When the page limit is reached, new links are still saved, only without
 loading title and preview. The client IP comes from `X-Forwarded-For` only when the proxy is in your own network
@@ -249,6 +252,28 @@ Unlimited unless set; on a public instance they keep single accounts from fillin
 
 Imports count as well; one that would exceed a quota is refused as a whole (the preview already says so).
 Images uploaded before Ragbag 0.15 count for nobody.
+
+### Moderation
+
+What an instance open to the public needs, for its users and for notice and action under the EU Digital Services
+Act (DSA):
+
+- **Deleting the own account** (*Profile & appearance*, with the password): spaces only that person is a member of
+  are deleted with it; links they added to spaces shared with others stay there, shown as `deleted-…`. Name,
+  email address, password, avatar, PIN, favorites, reactions and dashboards are gone. Being the only owner of a
+  space with other members needs another owner first.
+- **Blocking accounts** (*Manage users*, optionally with a reason): the account is signed out, sees the reason
+  when signing in, and its public links stop working. Unblocking undoes it. Instance admins cannot be blocked.
+- **Deleting accounts** as an admin works like the person deleting it themselves, except that spaces they were
+  the only owner of go to the member with the highest role.
+- **Reports:** every public link has *Report this collection* at the bottom, for anybody, without an account
+  (category, details, optionally name and email, and a confirmation of good faith). Admins find them under
+  *Manage users → Reports* (the account menu shows how many are open) and **disable the link** (the space cannot
+  share the collection again), **dismiss** the report or enable a disabled link again. With email, admins are
+  told about new reports, and the reporter and the person who shared the link learn the decision and its reasons.
+  Resolved reports are deleted after 180 days.
+
+Reports about anything else (spaces are not public) reach you through the contact address in your legal notice.
 
 ### Logs
 

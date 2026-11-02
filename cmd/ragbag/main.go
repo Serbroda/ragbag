@@ -86,6 +86,7 @@ func run() error {
 		for {
 			srv.PurgeOldTrash(ctx)
 			srv.DeleteUnverifiedAccounts(ctx)
+			srv.DeleteOldReports(ctx)
 			select {
 			case <-ctx.Done():
 				return

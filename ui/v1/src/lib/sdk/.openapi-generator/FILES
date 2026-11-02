@@ -11,8 +11,10 @@ apis/SpaceApi.ts
 apis/UserApi.ts
 apis/index.ts
 index.ts
+models/AbuseReportDto.ts
 models/AdminUserDto.ts
 models/BackupSummaryDto.ts
+models/BlockUserRequest.ts
 models/BookmarkDto.ts
 models/BookmarkMetadataDto.ts
 models/ChangePasswordRequest.ts
@@ -26,10 +28,12 @@ models/CompleteSetupRequest.ts
 models/CreateBookmarkDto.ts
 models/CreateCollectionDto.ts
 models/CreateInviteRequest.ts
+models/CreateReportRequest.ts
 models/CreateSpaceDto.ts
 models/DashboardDto.ts
 models/DashboardSectionDto.ts
 models/DashboardSectionTypeEnum.ts
+models/DeleteAccountRequest.ts
 models/DiscoverableSpaceDto.ts
 models/FetchMetadataRequest.ts
 models/ImportResultDto.ts
@@ -46,8 +50,10 @@ models/PasswordResetDto.ts
 models/PasswordResetPreviewDto.ts
 models/ReactionDto.ts
 models/RegisterRequest.ts
+models/ReportCategory.ts
 models/RequestPasswordResetRequest.ts
 models/ResetPasswordRequest.ts
+models/ResolveReportRequest.ts
 models/SetPinDto.ts
 models/SetReactionDto.ts
 models/SharedBookmarkDto.ts

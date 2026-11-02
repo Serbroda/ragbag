@@ -54,6 +54,11 @@ func (s *Server) GetCollectionShare(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return err
 	}
+	if share.DisabledAt != nil {
+		disabled := true
+		return c.JSON(http.StatusOK, api.CollectionShareDto{Shared: false, Disabled: &disabled,
+			DisabledReason: share.DisabledReason})
+	}
 	dto := api.CollectionShareDto{Shared: true, CreatedAt: &share.CreatedAt}
 	// Only those who manage the link get it; viewers merely learn that the collection is public
 	if role.Has(PermEditCollections) {
@@ -73,6 +78,11 @@ func (s *Server) ShareCollection(c echo.Context, collectionID api.ID) error {
 	}
 	if privateInPath(byID, collection) {
 		return badRequest("Private collections cannot be shared publicly")
+	}
+	if existing, err := s.store.ShareOf(ctxOf(c), collectionID); err == nil && existing.DisabledAt != nil {
+		return forbidden("The administrators disabled the public link of this collection after a report")
+	} else if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return err
 	}
 	share := &store.Share{CollectionID: collectionID, Token: randomToken(), CreatedBy: currentUser(c)}
 	if err := s.store.ReplaceShare(ctxOf(c), share); err != nil {

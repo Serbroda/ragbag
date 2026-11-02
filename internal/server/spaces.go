@@ -224,16 +224,7 @@ func (s *Server) DeleteSpace(c echo.Context, spaceID api.ID) error {
 	if _, err := s.requireSpace(ctxOf(c), s.store, spaceID, currentUser(c), PermDeleteSpace); err != nil {
 		return err
 	}
-	err := s.store.InTx(ctxOf(c), func(tx *store.Store) error {
-		space, err := tx.SpaceByID(ctxOf(c), spaceID)
-		if err != nil {
-			return err
-		}
-		if err := tx.DeleteSpace(ctxOf(c), spaceID); err != nil {
-			return err
-		}
-		return tx.DeleteImage(ctxOf(c), space.IconImageID)
-	})
+	err := s.store.InTx(ctxOf(c), func(tx *store.Store) error { return deleteSpace(c, tx, spaceID) })
 	if err != nil {
 		return err
 	}

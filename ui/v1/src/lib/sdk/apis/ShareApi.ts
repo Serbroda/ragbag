@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type CreateReportRequest,
+    CreateReportRequestFromJSON,
+    CreateReportRequestToJSON,
+} from '../models/CreateReportRequest';
+import {
     type SharedCollectionDto,
     SharedCollectionDtoFromJSON,
     SharedCollectionDtoToJSON,
@@ -28,6 +33,17 @@ export interface GetSharedCollectionRequest {
      * A sub-collection of the shared one; the shared collection itself if omitted
      */
     collectionId?: string;
+}
+
+export interface ReportShareRequest {
+    /**
+     * 
+     */
+    token: string;
+    /**
+     * 
+     */
+    createReportRequest: CreateReportRequest;
 }
 
 /**
@@ -90,6 +106,60 @@ export class ShareApi extends runtime.BaseAPI {
     async getSharedCollection(requestParameters: GetSharedCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedCollectionDto> {
         const response = await this.getSharedCollectionRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for reportShare without sending the request
+     */
+    async reportShareRequestOpts(requestParameters: ReportShareRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling reportShare().'
+            );
+        }
+
+        if (requestParameters['createReportRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createReportRequest',
+                'Required parameter "createReportRequest" was null or undefined when calling reportShare().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/v1/shares/{token}/reports`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateReportRequestToJSON(requestParameters['createReportRequest']),
+        };
+    }
+
+    /**
+     * Report a public link to the administrators of this installation (no account needed)
+     */
+    async reportShareRaw(requestParameters: ReportShareRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.reportShareRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Report a public link to the administrators of this installation (no account needed)
+     */
+    async reportShare(requestParameters: ReportShareRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.reportShareRaw(requestParameters, initOverrides);
     }
 
 }
