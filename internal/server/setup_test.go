@@ -205,6 +205,7 @@ func TestMovingAnInstanceWithABackup(t *testing.T) {
 	target.req("POST", "/api/v1/admin/backup/restore").as(setupAdmin).json(`{"format":"ragbag-collection"}`).expect(400)
 	summary := target.restore(setupAdmin, backup, true).expect(200)
 	summary.has("appVersion", "test").has("rows.users", 3).has("rows.bookmarks", 3).has("rows.collections", 9)
+	summary.has("admins.#", 1).has("admins.0", "admin").has("usernames.#", 3)
 	// The dry run changed nothing
 	target.req("GET", "/api/v1/users/me").as(setupAdmin).expect(200).has("username", "admin")
 	target.restore(setupAdmin, backup, false).expect(200)
@@ -231,4 +232,23 @@ func TestMovingAnInstanceWithABackup(t *testing.T) {
 	// Never over existing data
 	target.restore(admin, backup, true).expect(409)
 	require.NotEqual(t, http.StatusOK, target.restore(admin, backup, false).send().Status)
+}
+
+// The wizard warns when nobody would be an admin after restoring.
+func TestTheRestorePreviewTellsWhoWillBeAdmin(t *testing.T) {
+	source := newEnv(t)
+	backup := source.download(source.login("admin", "test123"))
+	for admins, expected := range map[string]int{"": 0, "danny": 0, "Admin,danny": 1} {
+		target := emptyEnv(t, func(cfg *config.Config) { cfg.AdminUsers = strings.Split(admins, ",") })
+		if admins == "" {
+			target = emptyEnv(t, func(cfg *config.Config) { cfg.AdminUsers = nil })
+		}
+		require.NoError(t, target.srv.Bootstrap(context.Background()))
+		name := "admin"
+		if admins == "danny" {
+			name = "danny"
+		}
+		setupAdmin := target.login(name, target.initialPassword())
+		target.restore(setupAdmin, backup, true).expect(200).has("admins.#", expected)
+	}
 }

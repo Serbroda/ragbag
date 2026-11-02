@@ -87,6 +87,13 @@ type Header struct {
 type Summary struct {
 	Header
 	Rows map[string]int `json:"rows"`
+	// Accounts are the restored accounts (without deleted ones), to tell who will be an admin
+	Accounts []Account `json:"accounts"`
+}
+
+type Account struct {
+	Username   string `db:"username" json:"username"`
+	SetupAdmin bool   `db:"setup_admin" json:"setup_admin"`
 }
 
 // ErrNotEmpty: a backup only replaces an instance without data (nothing but the setup admin).
@@ -328,6 +335,13 @@ func restore(ctx context.Context, database *sqlx.DB, path string, dryRun, requir
 			return nil, err
 		}
 	}
+	// Only the instance has the current schema; the temporary database of an upgrade may not
+	if requireEmpty {
+		if err := tx.SelectContext(ctx, &summary.Accounts, tx.Rebind(`SELECT username, setup_admin FROM users
+			WHERE deleted_at IS NULL ORDER BY username`)); err != nil {
+			return nil, err
+		}
+	}
 	if dryRun {
 		return summary, nil
 	}
@@ -446,4 +460,17 @@ func loadTable(ctx context.Context, tx *sqlx.Tx, reader *reader, name string, co
 		pending = later
 	}
 	return result, nil
+}
+
+// Admins are the restored accounts that will be instance admins: those in adminUsers (ADMIN_USERS), or while
+// that is empty the backup's setup admin.
+func (s *Summary) Admins(adminUsers []string) []string {
+	admins := []string{}
+	for _, account := range s.Accounts {
+		if len(adminUsers) == 0 && account.SetupAdmin ||
+			slices.ContainsFunc(adminUsers, func(name string) bool { return strings.EqualFold(name, account.Username) }) {
+			admins = append(admins, account.Username)
+		}
+	}
+	return admins
 }

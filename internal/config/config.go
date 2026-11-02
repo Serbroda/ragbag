@@ -181,6 +181,9 @@ func envInt(key string, fallback int) int {
 	return parsed
 }
 
+// AdminUsers reads ADMIN_USERS alone (the restore command needs no full configuration).
+func AdminUsers() []string { return envList("ADMIN_USERS") }
+
 func envList(key string) []string {
 	var values []string
 	for _, part := range strings.Split(env(key, ""), ",") {

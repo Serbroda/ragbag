@@ -35,6 +35,14 @@ export interface BackupSummaryDto {
      * Rows per table
      */
     rows: { [key: string]: number; };
+    /**
+     * The restored accounts that will be instance admins (ADMIN_USERS, or the backup's setup admin)
+     */
+    admins: Array<string>;
+    /**
+     * The first restored accounts by name (at most 20)
+     */
+    usernames: Array<string>;
 }
 
 /**
@@ -45,6 +53,8 @@ export function instanceOfBackupSummaryDto(value: object): value is BackupSummar
     if (!('schemaVersion' in value) || value['schemaVersion'] === undefined) return false;
     if (!('createdAt' in value) || value['createdAt'] === undefined) return false;
     if (!('rows' in value) || value['rows'] === undefined) return false;
+    if (!('admins' in value) || value['admins'] === undefined) return false;
+    if (!('usernames' in value) || value['usernames'] === undefined) return false;
     return true;
 }
 
@@ -62,6 +72,8 @@ export function BackupSummaryDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'schemaVersion': json['schemaVersion'],
         'createdAt': (json['createdAt'] == null ? json['createdAt'] : parseDateTime(json['createdAt'])),
         'rows': json['rows'],
+        'admins': json['admins'],
+        'usernames': json['usernames'],
     };
 }
 
@@ -80,6 +92,8 @@ export function BackupSummaryDtoToJSONTyped(value?: BackupSummaryDto | null, ign
         'schemaVersion': value['schemaVersion'],
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'rows': value['rows'],
+        'admins': value['admins'],
+        'usernames': value['usernames'],
     };
 }
 
