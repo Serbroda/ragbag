@@ -26,7 +26,10 @@ make release-patch  # tag the next version on main (also release-minor/-major); 
 ### Versions
 Git tags (`vX.Y.Z`) are the only place the version lives: builds take `git describe --tags --always --dirty`
 (e.g. `v1.2.0-3-gabc1234` after a release) into `main.version`, the server reports it in
-`GET /api/app/config/features` and the frontend shows it in the account menu. `scripts/release.sh` (behind the
+`GET /api/app/config/features` and the frontend shows it in the account menu. Container builds take the `VERSION`
+build argument (`make docker`, `install.sh --build`), else run `git describe` on the mounted context themselves
+(`docker compose up --build`), so `.git` is not in `.dockerignore`. The frontend offers a reload when the server
+reports another version than the one it was loaded with. `scripts/release.sh` (behind the
 `release-*` targets) only tags clean `main`; pushing stays a separate step.
 
 ### systemd
