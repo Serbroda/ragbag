@@ -77,6 +77,18 @@ export interface SpaceDto {
      * Links other members added since the current user last looked; only set in the space list
      */
     newCount?: number;
+    /**
+     * Markdown shown to members when they first open the space
+     */
+    welcomeMessage?: string;
+    /**
+     * The welcome message rendered as HTML (no raw HTML from the Markdown)
+     */
+    welcomeHtml?: string;
+    /**
+     * False until the current user saw the welcome of the space (POST /spaces/{id}/welcomed)
+     */
+    welcomed?: boolean;
 }
 
 
@@ -109,6 +121,9 @@ export function SpaceDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'discoverable': json['discoverable'] == null ? undefined : json['discoverable'],
         'joinRole': json['joinRole'] == null ? undefined : JoinRoleEnumFromJSON(json['joinRole']),
         'newCount': json['newCount'] == null ? undefined : json['newCount'],
+        'welcomeMessage': json['welcomeMessage'] == null ? undefined : json['welcomeMessage'],
+        'welcomeHtml': json['welcomeHtml'] == null ? undefined : json['welcomeHtml'],
+        'welcomed': json['welcomed'] == null ? undefined : json['welcomed'],
     };
 }
 
@@ -132,6 +147,9 @@ export function SpaceDtoToJSONTyped(value?: SpaceDto | null, ignoreDiscriminator
         'discoverable': value['discoverable'],
         'joinRole': JoinRoleEnumToJSON(value['joinRole']),
         'newCount': value['newCount'],
+        'welcomeMessage': value['welcomeMessage'],
+        'welcomeHtml': value['welcomeHtml'],
+        'welcomed': value['welcomed'],
     };
 }
 

@@ -26,6 +26,7 @@
 		TrashBinOutline,
 		UserAddSolid,
 		UserCircleOutline,
+		MessageCaptionOutline,
 		UsersOutline,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, fetchFeatureFlags, logout, logoutEverywhere } from '../api/client';
@@ -34,6 +35,8 @@
 	import DraggableTreeList from '../components/DraggableTreeList.svelte';
 	import CreateOrJoinSpaceModal from '../components/CreateOrJoinSpaceModal.svelte';
 	import InvitePeopleModal from '../components/InvitePeopleModal.svelte';
+	import WelcomeModal from '../components/WelcomeModal.svelte';
+	import { planetFile, randomPlanetSeed } from '../utils/planet';
 	import QuickSwitcher, { type SwitcherItem } from '../components/QuickSwitcher.svelte';
 	import SpaceRail from '../components/SpaceRail.svelte';
 	import NewsBell from '../components/NewsBell.svelte';
@@ -187,6 +190,49 @@
 	});
 
 	setContext('open-invite', () => (showInvite = true));
+
+	// The first space is created by the server, which cannot draw planets: it gets one as soon as the space bar
+	// shows it, also while another space is open (an invite leads there first)
+	const planetsGiven = new Set<string>();
+	$effect(() => {
+		if (!spacesReady) return;
+		for (const space of session.spaces) {
+			if (space.role === 'OWNER' && space.welcomed === false && !space.iconId && !planetsGiven.has(space.id)) {
+				planetsGiven.add(space.id);
+				givePlanet(space.id);
+			}
+		}
+	});
+
+	async function givePlanet(spaceId: string) {
+		try {
+			await spaceApi.setSpaceIcon({ spaceId, file: await planetFile(randomPlanetSeed()) });
+			await loadSpaces();
+		} catch {
+			// Without an icon the space shows its initials, as before
+		}
+	}
+
+	// --- Welcome: once per membership, on the first visit of the space ---
+	let welcomeOpen = $state(false);
+	let welcomeIntro = $state(false);
+	const welcomeChecked = new Set<string>();
+	$effect(() => {
+		const space = activeSpace;
+		if (!spacesReady || !space || space.welcomed !== false || welcomeChecked.has(space.id)) return;
+		welcomeChecked.add(space.id);
+		// Seen once shown, also when the tab is closed with the dialog open (welcomed stays as the server sent it)
+		spaceApi.markSpaceWelcomed({ spaceId: space.id }).catch(() => {});
+		// The owner of a new account's first space gets the introduction (spaces created by hand count as seen)
+		welcomeIntro = space.role === 'OWNER';
+		welcomeOpen = welcomeIntro || !!space.welcomeHtml;
+	});
+
+	function showWelcomeMessage() {
+		closeMenus();
+		welcomeIntro = false;
+		welcomeOpen = true;
+	}
 
 	const isMac = /mac/i.test(navigator.platform || navigator.userAgent);
 
@@ -692,6 +738,15 @@
 									Create collection <FolderPlusSolid class="h-4 w-4" />
 								</button>
 							{/if}
+							{#if activeSpace.welcomeHtml}
+								<button
+									role="menuitem"
+									class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+									onclick={showWelcomeMessage}
+								>
+									Welcome message <MessageCaptionOutline class="h-4 w-4" />
+								</button>
+							{/if}
 							<div class="my-1 h-px bg-gray-800"></div>
 							<button
 								role="menuitem"
@@ -1056,6 +1111,13 @@
 		spaceId={activeSpace.id}
 		spaceName={activeSpace.name}
 		myRole={activeSpace.role ?? 'VIEWER'}
+	/>
+	<WelcomeModal
+		bind:open={welcomeOpen}
+		space={activeSpace}
+		intro={welcomeIntro}
+		oninvite={() => (showInvite = true)}
+		onsettings={() => navigate('/space/:spaceId/settings', { params: { spaceId: activeSpace!.id } })}
 	/>
 {/if}
 

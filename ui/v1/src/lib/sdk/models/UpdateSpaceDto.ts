@@ -43,6 +43,10 @@ export interface UpdateSpaceDto {
      * 
      */
     joinRole?: JoinRoleEnum;
+    /**
+     * Markdown, at most 10000 characters; unchanged when left out, empty removes it
+     */
+    welcomeMessage?: string;
 }
 
 
@@ -69,6 +73,7 @@ export function UpdateSpaceDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
         'description': json['description'] == null ? undefined : json['description'],
         'discoverable': json['discoverable'] == null ? undefined : json['discoverable'],
         'joinRole': json['joinRole'] == null ? undefined : JoinRoleEnumFromJSON(json['joinRole']),
+        'welcomeMessage': json['welcomeMessage'] == null ? undefined : json['welcomeMessage'],
     };
 }
 
@@ -87,6 +92,7 @@ export function UpdateSpaceDtoToJSONTyped(value?: UpdateSpaceDto | null, ignoreD
         'description': value['description'],
         'discoverable': value['discoverable'],
         'joinRole': JoinRoleEnumToJSON(value['joinRole']),
+        'welcomeMessage': value['welcomeMessage'],
     };
 }
 

@@ -1210,6 +1210,28 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/spaces/{spaceId}/welcomed:
+    post:
+      summary: Mark the welcome of the space as seen by the current user
+      operationId: markSpaceWelcomed
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /v1/spaces/{spaceId}/news:
     get:
       summary: Links other members added since the current user last looked, per collection
@@ -3235,6 +3257,15 @@ components:
         newCount:
           type: integer
           description: Links other members added since the current user last looked; only set in the space list
+        welcomeMessage:
+          type: string
+          description: Markdown shown to members when they first open the space
+        welcomeHtml:
+          type: string
+          description: The welcome message rendered as HTML (no raw HTML from the Markdown)
+        welcomed:
+          type: boolean
+          description: False until the current user saw the welcome of the space (POST /spaces/{id}/welcomed)
       required:
         - id
         - name
@@ -3370,6 +3401,9 @@ components:
           description: Unchanged when left out; changing it needs MANAGE_MEMBERS
         joinRole:
           $ref: '#/components/schemas/JoinRoleEnum'
+        welcomeMessage:
+          type: string
+          description: Markdown, at most 10000 characters; unchanged when left out, empty removes it
       required:
         - name
 

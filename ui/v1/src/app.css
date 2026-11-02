@@ -90,20 +90,22 @@
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
 }
 
-/* Legal pages (Markdown rendered by the server) */
-.legal {
+/* Markdown rendered by the server: legal pages, welcome messages of spaces */
+.markdown {
     @apply text-sm leading-relaxed text-gray-700 dark:text-gray-300;
 }
-.legal h1, .legal h2 { @apply mt-8 mb-3 text-lg font-semibold text-gray-900 dark:text-white; }
-.legal h3, .legal h4 { @apply mt-6 mb-2 font-semibold text-gray-900 dark:text-white; }
-.legal p, .legal ul, .legal ol, .legal table, .legal blockquote { @apply mb-4; }
-.legal ul { @apply list-disc ps-6; }
-.legal ol { @apply list-decimal ps-6; }
-.legal li { @apply mb-1; }
-.legal a { @apply text-primary-600 underline dark:text-primary-400; }
-.legal strong { @apply font-semibold text-gray-900 dark:text-white; }
-.legal code { @apply rounded bg-gray-100 px-1 dark:bg-gray-800; }
-.legal blockquote { @apply border-s-4 border-gray-300 ps-4 italic dark:border-gray-700; }
-.legal table { @apply w-full border-collapse text-left; }
-.legal th, .legal td { @apply border border-gray-200 px-3 py-1.5 align-top dark:border-gray-700; }
-.legal hr { @apply my-8 border-gray-200 dark:border-gray-800; }
+.markdown h1, .markdown h2 { @apply mt-8 mb-3 text-lg font-semibold text-gray-900 dark:text-white; }
+.markdown h3, .markdown h4 { @apply mt-6 mb-2 font-semibold text-gray-900 dark:text-white; }
+.markdown p, .markdown ul, .markdown ol, .markdown table, .markdown blockquote { @apply mb-4; }
+.markdown ul { @apply list-disc ps-6; }
+.markdown ol { @apply list-decimal ps-6; }
+.markdown li { @apply mb-1; }
+.markdown a { @apply text-primary-600 underline dark:text-primary-400; }
+.markdown strong { @apply font-semibold text-gray-900 dark:text-white; }
+.markdown code { @apply rounded bg-gray-100 px-1 dark:bg-gray-800; }
+.markdown blockquote { @apply border-s-4 border-gray-300 ps-4 italic dark:border-gray-700; }
+.markdown table { @apply w-full border-collapse text-left; }
+.markdown th, .markdown td { @apply border border-gray-200 px-3 py-1.5 align-top dark:border-gray-700; }
+.markdown hr { @apply my-8 border-gray-200 dark:border-gray-800; }
+.markdown > :first-child { @apply mt-0; }
+.markdown > :last-child { @apply mb-0; }

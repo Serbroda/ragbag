@@ -76,6 +76,7 @@
 			currentUserId = me.id;
 			name = loadedSpace.name;
 			description = loadedSpace.description ?? '';
+			welcomeMessage = loadedSpace.welcomeMessage ?? '';
 			discoverable = loadedSpace.discoverable ?? false;
 			joinRole = loadedSpace.joinRole ?? 'VIEWER';
 			invites = loadedSpace.permissions?.includes('MANAGE_MEMBERS')
@@ -91,6 +92,8 @@
 	// --- General ---
 	let name = $state('');
 	let description = $state('');
+	/** Markdown shown to new members on their first visit; empty for none */
+	let welcomeMessage = $state('');
 	let savingGeneral = $state(false);
 	let generalMessage = $state<{ color: 'green' | 'red'; text: string } | null>(null);
 
@@ -104,7 +107,7 @@
 		try {
 			space = await spaceApi.updateSpace({
 				spaceId,
-				updateSpaceDto: { name: name.trim(), description: description.trim() || undefined },
+				updateSpaceDto: { name: name.trim(), description: description.trim() || undefined, welcomeMessage },
 			});
 			if (iconChange) {
 				space =
@@ -345,6 +348,22 @@
 						class="w-full"
 						disabled={!canEditSpace}
 					/>
+				</div>
+				<div>
+					<Label for="space-welcome" class="mb-2">Welcome message</Label>
+					<Textarea
+						id="space-welcome"
+						bind:value={welcomeMessage}
+						rows={6}
+						maxlength={10000}
+						class="w-full font-mono text-sm"
+						placeholder={'Welcome! A few **rules** for this space:\n\n- …'}
+						disabled={!canEditSpace}
+					/>
+					<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+						New members see it once when they first open the space, everybody finds it in the space menu.
+						Markdown: **bold**, *italic*, [links](https://…), lists, headings.
+					</p>
 				</div>
 				{#if generalMessage}
 					<Alert color={generalMessage.color}>{generalMessage.text}</Alert>

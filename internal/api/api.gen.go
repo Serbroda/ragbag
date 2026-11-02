@@ -1059,6 +1059,15 @@ type SpaceDto struct {
 	NewCount    *int                   `json:"newCount,omitempty"`
 	Permissions *[]SpacePermissionEnum `json:"permissions,omitempty"`
 	Role        *SpaceMemberRoleEnum   `json:"role,omitempty"`
+
+	// WelcomeHtml The welcome message rendered as HTML (no raw HTML from the Markdown)
+	WelcomeHtml *string `json:"welcomeHtml,omitempty"`
+
+	// WelcomeMessage Markdown shown to members when they first open the space
+	WelcomeMessage *string `json:"welcomeMessage,omitempty"`
+
+	// Welcomed False until the current user saw the welcome of the space (POST /spaces/{id}/welcomed)
+	Welcomed *bool `json:"welcomed,omitempty"`
 }
 
 // SpaceDtoList defines model for SpaceDtoList.
@@ -1205,6 +1214,9 @@ type UpdateSpaceDto struct {
 	// JoinRole Role of people joining a discoverable space
 	JoinRole *JoinRoleEnum `json:"joinRole,omitempty"`
 	Name     string        `json:"name"`
+
+	// WelcomeMessage Markdown, at most 10000 characters; unchanged when left out, empty removes it
+	WelcomeMessage *string `json:"welcomeMessage,omitempty"`
 }
 
 // UpdateSpaceMemberDto defines model for UpdateSpaceMemberDto.
@@ -1673,6 +1685,9 @@ type ServerInterface interface {
 	// RestoreFromTrash Restore deleted links and collections
 	// (POST /v1/spaces/{spaceId}/trash/restore)
 	RestoreFromTrash(ctx echo.Context, spaceId ID) error
+	// MarkSpaceWelcomed Mark the welcome of the space as seen by the current user
+	// (POST /v1/spaces/{spaceId}/welcomed)
+	MarkSpaceWelcomed(ctx echo.Context, spaceId ID) error
 	// Me Get current user
 	// (GET /v1/users/me)
 	Me(ctx echo.Context) error
@@ -3098,6 +3113,22 @@ func (w *ServerInterfaceWrapper) RestoreFromTrash(ctx echo.Context) error {
 	return err
 }
 
+// MarkSpaceWelcomed converts echo context to params.
+func (w *ServerInterfaceWrapper) MarkSpaceWelcomed(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.MarkSpaceWelcomed(ctx, spaceId)
+	return err
+}
+
 // Me converts echo context to params.
 func (w *ServerInterfaceWrapper) Me(ctx echo.Context) error {
 	var err error
@@ -3284,6 +3315,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/spaces/:spaceId/icon", wrapper.SetSpaceIcon, options.OperationMiddlewares["setSpaceIcon"]...)
 	router.GET(options.BaseURL+"/v1/spaces/discover", wrapper.DiscoverSpaces, options.OperationMiddlewares["discoverSpaces"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/join", wrapper.JoinSpace, options.OperationMiddlewares["joinSpace"]...)
+	router.POST(options.BaseURL+"/v1/spaces/:spaceId/welcomed", wrapper.MarkSpaceWelcomed, options.OperationMiddlewares["markSpaceWelcomed"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/news", wrapper.GetSpaceNews, options.OperationMiddlewares["getSpaceNews"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/seen", wrapper.MarkSpaceSeen, options.OperationMiddlewares["markSpaceSeen"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/leave", wrapper.LeaveSpace, options.OperationMiddlewares["leaveSpace"]...)
