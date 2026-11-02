@@ -98,6 +98,12 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   everything below them (`hiddenCollections`). Hidden collections answer 404, and every list or query of bookmarks
   must exclude them. Parents with hidden children cannot be deleted; leaving a space deletes private collections
   nobody can see anymore.
+- **Registration with invites** (`auth.go`): `POST /auth/register` takes an optional `inviteToken` (a space
+  invite); the account joins that space with its first space, with email only once confirmed
+  (`email_verifications.invite_id`, kept when a new link is sent; a revoked invite joins nothing). The use is
+  counted at registration. While `REGISTRATION_ENABLED` is off, only invites of instance admins register
+  (`inviteRegisters`). Signed-out visitors land on the login page with the remembered invite, which previews it
+  via the public `GET /auth/invites/{token}` (`registration`).
 - **Discoverable spaces** (`discoverable`, `join_role` VIEWER or CONTRIBUTOR) are listed by `GET /spaces/discover`
   for every account and joined via `POST /spaces/{id}/join`; other spaces answer 404 there. Joining never changes
   an existing membership, and changing the setting needs `MANAGE_MEMBERS`.

@@ -35,6 +35,11 @@ export interface RegisterRequest {
      * Required when the instance has terms of use (legal_terms in the feature flags)
      */
     acceptTerms?: boolean;
+    /**
+     * A space invite: the new account joins that space (with email once it is confirmed). While registration is disabled only invites of instance admins allow registering.
+     * 
+     */
+    inviteToken?: string;
 }
 
 /**
@@ -61,6 +66,7 @@ export function RegisterRequestFromJSONTyped(json: any, ignoreDiscriminator: boo
         'email': json['email'],
         'password': json['password'],
         'acceptTerms': json['acceptTerms'] == null ? undefined : json['acceptTerms'],
+        'inviteToken': json['inviteToken'] == null ? undefined : json['inviteToken'],
     };
 }
 
@@ -79,6 +85,7 @@ export function RegisterRequestToJSONTyped(value?: RegisterRequest | null, ignor
         'email': value['email'],
         'password': value['password'],
         'acceptTerms': value['acceptTerms'],
+        'inviteToken': value['inviteToken'],
     };
 }
 

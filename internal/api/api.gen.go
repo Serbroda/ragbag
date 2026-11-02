@@ -842,6 +842,9 @@ type InvitePreviewDto struct {
 	AlreadyMember bool    `json:"alreadyMember"`
 	InvitedBy     *string `json:"invitedBy,omitempty"`
 
+	// Registration Whether a new account can be created with this invite (only in the signed-out preview)
+	Registration *bool `json:"registration,omitempty"`
+
 	// Role Roles that can be handed out via invite links
 	Role *InviteRoleEnum `json:"role,omitempty"`
 
@@ -928,8 +931,11 @@ type RegisterRequest struct {
 	// AcceptTerms Required when the instance has terms of use (legal_terms in the feature flags)
 	AcceptTerms *bool  `json:"acceptTerms,omitempty"`
 	Email       string `json:"email"`
-	Password    string `json:"password"`
-	Username    string `json:"username"`
+
+	// InviteToken A space invite: the new account joins that space (with email once it is confirmed). While registration is disabled only invites of instance admins allow registering.
+	InviteToken *string `json:"inviteToken,omitempty"`
+	Password    string  `json:"password"`
+	Username    string  `json:"username"`
 }
 
 // ReportCategory defines model for ReportCategory.
@@ -1400,6 +1406,9 @@ type ServerInterface interface {
 	// GetLegalPage A legal page (imprint, privacy policy, terms of use) from DATA_DIR/legal, rendered from Markdown
 	// (GET /app/legal/{page})
 	GetLegalPage(ctx echo.Context, page GetLegalPageParamsPage) error
+	// GetRegistrationInvite Preview an invite without being signed in; registration says whether it can be used to create an account (registration enabled, or an invite of an instance admin)
+	// (GET /auth/invites/{token})
+	GetRegistrationInvite(ctx echo.Context, token string) error
 	// Login Login
 	// (POST /auth/login)
 	Login(ctx echo.Context) error
@@ -1723,6 +1732,22 @@ func (w *ServerInterfaceWrapper) GetLegalPage(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetLegalPage(ctx, page)
+	return err
+}
+
+// GetRegistrationInvite converts echo context to params.
+func (w *ServerInterfaceWrapper) GetRegistrationInvite(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", ctx.Param("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter token: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetRegistrationInvite(ctx, token)
 	return err
 }
 
@@ -3214,6 +3239,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/health", wrapper.Health, options.OperationMiddlewares["health"]...)
 	router.GET(options.BaseURL+"/app/legal/:page", wrapper.GetLegalPage, options.OperationMiddlewares["getLegalPage"]...)
 	router.POST(options.BaseURL+"/auth/register", wrapper.Register, options.OperationMiddlewares["register"]...)
+	router.GET(options.BaseURL+"/auth/invites/:token", wrapper.GetRegistrationInvite, options.OperationMiddlewares["getRegistrationInvite"]...)
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login, options.OperationMiddlewares["login"]...)
 	router.POST(options.BaseURL+"/auth/verify-email/:token", wrapper.VerifyEmail, options.OperationMiddlewares["verifyEmail"]...)
 	router.POST(options.BaseURL+"/auth/refresh", wrapper.Refresh, options.OperationMiddlewares["refresh"]...)

@@ -91,6 +91,31 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /auth/invites/{token}:
+    get:
+      summary: >
+        Preview an invite without being signed in; registration says whether it can be used to create an
+        account (registration enabled, or an invite of an instance admin)
+      operationId: getRegistrationInvite
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/InvitePreviewDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /auth/login:
     post:
       summary: Login
@@ -3038,6 +3063,11 @@ components:
         acceptTerms:
           type: boolean
           description: Required when the instance has terms of use (legal_terms in the feature flags)
+        inviteToken:
+          type: string
+          description: >
+            A space invite: the new account joins that space (with email once it is confirmed). While
+            registration is disabled only invites of instance admins allow registering.
       required:
         - username
         - email
@@ -3305,6 +3335,9 @@ components:
           description: False if the invite is expired or used up
         alreadyMember:
           type: boolean
+        registration:
+          type: boolean
+          description: Whether a new account can be created with this invite (only in the signed-out preview)
       required:
         - targetType
         - targetId
