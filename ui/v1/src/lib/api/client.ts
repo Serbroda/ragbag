@@ -143,8 +143,9 @@ export async function completeSetup(currentPassword: string, newPassword: string
 }
 
 /** Downloads a backup of the whole installation (instance admins). */
-export async function downloadBackup(): Promise<void> {
-	const response = await new AdminApi(apiConfig()).downloadBackupRaw();
+export async function downloadBackup(stored?: string): Promise<void> {
+	const api = new AdminApi(apiConfig());
+	const response = stored ? await api.downloadStoredBackupRaw({ name: stored }) : await api.downloadBackupRaw();
 	const blob = await response.value();
 	const name =
 		/filename="([^"]+)"/.exec(response.raw.headers.get('Content-Disposition') ?? '')?.[1] ?? 'ragbag-backup.json.gz';

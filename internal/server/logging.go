@@ -24,6 +24,7 @@ func logPath(path string) string {
 func (s *Server) logRequests(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		start := time.Now()
+		c.Set(logIPKey, s.logIP(c))
 		err := next(c)
 		if err != nil {
 			// Answers the request now, so the status below is the one the client gets
@@ -35,7 +36,8 @@ func (s *Server) logRequests(next echo.HandlerFunc) echo.HandlerFunc {
 		switch {
 		case status >= http.StatusInternalServerError:
 			level = slog.LevelError
-		case req.Method == http.MethodOptions, !strings.HasPrefix(path, "/api/"), strings.HasPrefix(path, "/api/v1/images/"):
+		case req.Method == http.MethodOptions, !strings.HasPrefix(path, "/api/"), strings.HasPrefix(path, "/api/v1/images/"),
+			path == "/api/health" && status == http.StatusOK:
 			level = slog.LevelDebug
 		}
 		attrs := []slog.Attr{
@@ -43,7 +45,7 @@ func (s *Server) logRequests(next echo.HandlerFunc) echo.HandlerFunc {
 			slog.String("path", logPath(path)),
 			slog.Int("status", status),
 			slog.Float64("ms", float64(time.Since(start).Microseconds())/1000),
-			slog.String("ip", c.RealIP()),
+			slog.String("ip", loggedIP(c)),
 		}
 		if user, _ := c.Get(usernameKey).(string); user != "" {
 			attrs = append(attrs, slog.String("user", user))
@@ -61,5 +63,15 @@ func audit(c echo.Context, level slog.Level, msg string, args ...any) {
 	if user, _ := c.Get(usernameKey).(string); user != "" {
 		args = append([]any{"user", user}, args...)
 	}
-	slog.Log(c.Request().Context(), level, msg, append(args, "ip", c.RealIP())...)
+	slog.Log(c.Request().Context(), level, msg, append(args, "ip", loggedIP(c))...)
+}
+
+const logIPKey = "logIP"
+
+// loggedIP is the client address as logRequests decided to log it (shortened with LOG_ANONYMIZE_IP).
+func loggedIP(c echo.Context) string {
+	if ip, ok := c.Get(logIPKey).(string); ok {
+		return ip
+	}
+	return c.RealIP()
 }

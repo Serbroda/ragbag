@@ -35,6 +35,12 @@ services:
         condition: service_healthy
     ports:
       - "${RAGBAG_PORT:-8080}:8080"
+    # stdout logs (with IP addresses) do not grow forever
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "5"
     volumes:
       # Files next to the database: the initial admin password, log files (LOG_FILE)
       - app-data:/data
@@ -72,8 +78,13 @@ services:
       QUOTA_SPACES_PER_USER: ${QUOTA_SPACES_PER_USER:-}
       QUOTA_COLLECTIONS_PER_SPACE: ${QUOTA_COLLECTIONS_PER_SPACE:-}
       QUOTA_UPLOAD_MB_PER_USER: ${QUOTA_UPLOAD_MB_PER_USER:-}
-      # Logs to stdout unless LOG_FILE is set (e.g. /data/logs/ragbag.log)
+      # Backups into /data/backups: the newest BACKUP_KEEP are kept, 0 is off
+      BACKUP_KEEP: ${BACKUP_KEEP:-7}
+      BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
+      # Logs to stdout unless LOG_FILE is set (e.g. /data/logs/ragbag.log, deleted after LOG_MAX_AGE_DAYS)
       LOG_FILE: ${LOG_FILE:-}
+      LOG_MAX_AGE_DAYS: ${LOG_MAX_AGE_DAYS:-7}
+      LOG_ANONYMIZE_IP: ${LOG_ANONYMIZE_IP:-false}
       LOG_LEVEL: ${LOG_LEVEL:-info}
       LOG_FORMAT: ${LOG_FORMAT:-text}
 

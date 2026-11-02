@@ -34,6 +34,11 @@ import {
     BackupSummaryDtoToJSON,
 } from '../models/BackupSummaryDto';
 import {
+    type BackupsDto,
+    BackupsDtoFromJSON,
+    BackupsDtoToJSON,
+} from '../models/BackupsDto';
+import {
     type BlockUserRequest,
     BlockUserRequestFromJSON,
     BlockUserRequestToJSON,
@@ -77,6 +82,13 @@ export interface DeleteUserRequest {
      * 
      */
     userId: string;
+}
+
+export interface DownloadStoredBackupRequest {
+    /**
+     * 
+     */
+    name: string;
 }
 
 export interface ResolveReportOperationRequest {
@@ -173,6 +185,51 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async blockUser(requestParameters: BlockUserOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
         const response = await this.blockUserRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for createBackup without sending the request
+     */
+    async createBackupRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/backups`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Make a backup into the backup directory now (older ones beyond BACKUP_KEEP are deleted)
+     */
+    async createBackupRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BackupsDto>> {
+        const requestOptions = await this.createBackupRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BackupsDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Make a backup into the backup directory now (older ones beyond BACKUP_KEEP are deleted)
+     */
+    async createBackup(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupsDto> {
+        const response = await this.createBackupRaw(initOverrides);
         return await response.value();
     }
 
@@ -327,6 +384,59 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for downloadStoredBackup without sending the request
+     */
+    async downloadStoredBackupRequestOpts(requestParameters: DownloadStoredBackupRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['name'] == null) {
+            throw new runtime.RequiredError(
+                'name',
+                'Required parameter "name" was null or undefined when calling downloadStoredBackup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/backups/{name}`;
+        urlPath = urlPath.replace('{name}', encodeURIComponent(String(requestParameters['name'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Download one of the stored backups
+     */
+    async downloadStoredBackupRaw(requestParameters: DownloadStoredBackupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<runtime.HttpFile>> {
+        const requestOptions = await this.downloadStoredBackupRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.BlobApiResponse(response);
+    }
+
+    /**
+     * Download one of the stored backups
+     */
+    async downloadStoredBackup(requestParameters: DownloadStoredBackupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.HttpFile> {
+        const response = await this.downloadStoredBackupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for getAdminOverview without sending the request
      */
     async getAdminOverviewRequestOpts(): Promise<runtime.RequestOpts> {
@@ -413,6 +523,51 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async getAllUsers(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<AdminUserDto>> {
         const response = await this.getAllUsersRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getBackups without sending the request
+     */
+    async getBackupsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/backups`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The backups the server made itself (BACKUP_KEEP), newest first, with the schedule
+     */
+    async getBackupsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<BackupsDto>> {
+        const requestOptions = await this.getBackupsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => BackupsDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The backups the server made itself (BACKUP_KEEP), newest first, with the schedule
+     */
+    async getBackups(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupsDto> {
+        const response = await this.getBackupsRaw(initOverrides);
         return await response.value();
     }
 

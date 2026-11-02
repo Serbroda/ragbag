@@ -112,6 +112,24 @@ func (e DashboardSectionTypeEnum) Valid() bool {
 	}
 }
 
+// Defines values for HealthDtoStatus.
+const (
+	Ok          HealthDtoStatus = "ok"
+	Unavailable HealthDtoStatus = "unavailable"
+)
+
+// Valid indicates whether the value is a known member of the HealthDtoStatus enum.
+func (e HealthDtoStatus) Valid() bool {
+	switch e {
+	case Ok:
+		return true
+	case Unavailable:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for InviteDtoTargetType.
 const (
 	InviteDtoTargetTypeCOLLECTION InviteDtoTargetType = "COLLECTION"
@@ -404,13 +422,22 @@ type AdminSettingsDto struct {
 	AdminUsers        []string `json:"adminUsers"`
 	AllowPrivateHosts bool     `json:"allowPrivateHosts"`
 
+	// BackupKeep BACKUP_KEEP, 0 when the server makes no backups itself
+	BackupKeep *int `json:"backupKeep,omitempty"`
+
 	// Email SMTP_HOST is set
-	Email bool `json:"email"`
+	Email        bool       `json:"email"`
+	LastBackupAt *time.Time `json:"lastBackupAt,omitempty"`
 
 	// LegalImprint Where the imprint is (an address or /app/legal/imprint), empty without one
-	LegalImprint             *string `json:"legalImprint,omitempty"`
-	LegalPrivacy             *string `json:"legalPrivacy,omitempty"`
-	LegalTerms               *string `json:"legalTerms,omitempty"`
+	LegalImprint   *string `json:"legalImprint,omitempty"`
+	LegalPrivacy   *string `json:"legalPrivacy,omitempty"`
+	LegalTerms     *string `json:"legalTerms,omitempty"`
+	LogAnonymizeIp *bool   `json:"logAnonymizeIp,omitempty"`
+
+	// LogFile LOG_FILE, empty for stdout
+	LogFile                  *string `json:"logFile,omitempty"`
+	LogMaxAgeDays            *int    `json:"logMaxAgeDays,omitempty"`
 	PublicUrl                string  `json:"publicUrl"`
 	QuotaCollectionsPerSpace int     `json:"quotaCollectionsPerSpace"`
 
@@ -442,6 +469,13 @@ type AdminUserDto struct {
 	Username string `json:"username"`
 }
 
+// BackupFileDto defines model for BackupFileDto.
+type BackupFileDto struct {
+	CreatedAt time.Time `json:"createdAt"`
+	Name      string    `json:"name"`
+	Size      int64     `json:"size"`
+}
+
 // BackupSummaryDto defines model for BackupSummaryDto.
 type BackupSummaryDto struct {
 	// Admins The restored accounts that will be instance admins (ADMIN_USERS, or the backup's setup admin)
@@ -457,6 +491,20 @@ type BackupSummaryDto struct {
 
 	// Usernames The first restored accounts by name (at most 20)
 	Usernames []string `json:"usernames"`
+}
+
+// BackupsDto defines model for BackupsDto.
+type BackupsDto struct {
+	Dir string `json:"dir"`
+
+	// Enabled BACKUP_KEEP is above 0
+	Enabled       bool            `json:"enabled"`
+	Files         []BackupFileDto `json:"files"`
+	IntervalHours int             `json:"intervalHours"`
+	Keep          int             `json:"keep"`
+
+	// NextAt When the next scheduled backup is due (enabled only)
+	NextAt *time.Time `json:"nextAt,omitempty"`
 }
 
 // BlockUserRequest defines model for BlockUserRequest.
@@ -727,6 +775,15 @@ type FeatureFlags map[string]string
 type FetchMetadataRequest struct {
 	Url string `json:"url"`
 }
+
+// HealthDto defines model for HealthDto.
+type HealthDto struct {
+	Status  HealthDtoStatus `json:"status"`
+	Version string          `json:"version"`
+}
+
+// HealthDtoStatus defines model for HealthDto.Status.
+type HealthDtoStatus string
 
 // ID UUID
 type ID = string
@@ -1376,12 +1433,24 @@ type ServerInterface interface {
 	// VerifyEmail Confirm the email address of a new account with the link from the email (public); signs in
 	// (POST /auth/verify-email/{token})
 	VerifyEmail(ctx echo.Context, token string) error
+	// Health For monitoring (public); 503 when the database does not answer
+	// (GET /health)
+	Health(ctx echo.Context) error
 	// DownloadBackup Backup of the whole installation (format "ragbag-instance", gzip compressed JSON): accounts with their password hashes, spaces, links, images, everything except pending reset and confirmation links
 	// (GET /v1/admin/backup)
 	DownloadBackup(ctx echo.Context) error
 	// RestoreBackup Replace the data of an empty installation (no spaces, no accounts but the setup admin) with a backup. Signs out the caller, whose account is replaced too
 	// (POST /v1/admin/backup/restore)
 	RestoreBackup(ctx echo.Context, params RestoreBackupParams) error
+	// GetBackups The backups the server made itself (BACKUP_KEEP), newest first, with the schedule
+	// (GET /v1/admin/backups)
+	GetBackups(ctx echo.Context) error
+	// CreateBackup Make a backup into the backup directory now (older ones beyond BACKUP_KEEP are deleted)
+	// (POST /v1/admin/backups)
+	CreateBackup(ctx echo.Context) error
+	// DownloadStoredBackup Download one of the stored backups
+	// (GET /v1/admin/backups/{name})
+	DownloadStoredBackup(ctx echo.Context, name string) error
 	// GetInstance State of the installation (whether a backup can be restored)
 	// (GET /v1/admin/instance)
 	GetInstance(ctx echo.Context) error
@@ -1791,6 +1860,15 @@ func (w *ServerInterfaceWrapper) VerifyEmail(ctx echo.Context) error {
 	return err
 }
 
+// Health converts echo context to params.
+func (w *ServerInterfaceWrapper) Health(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.Health(ctx)
+	return err
+}
+
 // DownloadBackup converts echo context to params.
 func (w *ServerInterfaceWrapper) DownloadBackup(ctx echo.Context) error {
 	var err error
@@ -1815,6 +1893,40 @@ func (w *ServerInterfaceWrapper) RestoreBackup(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.RestoreBackup(ctx, params)
+	return err
+}
+
+// GetBackups converts echo context to params.
+func (w *ServerInterfaceWrapper) GetBackups(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetBackups(ctx)
+	return err
+}
+
+// CreateBackup converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateBackup(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateBackup(ctx)
+	return err
+}
+
+// DownloadStoredBackup converts echo context to params.
+func (w *ServerInterfaceWrapper) DownloadStoredBackup(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "name" -------------
+	var name string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "name", ctx.Param("name"), &name, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter name: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DownloadStoredBackup(ctx, name)
 	return err
 }
 
@@ -3099,6 +3211,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/app/config/features", wrapper.FeatureFlags, options.OperationMiddlewares["featureFlags"]...)
+	router.GET(options.BaseURL+"/health", wrapper.Health, options.OperationMiddlewares["health"]...)
 	router.GET(options.BaseURL+"/app/legal/:page", wrapper.GetLegalPage, options.OperationMiddlewares["getLegalPage"]...)
 	router.POST(options.BaseURL+"/auth/register", wrapper.Register, options.OperationMiddlewares["register"]...)
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login, options.OperationMiddlewares["login"]...)
@@ -3121,6 +3234,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/admin/overview", wrapper.GetAdminOverview, options.OperationMiddlewares["getAdminOverview"]...)
 	router.GET(options.BaseURL+"/v1/admin/instance", wrapper.GetInstance, options.OperationMiddlewares["getInstance"]...)
 	router.GET(options.BaseURL+"/v1/admin/backup", wrapper.DownloadBackup, options.OperationMiddlewares["downloadBackup"]...)
+	router.GET(options.BaseURL+"/v1/admin/backups", wrapper.GetBackups, options.OperationMiddlewares["getBackups"]...)
+	router.POST(options.BaseURL+"/v1/admin/backups", wrapper.CreateBackup, options.OperationMiddlewares["createBackup"]...)
+	router.GET(options.BaseURL+"/v1/admin/backups/:name", wrapper.DownloadStoredBackup, options.OperationMiddlewares["downloadStoredBackup"]...)
 	router.POST(options.BaseURL+"/v1/admin/backup/restore", wrapper.RestoreBackup, options.OperationMiddlewares["restoreBackup"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
 	router.POST(options.BaseURL+"/v1/users/me/delete", wrapper.DeleteAccount, options.OperationMiddlewares["deleteAccount"]...)

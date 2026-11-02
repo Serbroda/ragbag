@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * The configuration in effect (environment variables), read-only
  * @export
@@ -71,6 +71,26 @@ export interface AdminSettingsDto {
      * 
      */
     legalTerms?: string;
+    /**
+     * BACKUP_KEEP, 0 when the server makes no backups itself
+     */
+    backupKeep?: number;
+    /**
+     * 
+     */
+    lastBackupAt?: Date;
+    /**
+     * 
+     */
+    logAnonymizeIp?: boolean;
+    /**
+     * LOG_FILE, empty for stdout
+     */
+    logFile?: string;
+    /**
+     * 
+     */
+    logMaxAgeDays?: number;
 }
 
 /**
@@ -113,6 +133,11 @@ export function AdminSettingsDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'legalImprint': json['legalImprint'] == null ? undefined : json['legalImprint'],
         'legalPrivacy': json['legalPrivacy'] == null ? undefined : json['legalPrivacy'],
         'legalTerms': json['legalTerms'] == null ? undefined : json['legalTerms'],
+        'backupKeep': json['backupKeep'] == null ? undefined : json['backupKeep'],
+        'lastBackupAt': json['lastBackupAt'] == null ? undefined : (parseDateTime(json['lastBackupAt'])),
+        'logAnonymizeIp': json['logAnonymizeIp'] == null ? undefined : json['logAnonymizeIp'],
+        'logFile': json['logFile'] == null ? undefined : json['logFile'],
+        'logMaxAgeDays': json['logMaxAgeDays'] == null ? undefined : json['logMaxAgeDays'],
     };
 }
 
@@ -140,6 +165,11 @@ export function AdminSettingsDtoToJSONTyped(value?: AdminSettingsDto | null, ign
         'legalImprint': value['legalImprint'],
         'legalPrivacy': value['legalPrivacy'],
         'legalTerms': value['legalTerms'],
+        'backupKeep': value['backupKeep'],
+        'lastBackupAt': value['lastBackupAt'] == null ? value['lastBackupAt'] : serializeDateTime(value['lastBackupAt']),
+        'logAnonymizeIp': value['logAnonymizeIp'],
+        'logFile': value['logFile'],
+        'logMaxAgeDays': value['logMaxAgeDays'],
     };
 }
 

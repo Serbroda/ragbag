@@ -19,6 +19,27 @@ paths:
               schema:
                 $ref: '#/components/schemas/FeatureFlags'
 
+  /health:
+    get:
+      summary: For monitoring (public); 503 when the database does not answer
+      operationId: health
+      tags:
+        - App
+      security: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDto'
+        '503':
+          description: The database does not answer
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HealthDto'
+
   /app/legal/{page}:
     get:
       summary: A legal page (imprint, privacy policy, terms of use) from DATA_DIR/legal, rendered from Markdown
@@ -565,6 +586,73 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/backups:
+    get:
+      summary: The backups the server made itself (BACKUP_KEEP), newest first, with the schedule
+      operationId: getBackups
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupsDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: Make a backup into the backup directory now (older ones beyond BACKUP_KEEP are deleted)
+      operationId: createBackup
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/BackupsDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/backups/{name}:
+    get:
+      summary: Download one of the stored backups
+      operationId: downloadStoredBackup
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: name
+          required: true
+          schema:
+            type: string
+      responses:
+        '200':
+          description: The backup file
+          content:
+            application/gzip:
+              schema:
+                type: string
+                format: binary
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /v1/admin/backup/restore:
     post:
@@ -2721,6 +2809,19 @@ components:
           type: string
         legalTerms:
           type: string
+        backupKeep:
+          type: integer
+          description: BACKUP_KEEP, 0 when the server makes no backups itself
+        lastBackupAt:
+          type: string
+          format: date-time
+        logAnonymizeIp:
+          type: boolean
+        logFile:
+          type: string
+          description: LOG_FILE, empty for stdout
+        logMaxAgeDays:
+          type: integer
       required:
         - publicUrl
         - registrationOpen
@@ -2941,6 +3042,61 @@ components:
         - username
         - email
         - password
+
+    HealthDto:
+      type: object
+      properties:
+        status:
+          type: string
+          enum: [ ok, unavailable ]
+        version:
+          type: string
+      required:
+        - status
+        - version
+
+    BackupsDto:
+      type: object
+      properties:
+        enabled:
+          type: boolean
+          description: BACKUP_KEEP is above 0
+        keep:
+          type: integer
+        intervalHours:
+          type: integer
+        dir:
+          type: string
+        nextAt:
+          type: string
+          format: date-time
+          description: When the next scheduled backup is due (enabled only)
+        files:
+          type: array
+          items:
+            $ref: '#/components/schemas/BackupFileDto'
+      required:
+        - enabled
+        - keep
+        - intervalHours
+        - dir
+        - files
+
+    BackupFileDto:
+      type: object
+      properties:
+        name:
+          type: string
+        size:
+          type: integer
+          format: int64
+        createdAt:
+          type: string
+          format: date-time
+      required:
+        - name
+        - size
+        - createdAt
 
     LegalPageDto:
       type: object
