@@ -21,6 +21,8 @@ type Config struct {
 	File      string
 	MaxSizeMB int
 	MaxFiles  int
+	// MaxAgeDays deletes rotated files older than that (0 keeps them by MaxFiles only)
+	MaxAgeDays int
 }
 
 // ParseLevel accepts debug, info, warn and error (case-insensitive).
@@ -38,6 +40,18 @@ func ParseLevel(value string) (slog.Level, error) {
 	return slog.LevelInfo, fmt.Errorf("LOG_LEVEL must be debug, info, warn or error, not %q", value)
 }
 
+// file is the log file in use, nil when logging to stdout.
+var file *lumberjack.Logger
+
+// Rotate starts a new log file (main does it daily), so MaxAgeDays also holds for quiet instances whose file
+// never reaches MaxSizeMB.
+func Rotate() error {
+	if file == nil {
+		return nil
+	}
+	return file.Rotate()
+}
+
 // Setup makes the configured logger the default and returns what has to be closed on shutdown.
 func Setup(cfg Config) (io.Closer, error) {
 	var out io.Writer = os.Stdout
@@ -46,10 +60,11 @@ func Setup(cfg Config) (io.Closer, error) {
 		if err := checkWritable(cfg.File); err != nil {
 			return nil, err
 		}
-		file := &lumberjack.Logger{
+		file = &lumberjack.Logger{
 			Filename:   cfg.File,
 			MaxSize:    cfg.MaxSizeMB,
 			MaxBackups: cfg.MaxFiles,
+			MaxAge:     cfg.MaxAgeDays,
 			Compress:   true,
 		}
 		out, closer = file, file

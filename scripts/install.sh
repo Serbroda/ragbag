@@ -124,9 +124,24 @@ REGISTRATION_ENABLED=true
 # Let "Fetch details" load pages from your own network (192.168.x.x)
 ALLOW_PRIVATE_HOSTS=false
 
-# Logs go to the journal (journalctl -u $APP); set a file to log there instead (rotated at 10 MB, 5 kept).
-# /var/log/$APP is created by systemd for the service; other places are not writable for it.
+# Backups the server makes itself into $DATA_DIR/backups (BACKUP_DIR): the newest BACKUP_KEEP are kept,
+# 0 turns them off. Copy them to another machine now and then.
+BACKUP_KEEP=7
+BACKUP_INTERVAL_HOURS=24
+
+# Legal pages for a public instance: Markdown files in $DATA_DIR/legal (imprint.md, privacy.md, terms.md,
+# templates in docs/legal of the repository) or addresses elsewhere
+#IMPRINT_URL=
+#PRIVACY_URL=
+#TERMS_URL=
+
+# Logs go to the journal (journalctl -u $APP), kept as long as journald keeps them (MaxRetentionSec in
+# /etc/systemd/journald.conf). A file instead, with its own retention (a new file daily, older ones deleted
+# after LOG_MAX_AGE_DAYS); /var/log/$APP is created by systemd for the service:
 #LOG_FILE=/var/log/$APP/$APP.log
+#LOG_MAX_AGE_DAYS=7
+# Log IP addresses without their last part (rate limits still use the full address)
+#LOG_ANONYMIZE_IP=false
 # debug, info, warn or error; debug also logs every request of the frontend
 #LOG_LEVEL=info
 ENV

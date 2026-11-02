@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { AdminApi } from 'ragbag-frontend-sdk';
-	import type { AdminOverviewDto } from 'ragbag-frontend-sdk';
+	import type { AdminOverviewDto, BackupsDto } from 'ragbag-frontend-sdk';
 	import { Button } from 'flowbite-svelte';
 	import { ArrowLeftOutline } from 'flowbite-svelte-icons';
 	import { apiConfig, downloadBackup, errorMessage } from '../api/client';
@@ -27,6 +27,8 @@
 	let overview = $state<AdminOverviewDto | null>(null);
 	let error = $state('');
 	let downloading = $state(false);
+	let creating = $state(false);
+	let backups = $state<BackupsDto | null>(null);
 
 	loadMe()
 		.then((me) => {
@@ -52,11 +54,35 @@
 		if (value === 'overview') loadOverview();
 	}
 
-	async function backup() {
+	$effect(() => {
+		if (allowed && tab === 'backup') loadBackups();
+	});
+
+	async function loadBackups() {
+		try {
+			backups = await new AdminApi(apiConfig()).getBackups();
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to load the backups.');
+		}
+	}
+
+	async function createBackup() {
+		creating = true;
+		error = '';
+		try {
+			backups = await new AdminApi(apiConfig()).createBackup();
+		} catch (err) {
+			error = await errorMessage(err, 'The backup failed.');
+		} finally {
+			creating = false;
+		}
+	}
+
+	async function backup(stored?: string) {
 		downloading = true;
 		error = '';
 		try {
-			await downloadBackup();
+			await downloadBackup(stored);
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to create the backup.');
 		} finally {
@@ -179,6 +205,8 @@
 							['Own network (ALLOW_PRIVATE_HOSTS)', s.allowPrivateHosts ? 'allowed' : 'refused', s.allowPrivateHosts && s.registrationOpen ? 'With open registration, anybody can make the server load addresses of your network' : ''],
 							['Admins (ADMIN_USERS)', s.adminUsers.length ? s.adminUsers.join(', ') : 'the account created on the first start', ''],
 							['Legal pages (DATA_DIR/legal, *_URL)', legalSummary(s), legalWarning(s)],
+							['Backups (BACKUP_KEEP)', s.backupKeep ? `the newest ${s.backupKeep} kept${s.lastBackupAt ? `, last ${s.lastBackupAt.toLocaleString()}` : ', none yet'}` : 'off', s.backupKeep ? '' : 'Without them, a broken disk or a mistake loses everything'],
+							['Logs (LOG_*)', `${s.logFile || 'stdout'}${s.logFile ? `, deleted after ${s.logMaxAgeDays} days` : ' (kept by journald or docker)'}${s.logAnonymizeIp ? ', IP addresses shortened' : ''}`, ''],
 							['Quotas (QUOTA_*)', `${quota(s.quotaLinksPerUser)} links and ${quota(s.quotaSpacesPerUser)} spaces per account, ${quota(s.quotaCollectionsPerSpace)} collections per space, ${quota(s.quotaUploadMbPerUser, ' MB')} images per account`, ''],
 						] as [label, value, warning] (label)}
 							<div class="flex flex-col gap-0.5 px-4 py-2.5 sm:flex-row sm:gap-4">
@@ -208,21 +236,51 @@
 							and public links. Keep it safe. It restores on the first login of a new, empty Ragbag – SQLite or
 							PostgreSQL, also of a newer version.
 						</p>
-						<Button disabled={downloading} onclick={backup}>{downloading ? 'Preparing…' : 'Download backup'}</Button>
+						<Button disabled={downloading} onclick={() => backup()}>{downloading ? 'Preparing…' : 'Download backup'}</Button>
 					</section>
 					<section>
 						<h2 class="mb-1 font-semibold">Automatic backups</h2>
-						<p class="mb-2 text-gray-500 dark:text-gray-400">
-							On the server, <code>ragbag backup FILE</code> writes the same file (it only needs
-							<code>DATABASE_URL</code>), e.g. every night from cron or a systemd timer:
-						</p>
-						<pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs dark:bg-gray-950/70"><code
-								># systemd service (install.sh), while the service runs
+						{#if backups?.enabled}
+							<p class="mb-3 text-gray-500 dark:text-gray-400">
+								Every {backups.intervalHours} hours into <code>{backups.dir}</code>, the newest {backups.keep} are kept.
+								{#if backups.nextAt}Next one {backups.nextAt.toLocaleString()}.{/if}
+								Copy them to another machine now and then: a disk failure takes them along otherwise.
+							</p>
+						{:else if backups}
+							<p class="mb-3 text-amber-700 dark:text-amber-300">
+								Off. Set <code>BACKUP_KEEP</code> (e.g. <code>7</code>) and restart, and Ragbag backs itself up every
+								<code>BACKUP_INTERVAL_HOURS</code> (24) into <code>{backups.dir}</code> (<code>BACKUP_DIR</code>).
+							</p>
+						{/if}
+						{#if backups && backups.files.length > 0}
+							<ul class="mb-3 divide-y divide-gray-100 rounded-lg border border-gray-200 dark:divide-gray-800 dark:border-gray-800">
+								{#each backups.files as file (file.name)}
+									<li class="flex items-center gap-3 px-3 py-2">
+										<span class="min-w-0 flex-1 truncate">
+											{file.createdAt.toLocaleString()}
+											<span class="text-xs text-gray-500">· {bytes(file.size)}</span>
+										</span>
+										<Button size="xs" color="light" disabled={downloading} onclick={() => backup(file.name)}>Download</Button>
+									</li>
+								{/each}
+							</ul>
+						{/if}
+						<Button size="sm" color="light" disabled={creating} onclick={createBackup}>
+							{creating ? 'Backing up…' : 'Back up now'}
+						</Button>
+						<details class="mt-4">
+							<summary class="cursor-pointer text-gray-500 dark:text-gray-400">Or from outside, e.g. by cron</summary>
+							<p class="my-2 text-gray-500 dark:text-gray-400">
+								<code>ragbag backup FILE</code> writes the same file and only needs <code>DATABASE_URL</code>:
+							</p>
+							<pre class="overflow-x-auto rounded-lg bg-gray-100 p-3 text-xs dark:bg-gray-950/70"><code
+									># systemd service (install.sh), while the service runs
 sudo sh -c 'set -a; . /etc/ragbag/ragbag.env; ragbag backup /var/backups/ragbag-$(date +%F).json.gz'
 
 # Docker
 docker compose exec -T app ragbag backup &gt; ragbag-$(date +%F).json.gz</code
-							></pre>
+								></pre>
+						</details>
 					</section>
 					<section>
 						<h2 class="mb-1 font-semibold">Restoring</h2>

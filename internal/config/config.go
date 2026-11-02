@@ -41,7 +41,18 @@ type Config struct {
 	// LegalURLs point to legal pages elsewhere (IMPRINT_URL, PRIVACY_URL, TERMS_URL), by page; without one
 	// the page is DATA_DIR/legal/<page>.md
 	LegalURLs map[string]string
+	Backups   Backups
 	Log       logging.Config
+	// AnonymizeIPs logs IPv4 addresses without their last byte and IPv6 ones by their /48 (rate limits still
+	// count the full address)
+	AnonymizeIPs bool
+}
+
+// Backups are made by the server itself into Dir every Interval when Keep (the number kept) is above 0.
+type Backups struct {
+	Dir      string
+	Keep     int
+	Interval time.Duration
 }
 
 // Quotas keep single accounts from filling the disk on public instances; 0 means unlimited.
@@ -93,6 +104,15 @@ func Load() (Config, error) {
 	}
 	cfg.Mail.TLS = strings.ToLower(env("SMTP_TLS", cfg.Mail.TLS))
 	cfg.PublicURL = strings.TrimRight(env("PUBLIC_URL", ""), "/")
+	cfg.AnonymizeIPs = envBool("LOG_ANONYMIZE_IP", false)
+	cfg.Backups = Backups{
+		Dir:      env("BACKUP_DIR", filepath.Join(cfg.DataDir, "backups")),
+		Keep:     envInt("BACKUP_KEEP", 0),
+		Interval: time.Duration(envInt("BACKUP_INTERVAL_HOURS", 24)) * time.Hour,
+	}
+	if cfg.Backups.Interval < time.Hour {
+		return cfg, errors.New("BACKUP_INTERVAL_HOURS must be at least 1")
+	}
 	cfg.LegalURLs = map[string]string{}
 	for page, key := range map[string]string{"imprint": "IMPRINT_URL", "privacy": "PRIVACY_URL", "terms": "TERMS_URL"} {
 		if value := env(key, ""); value != "" {
@@ -120,11 +140,12 @@ func Load() (Config, error) {
 		return cfg, fmt.Errorf("LOG_FORMAT must be text or json, not %q", format)
 	}
 	cfg.Log = logging.Config{
-		Level:     level,
-		JSON:      format == "json",
-		File:      strings.TrimSpace(env("LOG_FILE", "")),
-		MaxSizeMB: envInt("LOG_MAX_SIZE_MB", 10),
-		MaxFiles:  envInt("LOG_MAX_FILES", 5),
+		Level:      level,
+		JSON:       format == "json",
+		File:       strings.TrimSpace(env("LOG_FILE", "")),
+		MaxSizeMB:  envInt("LOG_MAX_SIZE_MB", 10),
+		MaxFiles:   envInt("LOG_MAX_FILES", 5),
+		MaxAgeDays: envInt("LOG_MAX_AGE_DAYS", 7),
 	}
 
 	secret := os.Getenv("JWT_SECRET")

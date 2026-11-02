@@ -44,9 +44,9 @@ ENV DATABASE_URL=sqlite:/data/ragbag.db \
 VOLUME /data
 EXPOSE 8080
 
-# Public endpoint, so the check works without a token
+# Public, checks the database too (also for monitoring: GET /api/health)
 HEALTHCHECK --interval=30s --timeout=5s --start-period=10s --retries=3 \
-    CMD wget -q -O /dev/null http://localhost:8080/api/app/config/features || exit 1
+    CMD wget -q -O /dev/null http://localhost:8080/api/health || exit 1
 
 # Starts as root only to fix the ownership of /data, then runs the server as the ragbag user
 ENTRYPOINT ["/entrypoint.sh"]

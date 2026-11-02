@@ -15,7 +15,9 @@ models/AbuseReportDto.ts
 models/AdminOverviewDto.ts
 models/AdminSettingsDto.ts
 models/AdminUserDto.ts
+models/BackupFileDto.ts
 models/BackupSummaryDto.ts
+models/BackupsDto.ts
 models/BlockUserRequest.ts
 models/BookmarkDto.ts
 models/BookmarkMetadataDto.ts
@@ -38,6 +40,7 @@ models/DashboardSectionTypeEnum.ts
 models/DeleteAccountRequest.ts
 models/DiscoverableSpaceDto.ts
 models/FetchMetadataRequest.ts
+models/HealthDto.ts
 models/ImportResultDto.ts
 models/InstanceDto.ts
 models/InviteDto.ts

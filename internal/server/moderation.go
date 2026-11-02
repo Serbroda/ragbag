@@ -501,6 +501,10 @@ func (s *Server) GetAdminOverview(c echo.Context) error {
 		admins = []string{}
 	}
 	quotas := s.cfg.Quotas
+	var lastBackup *time.Time
+	if files, err := s.backupDir().List(); err == nil && len(files) > 0 {
+		lastBackup = &files[0].CreatedAt
+	}
 	return c.JSON(http.StatusOK, api.AdminOverviewDto{
 		Version: s.version, Database: api.AdminOverviewDtoDatabase(s.store.Dialect), SchemaVersion: version,
 		Users: stats.Users, BlockedUsers: stats.BlockedUsers, UnconfirmedUsers: stats.UnconfirmedUsers,
@@ -511,6 +515,8 @@ func (s *Server) GetAdminOverview(c echo.Context) error {
 			AdminUsers: admins, QuotaLinksPerUser: quotas.LinksPerUser, QuotaSpacesPerUser: quotas.SpacesPerUser,
 			QuotaCollectionsPerSpace: quotas.CollectionsPerSpace, QuotaUploadMbPerUser: quotas.UploadMBPerUser,
 			LegalImprint: ptr(s.legalLink("imprint")), LegalPrivacy: ptr(s.legalLink("privacy")),
-			LegalTerms: ptr(s.legalLink("terms"))},
+			LegalTerms: ptr(s.legalLink("terms")), BackupKeep: &s.cfg.Backups.Keep,
+			LogAnonymizeIp: &s.cfg.AnonymizeIPs, LogFile: &s.cfg.Log.File, LogMaxAgeDays: &s.cfg.Log.MaxAgeDays,
+			LastBackupAt: lastBackup},
 	})
 }

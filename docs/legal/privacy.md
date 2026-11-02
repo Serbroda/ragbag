@@ -26,7 +26,10 @@ Bei jedem Aufruf verarbeitet der Server technisch notwendig deine IP-Adresse, Da
 aufgerufene Adresse (ohne Suchparameter; geheime Teile wie Freigabe-Tokens werden unkenntlich gemacht), den
 Statuscode, die Antwortzeit und, wenn du angemeldet bist, deinen Benutzernamen. Diese Protokolle dienen dem
 sicheren Betrieb, der Fehlersuche und der Abwehr von Angriffen (z. B. erratene Passwörter). Sie werden nach
-[7] Tagen gelöscht. Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist ein
+[7] Tagen gelöscht.
+<!-- Stimmt nur, wenn es auch so eingestellt ist: LOG_FILE mit LOG_MAX_AGE_DAYS=7, oder journald mit
+     MaxRetentionSec=7day; bei Docker begrenzen die Compose-Dateien die Größe, nicht die Dauer. Mit
+     LOG_ANONYMIZE_IP=true ergänze: "Die IP-Adresse wird dabei gekürzt gespeichert (ohne das letzte Byte)." --> Rechtsgrundlage ist Art. 6 Abs. 1 lit. f DSGVO; unser berechtigtes Interesse ist ein
 sicherer und stabiler Dienst.
 
 Zum Schutz vor Missbrauch zählt der Server Anfragen je IP-Adresse und Konto (Rate-Limits). Diese Zähler liegen
@@ -81,8 +84,9 @@ nach 180 Tagen. Rechtsgrundlage sind unsere Pflichten nach Art. 16 und 17 DSA (A
 ## 9. Datensicherung
 
 <!-- Streichen, wenn du keine Backups machst. -->
-Zur Sicherung erstellen wir regelmäßig Backups der Datenbank, die [30] Tage aufbewahrt werden. Gelöschte Daten
-verschwinden mit dem Ablauf der Backups.
+Zur Sicherung erstellen wir regelmäßig Backups der Datenbank, die [7] Tage aufbewahrt werden
+<!-- BACKUP_KEEP × BACKUP_INTERVAL_HOURS, plus Kopien an anderen Orten -->. Gelöschte Daten verschwinden mit dem
+Ablauf der Backups.
 
 ## 10. Deine Rechte
 

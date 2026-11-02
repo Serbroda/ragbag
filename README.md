@@ -197,6 +197,11 @@ Everything is configured with environment variables. For local runs the server a
 | `LOG_FILE`              | Log into this file instead of stdout, e.g. `/var/log/ragbag/ragbag.log` (rotated) | – (stdout) |
 | `LOG_FORMAT`            | `text` or `json` (one object per line, for log shippers)             | `text`                  |
 | `LOG_MAX_SIZE_MB`, `LOG_MAX_FILES` | Rotation of `LOG_FILE`: size per file, compressed old files kept | `10`, `5`       |
+| `LOG_MAX_AGE_DAYS`      | Old files of `LOG_FILE` are deleted after that many days (a new file starts daily) | `7`  |
+| `LOG_ANONYMIZE_IP`      | Log IPv4 addresses without the last byte, IPv6 by their /48 (rate limits use the full address) | `false` |
+| `BACKUP_KEEP`           | The server backs itself up and keeps the newest that many; `0` is off (see *Backups*) | `0` (templates: `7`) |
+| `BACKUP_INTERVAL_HOURS` | Hours between those backups                                          | `24`                    |
+| `BACKUP_DIR`            | Where they go                                                        | `DATA_DIR/backups`      |
 
 ### Reverse proxy
 
@@ -322,6 +327,23 @@ only write `/var/log/ragbag/` (created for it), so use `LOG_FILE=/var/log/ragbag
 the file into the data volume, e.g. `/data/logs/ragbag.log`. `LOG_LEVEL=debug` adds the requests for the app's files
 and images, `LOG_FORMAT=json` suits Loki, Graylog & co.
 
+**How long logs are kept** belongs into your privacy policy, as they hold IP addresses:
+
+- `LOG_FILE`: a new file every day (and at `LOG_MAX_SIZE_MB`), older ones are deleted after `LOG_MAX_AGE_DAYS`
+  (default 7).
+- journald (the systemd service without `LOG_FILE`): as long as journald keeps anything, for all services; set e.g.
+  `MaxRetentionSec=7day` in `/etc/systemd/journald.conf`.
+- Docker: the compose files limit the container log to 5 × 10 MB; it is gone with the container.
+
+`LOG_ANONYMIZE_IP=true` logs shortened addresses (`203.0.113.0`); fail2ban & co. then cannot block single
+addresses anymore, the built-in rate limits still can.
+
+### Monitoring
+
+`GET /api/health` answers `200 {"status":"ok","version":"…"}`, or `503` when the database does not, without a
+token – for Uptime Kuma, Gatus & co. and the container's health check. Successful checks are only logged at
+`debug`.
+
 ### Troubleshooting
 
 - **"Fetch details" finds nothing in Docker/Podman:** the log says *cannot resolve host* when DNS inside the
@@ -340,7 +362,13 @@ Ragbag backs up the whole instance into one file, the same for SQLite and Postgr
 password hash and PIN), space, collection, link, reaction, public link and image, with their ids. Left out are
 only pending reset and confirmation links.
 
-- **In the app:** account menu → *Administration* → *Backup* (instance admins), which also shows the commands for automatic backups
+- **Automatically:** with `BACKUP_KEEP=7` (set in the templates of `install.sh` and `.env.example`) the server
+  writes a backup every `BACKUP_INTERVAL_HOURS` (24) into `BACKUP_DIR` (`DATA_DIR/backups`: systemd
+  `/var/lib/ragbag/backups`, Docker `/data/backups`) and keeps the newest 7. The schedule follows the newest file,
+  so restarts neither add nor skip one. They are on the same disk as the database: copy them elsewhere now and
+  then (rsync, restic, …).
+- **In the app:** account menu → *Administration* → *Backup* (instance admins): download one now, the stored
+  ones, or *Back up now*
 - **On the command line**, with the same environment as the server (it may keep running):
   ```bash
   ragbag backup ragbag-backup.json.gz            # or without a file to stdout

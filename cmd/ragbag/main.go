@@ -73,14 +73,22 @@ func run() error {
 	if err := srv.Bootstrap(ctx); err != nil {
 		return err
 	}
-	// What has been in the trash for 30 days is deleted for good, accounts never confirmed after 7 days
+	// What has been in the trash for 30 days is deleted for good, accounts never confirmed after 7 days; a new
+	// log file every day, so LOG_MAX_AGE_DAYS holds
 	go func() {
 		ticker := time.NewTicker(time.Hour)
 		defer ticker.Stop()
+		day := time.Now().YearDay()
 		for {
 			srv.PurgeOldTrash(ctx)
 			srv.DeleteUnverifiedAccounts(ctx)
 			srv.DeleteOldReports(ctx)
+			if today := time.Now().YearDay(); today != day {
+				day = today
+				if err := logging.Rotate(); err != nil {
+					slog.Error("rotating the log file failed", "error", err)
+				}
+			}
 			select {
 			case <-ctx.Done():
 				return
@@ -88,6 +96,8 @@ func run() error {
 			}
 		}
 	}()
+
+	go srv.ScheduledBackups(ctx)
 
 	httpServer := &http.Server{
 		Addr:              cfg.Addr,

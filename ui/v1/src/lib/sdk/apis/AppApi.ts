@@ -14,6 +14,11 @@
 
 import * as runtime from '../runtime';
 import {
+    type HealthDto,
+    HealthDtoFromJSON,
+    HealthDtoToJSON,
+} from '../models/HealthDto';
+import {
     type LegalPageDto,
     LegalPageDtoFromJSON,
     LegalPageDtoToJSON,
@@ -118,6 +123,43 @@ export class AppApi extends runtime.BaseAPI {
      */
     async getLegalPage(requestParameters: GetLegalPageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LegalPageDto> {
         const response = await this.getLegalPageRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for health without sending the request
+     */
+    async healthRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/health`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * For monitoring (public); 503 when the database does not answer
+     */
+    async healthRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HealthDto>> {
+        const requestOptions = await this.healthRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HealthDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * For monitoring (public); 503 when the database does not answer
+     */
+    async health(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HealthDto> {
+        const response = await this.healthRaw(initOverrides);
         return await response.value();
     }
 

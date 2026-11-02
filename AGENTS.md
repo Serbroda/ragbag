@@ -45,7 +45,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required, also locally), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `IMPRINT_URL`/`PRIVACY_URL`/`TERMS_URL`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `IMPRINT_URL`/`PRIVACY_URL`/`TERMS_URL`, `BACKUP_*`, `LOG_MAX_AGE_DAYS`, `LOG_ANONYMIZE_IP`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
@@ -158,6 +158,11 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   mails a 1 h link in `password_resets` and always answers 204. Mails go out in the background, at most 3 per
   account per hour (`Server.mails`, also without rate limits); links use `PUBLIC_URL`, never the request's host. Without SMTP accounts are
   confirmed at once, waiting ones on their next login.
+- **Operations** (`operations.go`): `ScheduledBackups` (from main) writes `backup.Dir` files every
+  `BACKUP_INTERVAL_HOURS` when `BACKUP_KEEP` > 0, next due an interval after the newest file, and prunes to
+  `BACKUP_KEEP`; admins list, download and trigger them (`/admin/backups`). `GET /api/health` pings the database.
+  `LOG_ANONYMIZE_IP` shortens the IP in request and audit lines (`loggedIP`), main rotates `LOG_FILE` daily so
+  `LOG_MAX_AGE_DAYS` holds.
 - **Legal pages** (`legal.go`): `DATA_DIR/legal/{imprint,privacy,terms}.md` rendered by goldmark without raw
   HTML (`GET /app/legal/{page}`, public), or `IMPRINT_URL` & co.; the feature flags `legal_*` say where they are
   (`utils/legal.ts`, `LegalLinks.svelte`). With terms, `POST /auth/register` needs `acceptTerms`
