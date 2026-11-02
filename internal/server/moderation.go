@@ -509,6 +509,8 @@ func (s *Server) GetAdminOverview(c echo.Context) error {
 		Settings: api.AdminSettingsDto{PublicUrl: s.cfg.PublicURL, RegistrationOpen: s.cfg.RegistrationOpen,
 			Email: s.mailEnabled(), RateLimits: s.cfg.RateLimits, AllowPrivateHosts: s.cfg.AllowPrivateHosts,
 			AdminUsers: admins, QuotaLinksPerUser: quotas.LinksPerUser, QuotaSpacesPerUser: quotas.SpacesPerUser,
-			QuotaCollectionsPerSpace: quotas.CollectionsPerSpace, QuotaUploadMbPerUser: quotas.UploadMBPerUser},
+			QuotaCollectionsPerSpace: quotas.CollectionsPerSpace, QuotaUploadMbPerUser: quotas.UploadMBPerUser,
+			LegalImprint: ptr(s.legalLink("imprint")), LegalPrivacy: ptr(s.legalLink("privacy")),
+			LegalTerms: ptr(s.legalLink("terms"))},
 	})
 }

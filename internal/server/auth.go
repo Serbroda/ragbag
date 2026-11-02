@@ -23,12 +23,19 @@ const passwordResetValidity = 24 * time.Hour
 
 // FeatureFlags also reports the version, which the frontend shows in the account menu.
 func (s *Server) FeatureFlags(c echo.Context) error {
-	return c.JSON(http.StatusOK, map[string]string{
+	flags := map[string]string{
 		"registration_enabled": strconv.FormatBool(s.cfg.RegistrationOpen),
 		// Accounts confirm their address and passwords can be reset by email
 		"email":   strconv.FormatBool(s.mailEnabled()),
 		"version": s.version,
-	})
+	}
+	// legal_imprint, legal_privacy, legal_terms: where the pages are, when there are any
+	for page := range legalTitles {
+		if link := s.legalLink(page); link != "" {
+			flags["legal_"+page] = link
+		}
+	}
+	return c.JSON(http.StatusOK, flags)
 }
 
 func (s *Server) Register(c echo.Context) error {
@@ -42,9 +49,18 @@ func (s *Server) Register(c echo.Context) error {
 	if err := auth.ValidatePassword(req.Password); err != nil {
 		return badRequest("%s", err.Error())
 	}
+	terms := s.legalLink("terms") != ""
+	if terms && (req.AcceptTerms == nil || !*req.AcceptTerms) {
+		return badRequest("Please accept the terms of use")
+	}
 	user, err := s.createUser(c, req.Username, req.Email, req.Password, !s.mailEnabled())
 	if err != nil {
 		return err
+	}
+	if terms {
+		if err := s.store.AcceptTerms(ctxOf(c), user.ID); err != nil {
+			return err
+		}
 	}
 	c.Set(usernameKey, user.Username)
 	audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil)

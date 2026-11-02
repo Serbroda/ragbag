@@ -40,6 +40,7 @@
 	import Avatar from '../components/Avatar.svelte';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
+	import LegalLinks from '../components/LegalLinks.svelte';
 	import { collectionsToTree, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
@@ -836,6 +837,7 @@
 								Ragbag {appVersion}
 							</p>
 						{/if}
+						<LegalLinks class="px-2 pb-1 pt-0.5 text-xs text-gray-500" />
 					</div>
 				{/if}
 			</div>

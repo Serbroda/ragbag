@@ -31,6 +31,10 @@ export interface RegisterRequest {
      * 
      */
     password: string;
+    /**
+     * Required when the instance has terms of use (legal_terms in the feature flags)
+     */
+    acceptTerms?: boolean;
 }
 
 /**
@@ -56,6 +60,7 @@ export function RegisterRequestFromJSONTyped(json: any, ignoreDiscriminator: boo
         'username': json['username'],
         'email': json['email'],
         'password': json['password'],
+        'acceptTerms': json['acceptTerms'] == null ? undefined : json['acceptTerms'],
     };
 }
 
@@ -73,6 +78,7 @@ export function RegisterRequestToJSONTyped(value?: RegisterRequest | null, ignor
         'username': value['username'],
         'email': value['email'],
         'password': value['password'],
+        'acceptTerms': value['acceptTerms'],
     };
 }
 

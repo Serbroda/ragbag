@@ -307,6 +307,27 @@ func (e SpacePermissionEnum) Valid() bool {
 	}
 }
 
+// Defines values for GetLegalPageParamsPage.
+const (
+	Imprint GetLegalPageParamsPage = "imprint"
+	Privacy GetLegalPageParamsPage = "privacy"
+	Terms   GetLegalPageParamsPage = "terms"
+)
+
+// Valid indicates whether the value is a known member of the GetLegalPageParamsPage enum.
+func (e GetLegalPageParamsPage) Valid() bool {
+	switch e {
+	case Imprint:
+		return true
+	case Privacy:
+		return true
+	case Terms:
+		return true
+	default:
+		return false
+	}
+}
+
 // AbuseReportDto defines model for AbuseReportDto.
 type AbuseReportDto struct {
 	Category ReportCategory `json:"category"`
@@ -384,9 +405,14 @@ type AdminSettingsDto struct {
 	AllowPrivateHosts bool     `json:"allowPrivateHosts"`
 
 	// Email SMTP_HOST is set
-	Email                    bool   `json:"email"`
-	PublicUrl                string `json:"publicUrl"`
-	QuotaCollectionsPerSpace int    `json:"quotaCollectionsPerSpace"`
+	Email bool `json:"email"`
+
+	// LegalImprint Where the imprint is (an address or /app/legal/imprint), empty without one
+	LegalImprint             *string `json:"legalImprint,omitempty"`
+	LegalPrivacy             *string `json:"legalPrivacy,omitempty"`
+	LegalTerms               *string `json:"legalTerms,omitempty"`
+	PublicUrl                string  `json:"publicUrl"`
+	QuotaCollectionsPerSpace int     `json:"quotaCollectionsPerSpace"`
 
 	// QuotaLinksPerUser 0 is unlimited
 	QuotaLinksPerUser    int  `json:"quotaLinksPerUser"`
@@ -783,6 +809,14 @@ type JWT = string
 // JoinRoleEnum Role of people joining a discoverable space
 type JoinRoleEnum string
 
+// LegalPageDto defines model for LegalPageDto.
+type LegalPageDto struct {
+	// Html Rendered Markdown; raw HTML in the file is not passed through
+	Html  string `json:"html"`
+	Page  string `json:"page"`
+	Title string `json:"title"`
+}
+
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
 	Password string `json:"password"`
@@ -834,9 +868,11 @@ type ReactionDto struct {
 
 // RegisterRequest defines model for RegisterRequest.
 type RegisterRequest struct {
-	Email    string `json:"email"`
-	Password string `json:"password"`
-	Username string `json:"username"`
+	// AcceptTerms Required when the instance has terms of use (legal_terms in the feature flags)
+	AcceptTerms *bool  `json:"acceptTerms,omitempty"`
+	Email       string `json:"email"`
+	Password    string `json:"password"`
+	Username    string `json:"username"`
 }
 
 // ReportCategory defines model for ReportCategory.
@@ -1148,6 +1184,9 @@ type NotFound = Error
 // TooManyRequests defines model for TooManyRequests.
 type TooManyRequests = Error
 
+// GetLegalPageParamsPage defines parameters for GetLegalPage.
+type GetLegalPageParamsPage string
+
 // RefreshParams defines parameters for Refresh.
 type RefreshParams struct {
 	// RefreshToken Missing when signed out; the server then answers 401
@@ -1301,6 +1340,9 @@ type ServerInterface interface {
 	// FeatureFlags App Feature Flags
 	// (GET /app/config/features)
 	FeatureFlags(ctx echo.Context) error
+	// GetLegalPage A legal page (imprint, privacy policy, terms of use) from DATA_DIR/legal, rendered from Markdown
+	// (GET /app/legal/{page})
+	GetLegalPage(ctx echo.Context, page GetLegalPageParamsPage) error
 	// Login Login
 	// (POST /auth/login)
 	Login(ctx echo.Context) error
@@ -1596,6 +1638,22 @@ func (w *ServerInterfaceWrapper) FeatureFlags(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.FeatureFlags(ctx)
+	return err
+}
+
+// GetLegalPage converts echo context to params.
+func (w *ServerInterfaceWrapper) GetLegalPage(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "page" -------------
+	var page GetLegalPageParamsPage
+
+	err = runtime.BindStyledParameterWithOptions("simple", "page", ctx.Param("page"), &page, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter page: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetLegalPage(ctx, page)
 	return err
 }
 
@@ -3041,6 +3099,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/app/config/features", wrapper.FeatureFlags, options.OperationMiddlewares["featureFlags"]...)
+	router.GET(options.BaseURL+"/app/legal/:page", wrapper.GetLegalPage, options.OperationMiddlewares["getLegalPage"]...)
 	router.POST(options.BaseURL+"/auth/register", wrapper.Register, options.OperationMiddlewares["register"]...)
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login, options.OperationMiddlewares["login"]...)
 	router.POST(options.BaseURL+"/auth/verify-email/:token", wrapper.VerifyEmail, options.OperationMiddlewares["verifyEmail"]...)

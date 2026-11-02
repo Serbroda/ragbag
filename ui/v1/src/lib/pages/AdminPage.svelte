@@ -70,6 +70,20 @@
 		return `${(value / 1024 / 1024 / 1024).toFixed(2)} GB`;
 	}
 
+	function legalSummary(settings: AdminOverviewDto['settings']): string {
+		const pages = [
+			['imprint', settings.legalImprint],
+			['privacy policy', settings.legalPrivacy],
+			['terms of use', settings.legalTerms],
+		].filter(([, link]) => link);
+		return pages.length ? pages.map(([name, link]) => `${name} (${link})`).join(', ') : 'none';
+	}
+
+	function legalWarning(settings: AdminOverviewDto['settings']): string {
+		if (settings.legalImprint && settings.legalPrivacy) return '';
+		return 'A public instance needs at least an imprint and a privacy policy (in Germany § 5 DDG, Art. 13 GDPR); templates are in docs/legal of the repository';
+	}
+
 	const quota = (value: number, unit = '') => (value > 0 ? `${value.toLocaleString()}${unit}` : 'unlimited');
 </script>
 
@@ -164,6 +178,7 @@
 							['Rate limits (RATE_LIMIT_ENABLED)', s.rateLimits ? 'on' : 'off', s.rateLimits ? '' : 'Turn them on for a public instance'],
 							['Own network (ALLOW_PRIVATE_HOSTS)', s.allowPrivateHosts ? 'allowed' : 'refused', s.allowPrivateHosts && s.registrationOpen ? 'With open registration, anybody can make the server load addresses of your network' : ''],
 							['Admins (ADMIN_USERS)', s.adminUsers.length ? s.adminUsers.join(', ') : 'the account created on the first start', ''],
+							['Legal pages (DATA_DIR/legal, *_URL)', legalSummary(s), legalWarning(s)],
 							['Quotas (QUOTA_*)', `${quota(s.quotaLinksPerUser)} links and ${quota(s.quotaSpacesPerUser)} spaces per account, ${quota(s.quotaCollectionsPerSpace)} collections per space, ${quota(s.quotaUploadMbPerUser, ' MB')} images per account`, ''],
 						] as [label, value, warning] (label)}
 							<div class="flex flex-col gap-0.5 px-4 py-2.5 sm:flex-row sm:gap-4">

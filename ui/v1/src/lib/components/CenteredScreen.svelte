@@ -1,6 +1,7 @@
 <script lang="ts">
 	import type { Snippet } from 'svelte';
 	import Logo from './Logo.svelte';
+	import LegalLinks from './LegalLinks.svelte';
 
 	let { children, subtitle }: { children: Snippet; subtitle?: string } = $props();
 </script>
@@ -22,5 +23,6 @@
 		<div class="rounded-2xl border border-white/10 bg-gray-900/80 p-8 shadow-2xl backdrop-blur">
 			{@render children()}
 		</div>
+		<LegalLinks class="mt-4 justify-center text-xs text-gray-500" />
 	</div>
 </div>

@@ -111,7 +111,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
 	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/v1/images/*", "/api/v1/shares/*",
-	"/api/v1/shares/*/reports",
+	"/api/v1/shares/*/reports", "/api/app/legal/*",
 }
 
 func isPublic(requestPath string) bool {

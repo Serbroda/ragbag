@@ -38,6 +38,9 @@ type Config struct {
 	Mail mail.Config
 	// PublicURL is the address the instance is reached at, for links in emails (never taken from a request)
 	PublicURL string
+	// LegalURLs point to legal pages elsewhere (IMPRINT_URL, PRIVACY_URL, TERMS_URL), by page; without one
+	// the page is DATA_DIR/legal/<page>.md
+	LegalURLs map[string]string
 	Log       logging.Config
 }
 
@@ -90,6 +93,15 @@ func Load() (Config, error) {
 	}
 	cfg.Mail.TLS = strings.ToLower(env("SMTP_TLS", cfg.Mail.TLS))
 	cfg.PublicURL = strings.TrimRight(env("PUBLIC_URL", ""), "/")
+	cfg.LegalURLs = map[string]string{}
+	for page, key := range map[string]string{"imprint": "IMPRINT_URL", "privacy": "PRIVACY_URL", "terms": "TERMS_URL"} {
+		if value := env(key, ""); value != "" {
+			if !strings.HasPrefix(value, "https://") && !strings.HasPrefix(value, "http://") {
+				return cfg, fmt.Errorf("%s must be an http(s) address, not %q", key, value)
+			}
+			cfg.LegalURLs[page] = value
+		}
+	}
 	if cfg.Mail.Host != "" {
 		if cfg.Mail.From == "" {
 			return cfg, errors.New("SMTP_FROM is required with SMTP_HOST, e.g. Ragbag <ragbag@example.com>")

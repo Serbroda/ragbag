@@ -10,6 +10,7 @@
 	import TagFilter from '../components/TagFilter.svelte';
 	import Logo from '../components/Logo.svelte';
 	import ReportShareModal from '../components/ReportShareModal.svelte';
+	import LegalLinks from '../components/LegalLinks.svelte';
 	import { linkListClass, loadPreferences, preferences } from '../stores/preferences.svelte';
 
 	/**
@@ -169,10 +170,11 @@
 	</main>
 
 	{#if shared}
-		<footer class="mx-auto w-full max-w-6xl px-4 pb-8 text-xs text-gray-500 md:px-8">
+		<footer class="mx-auto flex w-full max-w-6xl flex-wrap gap-x-3 gap-y-1 px-4 pb-8 text-xs text-gray-500 md:px-8">
 			<button type="button" class="hover:text-gray-700 hover:underline dark:hover:text-gray-300" onclick={() => (reporting = true)}>
 				Report this collection
 			</button>
+			<LegalLinks />
 		</footer>
 		<ReportShareModal
 			bind:open={reporting}

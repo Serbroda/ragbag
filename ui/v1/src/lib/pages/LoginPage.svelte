@@ -5,12 +5,21 @@
 	import { errorMessage, login, register, fetchFeatureFlags, requestPasswordReset } from '../api/client';
 	import { route } from '../router';
 	import { continueAfterSignIn } from '../utils/signin';
+	import { legalLinks, type LegalLink } from '../utils/legal';
 
 	let registrationEnabled = $state(false);
 	// The server sends mails: new accounts confirm their address, passwords can be reset by mail
 	let emailEnabled = $state(false);
 	let isRegister = $state(false);
 	let isForgot = $state(false);
+	// With terms of use, registering means accepting them (and the privacy policy is linked next to it)
+	let terms = $state<LegalLink | undefined>();
+	let privacy = $state<LegalLink | undefined>();
+	let acceptTerms = $state(false);
+	legalLinks().then((links) => {
+		terms = links.find((link) => link.page === 'terms');
+		privacy = links.find((link) => link.page === 'privacy');
+	});
 
 	$effect(() => {
 		fetchFeatureFlags().then((flags) => {
@@ -34,6 +43,7 @@
 		email = '';
 		password = '';
 		confirmPassword = '';
+		acceptTerms = false;
 		error = '';
 		success = '';
 	}
@@ -68,7 +78,7 @@
 					loading = false;
 					return;
 				}
-				await register(username, email, password);
+				await register(username, email, password, acceptTerms);
 				success = emailEnabled
 					? `Almost done: we sent a confirmation link to ${email}. Open it to start using Ragbag.`
 					: 'Registration successful! You can now sign in.';
@@ -137,6 +147,30 @@
 					<Label for="confirmPassword" class="mb-2">Confirm Password</Label>
 					<Input id="confirmPassword" type="password" bind:value={confirmPassword} required />
 				</div>
+			{/if}
+			{#if isRegister && terms}
+				<label class="flex items-start gap-2 text-sm text-gray-300">
+					<input
+						type="checkbox"
+						class="mt-0.5 rounded border-gray-600 bg-gray-700 text-primary-600 focus:ring-primary-500"
+						bind:checked={acceptTerms}
+						required
+					/>
+					<span>
+						I accept the
+						<a href={terms.href} target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">terms of use</a
+						>{#if privacy}
+							and have read the
+							<a href={privacy.href} target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline"
+								>privacy policy</a
+							>{/if}.
+					</span>
+				</label>
+			{:else if isRegister && privacy}
+				<p class="text-xs text-gray-400">
+					How your data is used:
+					<a href={privacy.href} target="_blank" rel="noopener noreferrer" class="text-primary-500 hover:underline">privacy policy</a>.
+				</p>
 			{/if}
 			<Button type="submit" class="mt-2" disabled={loading}>
 				{#if loading}
