@@ -69,9 +69,6 @@ func run() error {
 	if err != nil {
 		return err
 	}
-	if cfg.Dev {
-		slog.Warn("RAGBAG_DEV=true: generated JWT secret, not for production")
-	}
 	// The first start of an empty instance creates an admin with a random password in DATA_DIR, also in development
 	if err := srv.Bootstrap(ctx); err != nil {
 		return err

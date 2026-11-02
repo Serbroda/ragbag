@@ -2,8 +2,6 @@
 package config
 
 import (
-	"crypto/rand"
-	"encoding/base64"
 	"errors"
 	"fmt"
 	"log/slog"
@@ -18,8 +16,6 @@ import (
 )
 
 type Config struct {
-	// Dev generates a JWT secret and allows the Vite dev server (CORS); never use it in production.
-	Dev  bool
 	Addr string
 	// DatabaseURL is "sqlite:<path>" or a "postgres://" URL.
 	DatabaseURL string
@@ -59,7 +55,6 @@ type Quotas struct {
 // Load reads RAGBAG_* and the documented short variables (see .env.example).
 func Load() (Config, error) {
 	cfg := Config{
-		Dev:                envBool("RAGBAG_DEV", false),
 		Addr:               env("RAGBAG_ADDR", ":8080"),
 		DatabaseURL:        env("DATABASE_URL", "sqlite:data/ragbag.db"),
 		JWTIssuer:          "ragbag",
@@ -127,25 +122,8 @@ func Load() (Config, error) {
 			return cfg, errors.New("JWT_SECRET must be at least 32 characters (openssl rand -base64 32)")
 		}
 		cfg.JWTSecret = []byte(secret)
-	case cfg.Dev:
-		// Sessions do not survive a restart in dev, which is fine
-		random := make([]byte, 32)
-		if _, err := rand.Read(random); err != nil {
-			return cfg, err
-		}
-		cfg.JWTSecret = []byte(base64.StdEncoding.EncodeToString(random))
 	default:
-		return cfg, errors.New("JWT_SECRET is required (or set RAGBAG_DEV=true for local development)")
-	}
-
-	if cfg.Dev {
-		if len(cfg.AdminUsers) == 0 {
-			cfg.AdminUsers = []string{"admin"}
-		}
-		if len(cfg.CORSAllowedOrigins) == 0 {
-			// The Vite dev server
-			cfg.CORSAllowedOrigins = []string{"http://localhost:5173"}
-		}
+		return cfg, errors.New("JWT_SECRET is required (openssl rand -base64 32)")
 	}
 	return cfg, nil
 }

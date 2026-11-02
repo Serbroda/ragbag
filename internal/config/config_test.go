@@ -19,9 +19,8 @@ func TestUninterpolatedComposeValuesAreIgnored(t *testing.T) {
 	}
 }
 
-func TestProductionNeedsASecret(t *testing.T) {
+func TestASecretIsRequired(t *testing.T) {
 	t.Setenv("JWT_SECRET", "")
-	t.Setenv("RAGBAG_DEV", "")
 	if _, err := Load(); err == nil {
 		t.Fatal("expected an error without JWT_SECRET")
 	}

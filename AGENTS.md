@@ -44,7 +44,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 ```
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
-(`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required unless `RAGBAG_DEV=true`), `ADMIN_USERS`,
+(`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required, also locally), `ADMIN_USERS`,
 `REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
