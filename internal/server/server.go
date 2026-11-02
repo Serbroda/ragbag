@@ -34,6 +34,7 @@ type Server struct {
 	tokens *auth.Tokens
 	fetch  *fetch.Client
 	admins map[string]bool
+	limits *limits
 	// version is written into exports and shown in the frontend
 	version string
 }
@@ -45,7 +46,7 @@ func New(cfg config.Config, st *store.Store, version string) *Server {
 	for _, name := range cfg.AdminUsers {
 		admins[strings.ToLower(name)] = true
 	}
-	return &Server{
+	srv := &Server{
 		cfg:     cfg,
 		store:   st,
 		tokens:  auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
@@ -53,6 +54,10 @@ func New(cfg config.Config, st *store.Store, version string) *Server {
 		admins:  admins,
 		version: version,
 	}
+	if cfg.RateLimits {
+		srv.limits = newLimits()
+	}
+	return srv
 }
 
 // Handler wires the API under /api and the frontend under /app.
@@ -77,7 +82,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 		}))
 	}
 
-	group := e.Group("/api", s.authenticate)
+	group := e.Group("/api", s.rateLimit, s.authenticate)
 	api.RegisterHandlersWithBaseURL(group, s, "")
 	group.Any("/*", func(c echo.Context) error { return echo.ErrNotFound })
 

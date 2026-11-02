@@ -98,10 +98,20 @@ func (s *Server) Login(c echo.Context) error {
 		return err
 	}
 	user, err := s.store.UserByLogin(ctxOf(c), req.Username)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+	// Failures count per account (username and email are the same one), unknown names by themselves
+	account := strings.ToLower(strings.TrimSpace(req.Username))
+	if err == nil {
+		account = user.ID
+	}
+	if err := s.loginBlocked(c, account); err != nil {
+		audit(c, slog.LevelWarn, "login refused after too many failures", "login", req.Username)
+		return err
+	}
 	if err != nil || !auth.CheckPassword(user.PasswordHash, req.Password) {
-		if err != nil && !errors.Is(err, store.ErrNotFound) {
-			return err
-		}
+		s.loginFailed(account)
 		// WARN with the IP: what fail2ban and the like look for
 		audit(c, slog.LevelWarn, "login failed", "login", req.Username)
 		return unauthorized("Invalid credentials")
@@ -147,6 +157,9 @@ func (s *Server) LogoutAll(c echo.Context) error {
 
 // ChangePassword signs out all other devices and hands this one new tokens.
 func (s *Server) ChangePassword(c echo.Context) error {
+	if err := s.limitPasswordChange(c); err != nil {
+		return err
+	}
 	var req api.ChangePasswordRequest
 	if err := bind(c, &req); err != nil {
 		return err
