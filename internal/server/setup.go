@@ -56,7 +56,7 @@ func (s *Server) Bootstrap(ctx context.Context) error {
 	if _, err := s.store.CreateSetupAdmin(ctx, username, username+"@localhost", hash); err != nil {
 		return err
 	}
-	slog.Warn("created the first account: sign in and choose your own password", "username", username,
+	slog.Warn("created the first account: sign in with the password in the file to set up Ragbag", "username", username,
 		"password_file", path)
 	return nil
 }

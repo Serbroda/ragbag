@@ -1,7 +1,7 @@
 # syntax=docker/dockerfile:1
 
 # --- Frontend ---------------------------------------------------------------------------------
-FROM docker.io/library/node:24-alpine AS ui
+FROM docker.io/library/node:26-alpine AS ui
 WORKDIR /build/ui/v1
 COPY ui/v1/package.json ui/v1/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
@@ -27,7 +27,7 @@ FROM scratch AS binary
 COPY --from=server /ragbag /ragbag
 
 # --- Runtime ----------------------------------------------------------------------------------
-FROM docker.io/library/alpine:3.22
+FROM docker.io/library/alpine:3.24
 
 # Fixed ids so a bind-mounted data directory can also be prepared on the host (chown 1000:1000 data)
 RUN apk add --no-cache su-exec ca-certificates tzdata \
