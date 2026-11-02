@@ -329,6 +329,156 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/admin/users/{userId}:
+    delete:
+      summary: >
+        Delete an account like it deletes itself; spaces it is the last owner of go to the next member (highest
+        role, longest membership), spaces without other members are deleted
+      operationId: deleteUser
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/admin/users/{userId}/block:
+    put:
+      summary: Block an account; it is signed out, cannot sign in and its public links stop working
+      operationId: blockUser
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/BlockUserRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Unblock an account
+      operationId: unblockUser
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/admin/reports:
+    get:
+      summary: Reports of public links, open ones first
+      operationId: getReports
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/AbuseReportDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/reports/{reportId}/resolve:
+    post:
+      summary: >
+        Decide on a report: disable the reported public link, dismiss the report, or enable a disabled link again.
+        The reporter and (for links) the one who shared it are told by email with the note
+      operationId: resolveReport
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: reportId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ResolveReportRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AbuseReportDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/admin/instance:
     get:
       summary: State of the installation (whether a backup can be restored)
@@ -430,6 +580,32 @@ paths:
                 $ref: '#/components/schemas/UserDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /v1/users/me/delete:
+    post:
+      summary: >
+        Delete the own account (needs the password). Spaces without other members are deleted with it; owning a
+        space with other members and no other owner answers 409 with the spaces in the detail
+      operationId: deleteAccount
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/DeleteAccountRequest'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /v1/users/me/start-space:
     put:
@@ -1321,6 +1497,35 @@ paths:
                 $ref: '#/components/schemas/SharedCollectionDto'
         '404':
           $ref: '#/components/responses/NotFound'
+
+  /v1/shares/{token}/reports:
+    post:
+      summary: Report a public link to the administrators of this installation (no account needed)
+      operationId: reportShare
+      tags:
+        - Share
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateReportRequest'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '404':
+          $ref: '#/components/responses/NotFound'
+        '429':
+          $ref: '#/components/responses/TooManyRequests'
 
   /v1/collections/{collectionId}/lock:
     put:
@@ -2374,11 +2579,137 @@ components:
         spaces:
           type: integer
           description: Number of spaces the user is a member of
+        blockedAt:
+          type: string
+          format: date-time
+          description: Blocked by an instance admin since then
+        blockedReason:
+          type: string
       required:
         - id
         - username
         - email
         - instanceAdmin
+
+    BlockUserRequest:
+      type: object
+      properties:
+        reason:
+          type: string
+          maxLength: 1000
+          description: Told to the user (login and email)
+
+    DeleteAccountRequest:
+      type: object
+      properties:
+        password:
+          type: string
+      required:
+        - password
+
+    ReportCategory:
+      type: string
+      enum: [ ILLEGAL, CHILD_SAFETY, COPYRIGHT, PERSONAL_DATA, SPAM, OTHER ]
+
+    CreateReportRequest:
+      type: object
+      properties:
+        collectionId:
+          $ref: '#/components/schemas/ID'
+          description: The sub-collection shown when reporting; the shared collection if omitted
+        category:
+          $ref: '#/components/schemas/ReportCategory'
+        details:
+          type: string
+          minLength: 10
+          maxLength: 5000
+          description: What is wrong and where, e.g. which link and why it is illegal
+        name:
+          type: string
+          maxLength: 200
+        email:
+          type: string
+          maxLength: 250
+          description: For the confirmation and the decision
+        goodFaith:
+          type: boolean
+          description: The reporter confirms that the report is accurate and complete to the best of their knowledge
+      required:
+        - category
+        - details
+        - goodFaith
+
+    ResolveReportRequest:
+      type: object
+      properties:
+        action:
+          type: string
+          enum: [ DISABLE_LINK, DISMISS, ENABLE_LINK ]
+        note:
+          type: string
+          maxLength: 2000
+          description: The reasons, sent to the reporter and (for links) the one who shared it
+      required:
+        - action
+
+    AbuseReportDto:
+      type: object
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        category:
+          $ref: '#/components/schemas/ReportCategory'
+        details:
+          type: string
+        reporterName:
+          type: string
+        reporterEmail:
+          type: string
+        createdAt:
+          type: string
+          format: date-time
+        collectionId:
+          $ref: '#/components/schemas/ID'
+          description: Unset once the collection was deleted
+        viewedCollectionId:
+          $ref: '#/components/schemas/ID'
+          description: The (sub-)collection shown when reporting
+        collectionName:
+          type: string
+          description: The path of the reported collection when reporting, e.g. "Recipes / Cakes"
+        spaceName:
+          type: string
+        shareToken:
+          type: string
+          description: The token of the reported link (/app/share/{token})
+        currentToken:
+          type: string
+          description: The collection's current link, if it still has one
+        sharedBy:
+          type: string
+          description: The username of who created the current link
+        sharedById:
+          $ref: '#/components/schemas/ID'
+        linkDisabled:
+          type: boolean
+        resolvedAt:
+          type: string
+          format: date-time
+        resolvedBy:
+          type: string
+        resolution:
+          type: string
+          enum: [ DISABLE_LINK, DISMISS, ENABLE_LINK ]
+        resolutionNote:
+          type: string
+      required:
+        - id
+        - category
+        - details
+        - createdAt
+        - collectionName
+        - shareToken
+        - linkDisabled
 
     CompleteSetupRequest:
       type: object
@@ -2478,6 +2809,9 @@ components:
         mustChangePassword:
           type: boolean
           description: The setup admin still has its random initial password; everything else answers 403
+        openReports:
+          type: integer
+          description: Unresolved reports of public links (instance admins only)
       required:
         - id
         - username
@@ -3039,6 +3373,11 @@ components:
         createdAt:
           type: string
           format: date-time
+        disabled:
+          type: boolean
+          description: Disabled by the administrators after a report; the collection cannot be shared again
+        disabledReason:
+          type: string
       required:
         - shared
 

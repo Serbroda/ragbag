@@ -164,6 +164,14 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users, create
   one-time password reset links (only SHA-256 hashes stored, 24 h, one per user) and download backups. The one
   exception: while `ADMIN_USERS` is empty, the setup admin (`users.setup_admin`) is the admin.
+- **Moderation** (`moderation.go`): deleting an account (`POST /users/me/delete`, password; admins
+  `DELETE /admin/users/{id}`) deletes the spaces it alone is a member of, leaves the others (`RemoveMember`) and
+  anonymizes the row (`AnonymizeUser`: `deleted-…`, no email, password or avatar, `deleted_at`), so `created_by`
+  stays valid. Only owners of spaces with others answer 409; admins hand those over (`NextOwner`). Blocked
+  accounts (`blocked_at`, reason shown at login) get 401 on every token and their public links answer 404, like
+  links disabled after a report (`collection_shares.disabled_at`, kept when revoked so the space cannot share
+  again). Reports (`abuse_reports`, public `POST /shares/{token}/reports`, rate limited) are resolved by instance
+  admins (disable, dismiss, enable); with email both sides get the decision. Resolved reports go after 180 days.
 - **Setup** (`setup.go`): `Bootstrap` (from main) creates the setup admin when there are no accounts, named after
   the first of `ADMIN_USERS` (else `admin`), with a random password in `DATA_DIR/initial-admin-password` (0600,
   never logged). Until `POST /auth/setup` (or a password change) replaces it, `must_change_password` makes every

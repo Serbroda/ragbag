@@ -91,6 +91,12 @@
 
 		{#if privateReason}
 			<p class="rounded-md bg-amber-500/10 p-3 text-amber-700 dark:text-amber-300">{privateReason}</p>
+		{:else if share?.disabled}
+			<p class="rounded-md bg-red-500/10 p-3 text-red-700 dark:text-red-300">
+				The administrators of this Ragbag disabled the public link after a report{share.disabledReason
+					? `: ${share.disabledReason}`
+					: '.'} It cannot be shared again.
+			</p>
 		{:else if share?.shared && share.token}
 			<div class="flex gap-2">
 				<Input readonly value={shareLink(share.token)} class="font-mono text-xs" onfocus={(e) => (e.currentTarget as HTMLInputElement).select()} />

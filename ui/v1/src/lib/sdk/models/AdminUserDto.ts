@@ -47,6 +47,14 @@ export interface AdminUserDto {
      * Number of spaces the user is a member of
      */
     spaces?: number;
+    /**
+     * Blocked by an instance admin since then
+     */
+    blockedAt?: Date;
+    /**
+     * 
+     */
+    blockedReason?: string;
 }
 
 /**
@@ -77,6 +85,8 @@ export function AdminUserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'instanceAdmin': json['instanceAdmin'],
         'createdAt': json['createdAt'] == null ? undefined : (parseDateTime(json['createdAt'])),
         'spaces': json['spaces'] == null ? undefined : json['spaces'],
+        'blockedAt': json['blockedAt'] == null ? undefined : (parseDateTime(json['blockedAt'])),
+        'blockedReason': json['blockedReason'] == null ? undefined : json['blockedReason'],
     };
 }
 
@@ -98,6 +108,8 @@ export function AdminUserDtoToJSONTyped(value?: AdminUserDto | null, ignoreDiscr
         'instanceAdmin': value['instanceAdmin'],
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
         'spaces': value['spaces'],
+        'blockedAt': value['blockedAt'] == null ? value['blockedAt'] : serializeDateTime(value['blockedAt']),
+        'blockedReason': value['blockedReason'],
     };
 }
 

@@ -90,11 +90,11 @@ func (s *Server) GetCollection(c echo.Context, collectionID api.ID) error {
 		return err
 	}
 	dto := collectionDto(collection)
-	_, err = s.store.ShareOf(ctxOf(c), collectionID)
+	share, err := s.store.ShareOf(ctxOf(c), collectionID)
 	if err != nil && !errors.Is(err, store.ErrNotFound) {
 		return err
 	}
-	isShared := err == nil
+	isShared := err == nil && share.DisabledAt == nil
 	dto.Shared = &isShared
 	return c.JSON(http.StatusOK, dto)
 }

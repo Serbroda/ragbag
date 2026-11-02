@@ -13,6 +13,27 @@ import (
 	openapi_types "github.com/oapi-codegen/runtime/types"
 )
 
+// Defines values for AbuseReportDtoResolution.
+const (
+	AbuseReportDtoResolutionDISABLELINK AbuseReportDtoResolution = "DISABLE_LINK"
+	AbuseReportDtoResolutionDISMISS     AbuseReportDtoResolution = "DISMISS"
+	AbuseReportDtoResolutionENABLELINK  AbuseReportDtoResolution = "ENABLE_LINK"
+)
+
+// Valid indicates whether the value is a known member of the AbuseReportDtoResolution enum.
+func (e AbuseReportDtoResolution) Valid() bool {
+	switch e {
+	case AbuseReportDtoResolutionDISABLELINK:
+		return true
+	case AbuseReportDtoResolutionDISMISS:
+		return true
+	case AbuseReportDtoResolutionENABLELINK:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CollectionVisibilityDto.
 const (
 	INTERNAL CollectionVisibilityDto = "INTERNAL"
@@ -148,6 +169,57 @@ func (e JoinRoleEnum) Valid() bool {
 	}
 }
 
+// Defines values for ReportCategory.
+const (
+	CHILDSAFETY  ReportCategory = "CHILD_SAFETY"
+	COPYRIGHT    ReportCategory = "COPYRIGHT"
+	ILLEGAL      ReportCategory = "ILLEGAL"
+	OTHER        ReportCategory = "OTHER"
+	PERSONALDATA ReportCategory = "PERSONAL_DATA"
+	SPAM         ReportCategory = "SPAM"
+)
+
+// Valid indicates whether the value is a known member of the ReportCategory enum.
+func (e ReportCategory) Valid() bool {
+	switch e {
+	case CHILDSAFETY:
+		return true
+	case COPYRIGHT:
+		return true
+	case ILLEGAL:
+		return true
+	case OTHER:
+		return true
+	case PERSONALDATA:
+		return true
+	case SPAM:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ResolveReportRequestAction.
+const (
+	ResolveReportRequestActionDISABLELINK ResolveReportRequestAction = "DISABLE_LINK"
+	ResolveReportRequestActionDISMISS     ResolveReportRequestAction = "DISMISS"
+	ResolveReportRequestActionENABLELINK  ResolveReportRequestAction = "ENABLE_LINK"
+)
+
+// Valid indicates whether the value is a known member of the ResolveReportRequestAction enum.
+func (e ResolveReportRequestAction) Valid() bool {
+	switch e {
+	case ResolveReportRequestActionDISABLELINK:
+		return true
+	case ResolveReportRequestActionDISMISS:
+		return true
+	case ResolveReportRequestActionENABLELINK:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for SpaceMemberRoleEnum.
 const (
 	SpaceMemberRoleEnumADMIN       SpaceMemberRoleEnum = "ADMIN"
@@ -217,12 +289,58 @@ func (e SpacePermissionEnum) Valid() bool {
 	}
 }
 
+// AbuseReportDto defines model for AbuseReportDto.
+type AbuseReportDto struct {
+	Category ReportCategory `json:"category"`
+
+	// CollectionId Unset once the collection was deleted
+	CollectionId *ID `json:"collectionId,omitempty"`
+
+	// CollectionName The path of the reported collection when reporting, e.g. "Recipes / Cakes"
+	CollectionName string    `json:"collectionName"`
+	CreatedAt      time.Time `json:"createdAt"`
+
+	// CurrentToken The collection's current link, if it still has one
+	CurrentToken *string `json:"currentToken,omitempty"`
+	Details      string  `json:"details"`
+
+	// Id UUID
+	Id             ID                        `json:"id"`
+	LinkDisabled   bool                      `json:"linkDisabled"`
+	ReporterEmail  *string                   `json:"reporterEmail,omitempty"`
+	ReporterName   *string                   `json:"reporterName,omitempty"`
+	Resolution     *AbuseReportDtoResolution `json:"resolution,omitempty"`
+	ResolutionNote *string                   `json:"resolutionNote,omitempty"`
+	ResolvedAt     *time.Time                `json:"resolvedAt,omitempty"`
+	ResolvedBy     *string                   `json:"resolvedBy,omitempty"`
+
+	// ShareToken The token of the reported link (/app/share/{token})
+	ShareToken string `json:"shareToken"`
+
+	// SharedBy The username of who created the current link
+	SharedBy *string `json:"sharedBy,omitempty"`
+
+	// SharedById UUID
+	SharedById *ID     `json:"sharedById,omitempty"`
+	SpaceName  *string `json:"spaceName,omitempty"`
+
+	// ViewedCollectionId The (sub-)collection shown when reporting
+	ViewedCollectionId *ID `json:"viewedCollectionId,omitempty"`
+}
+
+// AbuseReportDtoResolution defines model for AbuseReportDto.Resolution.
+type AbuseReportDtoResolution string
+
 // AdminUserDto defines model for AdminUserDto.
 type AdminUserDto struct {
 	// AvatarId UUID
-	AvatarId  *ID        `json:"avatarId,omitempty"`
-	CreatedAt *time.Time `json:"createdAt,omitempty"`
-	Email     string     `json:"email"`
+	AvatarId *ID `json:"avatarId,omitempty"`
+
+	// BlockedAt Blocked by an instance admin since then
+	BlockedAt     *time.Time `json:"blockedAt,omitempty"`
+	BlockedReason *string    `json:"blockedReason,omitempty"`
+	CreatedAt     *time.Time `json:"createdAt,omitempty"`
+	Email         string     `json:"email"`
 
 	// Id UUID
 	Id            ID   `json:"id"`
@@ -242,6 +360,12 @@ type BackupSummaryDto struct {
 	// Rows Rows per table
 	Rows          map[string]int `json:"rows"`
 	SchemaVersion int64          `json:"schemaVersion"`
+}
+
+// BlockUserRequest defines model for BlockUserRequest.
+type BlockUserRequest struct {
+	// Reason Told to the user (login and email)
+	Reason *string `json:"reason,omitempty"`
 }
 
 // BookmarkDto defines model for BookmarkDto.
@@ -370,7 +494,11 @@ type CollectionNewsDto struct {
 // CollectionShareDto defines model for CollectionShareDto.
 type CollectionShareDto struct {
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
-	Shared    bool       `json:"shared"`
+
+	// Disabled Disabled by the administrators after a report; the collection cannot be shared again
+	Disabled       *bool   `json:"disabled,omitempty"`
+	DisabledReason *string `json:"disabledReason,omitempty"`
+	Shared         bool    `json:"shared"`
 
 	// Token The secret part of the link /app/share/{token}; only set if shared
 	Token *string `json:"token,omitempty"`
@@ -422,6 +550,24 @@ type CreateInviteRequest struct {
 // CreateInviteRequestTargetType defines model for CreateInviteRequest.TargetType.
 type CreateInviteRequestTargetType string
 
+// CreateReportRequest defines model for CreateReportRequest.
+type CreateReportRequest struct {
+	Category ReportCategory `json:"category"`
+
+	// CollectionId The sub-collection shown when reporting; the shared collection if omitted
+	CollectionId *ID `json:"collectionId,omitempty"`
+
+	// Details What is wrong and where, e.g. which link and why it is illegal
+	Details string `json:"details"`
+
+	// Email For the confirmation and the decision
+	Email *string `json:"email,omitempty"`
+
+	// GoodFaith The reporter confirms that the report is accurate and complete to the best of their knowledge
+	GoodFaith bool    `json:"goodFaith"`
+	Name      *string `json:"name,omitempty"`
+}
+
 // CreateSpaceDto defines model for CreateSpaceDto.
 type CreateSpaceDto struct {
 	Description *string `json:"description,omitempty"`
@@ -449,6 +595,11 @@ type DashboardSectionDto struct {
 
 // DashboardSectionTypeEnum LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
 type DashboardSectionTypeEnum string
+
+// DeleteAccountRequest defines model for DeleteAccountRequest.
+type DeleteAccountRequest struct {
+	Password string `json:"password"`
+}
 
 // DiscoverableSpaceDto defines model for DiscoverableSpaceDto.
 type DiscoverableSpaceDto struct {
@@ -617,6 +768,9 @@ type RegisterRequest struct {
 	Username string `json:"username"`
 }
 
+// ReportCategory defines model for ReportCategory.
+type ReportCategory string
+
 // RequestPasswordResetRequest defines model for RequestPasswordResetRequest.
 type RequestPasswordResetRequest struct {
 	// Login Username or email address
@@ -627,6 +781,17 @@ type RequestPasswordResetRequest struct {
 type ResetPasswordRequest struct {
 	NewPassword string `json:"newPassword"`
 }
+
+// ResolveReportRequest defines model for ResolveReportRequest.
+type ResolveReportRequest struct {
+	Action ResolveReportRequestAction `json:"action"`
+
+	// Note The reasons, sent to the reporter and (for links) the one who shared it
+	Note *string `json:"note,omitempty"`
+}
+
+// ResolveReportRequestAction defines model for ResolveReportRequest.Action.
+type ResolveReportRequestAction string
 
 // SetPinDto defines model for SetPinDto.
 type SetPinDto struct {
@@ -895,6 +1060,9 @@ type UserDto struct {
 	// MustChangePassword The setup admin still has its random initial password; everything else answers 403
 	MustChangePassword *bool `json:"mustChangePassword,omitempty"`
 
+	// OpenReports Unresolved reports of public links (instance admins only)
+	OpenReports *int `json:"openReports,omitempty"`
+
 	// StartSpaceId Opened on start instead of the last visited space; unset when the user leaves it
 	StartSpaceId *ID    `json:"startSpaceId,omitempty"`
 	Username     string `json:"username"`
@@ -976,6 +1144,12 @@ type RegisterJSONRequestBody = RegisterRequest
 // CompleteSetupJSONRequestBody defines body for CompleteSetup for application/json ContentType.
 type CompleteSetupJSONRequestBody = CompleteSetupRequest
 
+// ResolveReportJSONRequestBody defines body for ResolveReport for application/json ContentType.
+type ResolveReportJSONRequestBody = ResolveReportRequest
+
+// BlockUserJSONRequestBody defines body for BlockUser for application/json ContentType.
+type BlockUserJSONRequestBody = BlockUserRequest
+
 // UpdateBookmarkJSONRequestBody defines body for UpdateBookmark for application/json ContentType.
 type UpdateBookmarkJSONRequestBody = UpdateBookmarkDto
 
@@ -1006,6 +1180,9 @@ type MoveCollectionJSONRequestBody = MoveCollectionDto
 // CreateInviteJSONRequestBody defines body for CreateInvite for application/json ContentType.
 type CreateInviteJSONRequestBody = CreateInviteRequest
 
+// ReportShareJSONRequestBody defines body for ReportShare for application/json ContentType.
+type ReportShareJSONRequestBody = CreateReportRequest
+
 // CreateSpaceJSONRequestBody defines body for CreateSpace for application/json ContentType.
 type CreateSpaceJSONRequestBody = CreateSpaceDto
 
@@ -1032,6 +1209,9 @@ type RestoreFromTrashJSONRequestBody = TrashSelectionDto
 
 // SetAvatarMultipartRequestBody defines body for SetAvatar for multipart/form-data ContentType.
 type SetAvatarMultipartRequestBody = ImageUpload
+
+// DeleteAccountJSONRequestBody defines body for DeleteAccount for application/json ContentType.
+type DeleteAccountJSONRequestBody = DeleteAccountRequest
 
 // SetPinJSONRequestBody defines body for SetPin for application/json ContentType.
 type SetPinJSONRequestBody = SetPinDto
@@ -1092,9 +1272,24 @@ type ServerInterface interface {
 	// GetInstance State of the installation (whether a backup can be restored)
 	// (GET /v1/admin/instance)
 	GetInstance(ctx echo.Context) error
+	// GetReports Reports of public links, open ones first
+	// (GET /v1/admin/reports)
+	GetReports(ctx echo.Context) error
+	// ResolveReport Decide on a report: disable the reported public link, dismiss the report, or enable a disabled link again. The reporter and (for links) the one who shared it are told by email with the note
+	// (POST /v1/admin/reports/{reportId}/resolve)
+	ResolveReport(ctx echo.Context, reportId ID) error
 	// GetAllUsers All users of this installation
 	// (GET /v1/admin/users)
 	GetAllUsers(ctx echo.Context) error
+	// DeleteUser Delete an account like it deletes itself; spaces it is the last owner of go to the next member (highest role, longest membership), spaces without other members are deleted
+	// (DELETE /v1/admin/users/{userId})
+	DeleteUser(ctx echo.Context, userId ID) error
+	// UnblockUser Unblock an account
+	// (DELETE /v1/admin/users/{userId}/block)
+	UnblockUser(ctx echo.Context, userId ID) error
+	// BlockUser Block an account; it is signed out, cannot sign in and its public links stop working
+	// (PUT /v1/admin/users/{userId}/block)
+	BlockUser(ctx echo.Context, userId ID) error
 	// CreatePasswordReset Create a one-time password reset link for a user (replaces an older one)
 	// (POST /v1/admin/users/{userId}/password-reset)
 	CreatePasswordReset(ctx echo.Context, userId ID) error
@@ -1194,6 +1389,9 @@ type ServerInterface interface {
 	// GetSharedCollection A shared collection or one of its sub-collections, for anybody with the link (no account needed)
 	// (GET /v1/shares/{token})
 	GetSharedCollection(ctx echo.Context, token string, params GetSharedCollectionParams) error
+	// ReportShare Report a public link to the administrators of this installation (no account needed)
+	// (POST /v1/shares/{token}/reports)
+	ReportShare(ctx echo.Context, token string) error
 	// GetSpaces Get all spaces
 	// (GET /v1/spaces)
 	GetSpaces(ctx echo.Context) error
@@ -1290,6 +1488,9 @@ type ServerInterface interface {
 	// SetAvatar Set the avatar of the current user from an uploaded file or a URL
 	// (PUT /v1/users/me/avatar)
 	SetAvatar(ctx echo.Context) error
+	// DeleteAccount Delete the own account (needs the password). Spaces without other members are deleted with it; owning a space with other members and no other owner answers 409 with the spaces in the detail
+	// (POST /v1/users/me/delete)
+	DeleteAccount(ctx echo.Context) error
 	// SetPin Set or change the PIN that unlocks the user's locked collections (needs the account password)
 	// (PUT /v1/users/me/pin)
 	SetPin(ctx echo.Context) error
@@ -1494,12 +1695,85 @@ func (w *ServerInterfaceWrapper) GetInstance(ctx echo.Context) error {
 	return err
 }
 
+// GetReports converts echo context to params.
+func (w *ServerInterfaceWrapper) GetReports(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetReports(ctx)
+	return err
+}
+
+// ResolveReport converts echo context to params.
+func (w *ServerInterfaceWrapper) ResolveReport(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "reportId" -------------
+	var reportId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "reportId", ctx.Param("reportId"), &reportId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter reportId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ResolveReport(ctx, reportId)
+	return err
+}
+
 // GetAllUsers converts echo context to params.
 func (w *ServerInterfaceWrapper) GetAllUsers(ctx echo.Context) error {
 	var err error
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetAllUsers(ctx)
+	return err
+}
+
+// DeleteUser converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteUser(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteUser(ctx, userId)
+	return err
+}
+
+// UnblockUser converts echo context to params.
+func (w *ServerInterfaceWrapper) UnblockUser(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.UnblockUser(ctx, userId)
+	return err
+}
+
+// BlockUser converts echo context to params.
+func (w *ServerInterfaceWrapper) BlockUser(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.BlockUser(ctx, userId)
 	return err
 }
 
@@ -2035,6 +2309,22 @@ func (w *ServerInterfaceWrapper) GetSharedCollection(ctx echo.Context) error {
 	return err
 }
 
+// ReportShare converts echo context to params.
+func (w *ServerInterfaceWrapper) ReportShare(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", ctx.Param("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter token: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ReportShare(ctx, token)
+	return err
+}
+
 // GetSpaces converts echo context to params.
 func (w *ServerInterfaceWrapper) GetSpaces(ctx echo.Context) error {
 	var err error
@@ -2557,6 +2847,15 @@ func (w *ServerInterfaceWrapper) SetAvatar(ctx echo.Context) error {
 	return err
 }
 
+// DeleteAccount converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteAccount(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteAccount(ctx)
+	return err
+}
+
 // SetPin converts echo context to params.
 func (w *ServerInterfaceWrapper) SetPin(ctx echo.Context) error {
 	var err error
@@ -2672,10 +2971,16 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/auth/password-reset/:token", wrapper.ResetPassword, options.OperationMiddlewares["resetPassword"]...)
 	router.GET(options.BaseURL+"/v1/admin/users", wrapper.GetAllUsers, options.OperationMiddlewares["getAllUsers"]...)
 	router.POST(options.BaseURL+"/v1/admin/users/:userId/password-reset", wrapper.CreatePasswordReset, options.OperationMiddlewares["createPasswordReset"]...)
+	router.DELETE(options.BaseURL+"/v1/admin/users/:userId", wrapper.DeleteUser, options.OperationMiddlewares["deleteUser"]...)
+	router.DELETE(options.BaseURL+"/v1/admin/users/:userId/block", wrapper.UnblockUser, options.OperationMiddlewares["unblockUser"]...)
+	router.PUT(options.BaseURL+"/v1/admin/users/:userId/block", wrapper.BlockUser, options.OperationMiddlewares["blockUser"]...)
+	router.GET(options.BaseURL+"/v1/admin/reports", wrapper.GetReports, options.OperationMiddlewares["getReports"]...)
+	router.POST(options.BaseURL+"/v1/admin/reports/:reportId/resolve", wrapper.ResolveReport, options.OperationMiddlewares["resolveReport"]...)
 	router.GET(options.BaseURL+"/v1/admin/instance", wrapper.GetInstance, options.OperationMiddlewares["getInstance"]...)
 	router.GET(options.BaseURL+"/v1/admin/backup", wrapper.DownloadBackup, options.OperationMiddlewares["downloadBackup"]...)
 	router.POST(options.BaseURL+"/v1/admin/backup/restore", wrapper.RestoreBackup, options.OperationMiddlewares["restoreBackup"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
+	router.POST(options.BaseURL+"/v1/users/me/delete", wrapper.DeleteAccount, options.OperationMiddlewares["deleteAccount"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock", wrapper.Unlock, options.OperationMiddlewares["unlock"]...)
@@ -2710,6 +3015,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.GetCollectionShare, options.OperationMiddlewares["getCollectionShare"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.ShareCollection, options.OperationMiddlewares["shareCollection"]...)
 	router.GET(options.BaseURL+"/v1/shares/:token", wrapper.GetSharedCollection, options.OperationMiddlewares["getSharedCollection"]...)
+	router.POST(options.BaseURL+"/v1/shares/:token/reports", wrapper.ReportShare, options.OperationMiddlewares["reportShare"]...)
 	router.DELETE(options.BaseURL+"/v1/collections/:collectionId/lock", wrapper.UnlockCollection, options.OperationMiddlewares["unlockCollection"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId/lock", wrapper.LockCollection, options.OperationMiddlewares["lockCollection"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/seen", wrapper.MarkCollectionSeen, options.OperationMiddlewares["markCollectionSeen"]...)

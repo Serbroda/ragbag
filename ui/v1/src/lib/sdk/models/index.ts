@@ -1,7 +1,9 @@
 /* tslint:disable */
 /* eslint-disable */
+export * from './AbuseReportDto';
 export * from './AdminUserDto';
 export * from './BackupSummaryDto';
+export * from './BlockUserRequest';
 export * from './BookmarkDto';
 export * from './BookmarkMetadataDto';
 export * from './ChangePasswordRequest';
@@ -15,10 +17,12 @@ export * from './CompleteSetupRequest';
 export * from './CreateBookmarkDto';
 export * from './CreateCollectionDto';
 export * from './CreateInviteRequest';
+export * from './CreateReportRequest';
 export * from './CreateSpaceDto';
 export * from './DashboardDto';
 export * from './DashboardSectionDto';
 export * from './DashboardSectionTypeEnum';
+export * from './DeleteAccountRequest';
 export * from './DiscoverableSpaceDto';
 export * from './FetchMetadataRequest';
 export * from './ImportResultDto';
@@ -35,8 +39,10 @@ export * from './PasswordResetDto';
 export * from './PasswordResetPreviewDto';
 export * from './ReactionDto';
 export * from './RegisterRequest';
+export * from './ReportCategory';
 export * from './RequestPasswordResetRequest';
 export * from './ResetPasswordRequest';
+export * from './ResolveReportRequest';
 export * from './SetPinDto';
 export * from './SetReactionDto';
 export * from './SharedBookmarkDto';

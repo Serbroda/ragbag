@@ -9,6 +9,7 @@
 	import { filterByTags, filterLinks, sortLinks } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
 	import Logo from '../components/Logo.svelte';
+	import ReportShareModal from '../components/ReportShareModal.svelte';
 	import { linkListClass, loadPreferences, preferences } from '../stores/preferences.svelte';
 
 	/**
@@ -25,6 +26,7 @@
 	let loading = $state(true);
 	let error = $state('');
 	let filter = $state('');
+	let reporting = $state(false);
 
 	$effect(() => {
 		load(token, collectionId);
@@ -165,4 +167,18 @@
 			{/if}
 		{/if}
 	</main>
+
+	{#if shared}
+		<footer class="mx-auto w-full max-w-6xl px-4 pb-8 text-xs text-gray-500 md:px-8">
+			<button type="button" class="hover:text-gray-700 hover:underline dark:hover:text-gray-300" onclick={() => (reporting = true)}>
+				Report this collection
+			</button>
+		</footer>
+		<ReportShareModal
+			bind:open={reporting}
+			{token}
+			collectionId={shared.id}
+			collectionName={shared.name}
+		/>
+	{/if}
 </div>

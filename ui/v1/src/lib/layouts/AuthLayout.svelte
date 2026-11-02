@@ -798,7 +798,15 @@
 								class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
 								onclick={() => (closeMenus(), (showAdminUsers = true))}
 							>
-								Manage users <UsersOutline class="h-4 w-4" />
+								<span>
+									Manage users
+									{#if session.me.openReports}
+										<span class="ms-1 rounded-full bg-red-500 px-1.5 text-xs text-white" title="Open reports"
+											>{session.me.openReports}</span
+										>
+									{/if}
+								</span>
+								<UsersOutline class="h-4 w-4" />
 							</button>
 						{/if}
 						<button

@@ -19,13 +19,18 @@ type User struct {
 	// SetupAdmin is the account created on the first start; an instance admin while ADMIN_USERS is empty
 	SetupAdmin bool `db:"setup_admin"`
 	// MustChangePassword: the random initial password still has to be replaced
-	MustChangePassword bool      `db:"must_change_password"`
-	CreatedAt          time.Time `db:"created_at"`
-	UpdatedAt          time.Time `db:"updated_at"`
+	MustChangePassword bool `db:"must_change_password"`
+	// DeletedAt marks the anonymous row a deleted account leaves behind
+	DeletedAt *time.Time `db:"deleted_at"`
+	// BlockedAt: blocked by an instance admin, for BlockedReason (told to the user)
+	BlockedAt     *time.Time `db:"blocked_at"`
+	BlockedReason *string    `db:"blocked_reason"`
+	CreatedAt     time.Time  `db:"created_at"`
+	UpdatedAt     time.Time  `db:"updated_at"`
 }
 
-const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, setup_admin, must_change_password, created_at,
-	updated_at`
+const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, setup_admin, must_change_password,
+	deleted_at, blocked_at, blocked_reason, created_at, updated_at`
 
 // CreateUser stores a new account; unverified ones wait for their email address to be confirmed.
 func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string, verified bool) (*User, error) {
@@ -34,7 +39,7 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 	if verified {
 		user.EmailVerifiedAt = &at
 	}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?)`,
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
 		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, false, false, at, at)
 	return user, err
 }
@@ -85,9 +90,9 @@ func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	var users []UserWithSpaces
 	err := s.sel(ctx, &users, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
-		       u.setup_admin, u.must_change_password, u.created_at, u.updated_at,
+		       u.setup_admin, u.must_change_password, u.deleted_at, u.blocked_at, u.blocked_reason, u.created_at, u.updated_at,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
-		FROM users u ORDER BY u.username`)
+		FROM users u WHERE u.deleted_at IS NULL ORDER BY u.username`)
 	return users, err
 }
 
@@ -187,7 +192,7 @@ func (s *Store) CreateSetupAdmin(ctx context.Context, username, email, passwordH
 	at := now()
 	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, EmailVerifiedAt: &at,
 		SetupAdmin: true, MustChangePassword: true, CreatedAt: at, UpdatedAt: at}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, ?, ?)`,
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?)`,
 		user.ID, user.Username, user.Email, user.PasswordHash, at, true, true, at, at)
 	return user, err
 }

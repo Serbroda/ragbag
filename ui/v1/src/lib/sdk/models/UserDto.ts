@@ -52,6 +52,10 @@ export interface UserDto {
      * The setup admin still has its random initial password; everything else answers 403
      */
     mustChangePassword?: boolean;
+    /**
+     * Unresolved reports of public links (instance admins only)
+     */
+    openReports?: number;
 }
 
 /**
@@ -82,6 +86,7 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'hasPin': json['hasPin'] == null ? undefined : json['hasPin'],
         'startSpaceId': json['startSpaceId'] == null ? undefined : json['startSpaceId'],
         'mustChangePassword': json['mustChangePassword'] == null ? undefined : json['mustChangePassword'],
+        'openReports': json['openReports'] == null ? undefined : json['openReports'],
     };
 }
 
@@ -104,6 +109,7 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'hasPin': value['hasPin'],
         'startSpaceId': value['startSpaceId'],
         'mustChangePassword': value['mustChangePassword'],
+        'openReports': value['openReports'],
     };
 }
 

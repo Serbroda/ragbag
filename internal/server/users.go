@@ -42,6 +42,13 @@ func (s *Server) meView(c echo.Context, user *store.User, hasPin bool) error {
 		return err
 	}
 	dto.StartSpaceId = start
+	if *dto.InstanceAdmin {
+		open, err := s.store.CountOpenReports(ctxOf(c))
+		if err != nil {
+			return err
+		}
+		dto.OpenReports = &open
+	}
 	return c.JSON(http.StatusOK, dto)
 }
 

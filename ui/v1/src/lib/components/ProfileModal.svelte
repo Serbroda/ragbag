@@ -1,8 +1,10 @@
 <script lang="ts">
 	import { UserApi } from 'ragbag-frontend-sdk';
 	import { Button, Input, Label, Modal } from 'flowbite-svelte';
-	import { apiConfig, appBase, changePassword, errorMessage } from '../api/client';
-	import { session, setStartSpace } from '../stores/spaces.svelte';
+	import { apiConfig, appBase, changePassword, deleteAccount, errorMessage } from '../api/client';
+	import { navigate } from '../router';
+	import { resetSession, session, setStartSpace } from '../stores/spaces.svelte';
+	import { showToast } from '../stores/toast.svelte';
 	import { LINK_VIEWS, preferences, setLinkView } from '../stores/preferences.svelte';
 	import { lockState } from '../stores/lock.svelte';
 	import ImagePicker from './ImagePicker.svelte';
@@ -29,8 +31,15 @@
 	let pinBusy = $state(false);
 	let pinMessage = $state<{ ok: boolean; text: string } | null>(null);
 
+	let confirmDelete = $state(false);
+	let deletePassword = $state('');
+	let deleteBusy = $state(false);
+	let deleteError = $state('');
+
 	$effect(() => {
 		if (open) return;
+		confirmDelete = false;
+		deletePassword = deleteError = '';
 		// Never keep passwords around after the dialog was closed
 		currentPassword = newPassword = confirmPassword = '';
 		passwordMessage = null;
@@ -55,6 +64,23 @@
 			pinMessage = { ok: false, text: await errorMessage(err, 'Failed to save the PIN.') };
 		} finally {
 			pinBusy = false;
+		}
+	}
+
+	async function removeAccount(e: Event) {
+		e.preventDefault();
+		deleteBusy = true;
+		deleteError = '';
+		try {
+			await deleteAccount(deletePassword);
+			open = false;
+			resetSession();
+			navigate('/login');
+			showToast('Your account was deleted.');
+		} catch (err) {
+			deleteError = await errorMessage(err, 'Failed to delete the account.');
+		} finally {
+			deleteBusy = false;
 		}
 	}
 
@@ -221,6 +247,41 @@
 						</button>
 					{/each}
 				</div>
+			</section>
+
+			<section class="border-t border-gray-100 pt-5 dark:border-gray-800">
+				<Label class="mb-1">Delete account</Label>
+				<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
+					Deletes your account and personal data for good. Spaces only you are a member of are deleted with
+					everything in them (export collections first if you want to keep them); links you added to spaces
+					shared with others stay there without your name. Spaces you are the only owner of need another owner
+					first.
+				</p>
+				{#if confirmDelete}
+					<form class="flex flex-col gap-2" onsubmit={removeAccount}>
+						<input type="text" autocomplete="username" value={session.me.username} hidden readonly />
+						<Input
+							type="password"
+							placeholder="Your password"
+							autocomplete="current-password"
+							bind:value={deletePassword}
+							required
+						/>
+						{#if deleteError}
+							<p class="text-sm text-red-500 dark:text-red-400">{deleteError}</p>
+						{/if}
+						<div class="flex justify-end gap-2">
+							<Button size="sm" color="light" onclick={() => (confirmDelete = false)}>Cancel</Button>
+							<Button type="submit" size="sm" color="red" disabled={deleteBusy || !deletePassword}>
+								{deleteBusy ? 'Deleting…' : 'Delete my account'}
+							</Button>
+						</div>
+					</form>
+				{:else}
+					<div class="flex justify-end">
+						<Button size="sm" color="light" onclick={() => (confirmDelete = true)}>Delete account…</Button>
+					</div>
+				{/if}
 			</section>
 		</div>
 	{/if}
