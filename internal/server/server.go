@@ -84,6 +84,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 	e.IPExtractor = echo.ExtractIPFromXFFHeader()
 	e.Use(s.logRequests)
 	e.Use(middleware.Recover())
+	e.Use(s.securityHeaders)
 	// Uploads are limited to 5 MB, imports can be larger; backups (instance admins only) have no limit
 	e.Use(middleware.BodyLimitWithConfig(middleware.BodyLimitConfig{Limit: "25M", Skipper: func(c echo.Context) bool {
 		return c.Request().URL.Path == "/api/v1/admin/backup/restore"

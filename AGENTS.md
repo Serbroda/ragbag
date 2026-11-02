@@ -158,6 +158,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   mails a 1 h link in `password_resets` and always answers 204. Mails go out in the background, at most 3 per
   account per hour (`Server.mails`, also without rate limits); links use `PUBLIC_URL`, never the request's host. Without SMTP accounts are
   confirmed at once, waiting ones on their next login.
+- **Security headers** (`headers.go`): a strict CSP for the app (scripts/styles from `'self'`, images from
+  anywhere, no frames) and `default-src 'none'` plus `no-store` for `/api`; HSTS only over HTTPS. No inline
+  scripts in `index.html` or `meta.go` (the CSP would block them); handlers may override (images: sandbox).
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.

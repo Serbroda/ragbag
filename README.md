@@ -204,6 +204,24 @@ Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything
 is marked `Secure` automatically. Link previews in chat apps (WhatsApp, Signal, Discord) use the `Host` and
 `X-Forwarded-Proto` headers the proxy passes on to build the image address.
 
+### Security headers
+
+Ragbag sets them itself, the proxy needs no extra configuration (and should not add a second
+`Content-Security-Policy`, which would make the browser apply both):
+
+| Header | Value |
+|--------|-------|
+| `Content-Security-Policy` | Scripts and styles only from Ragbag itself, images from anywhere (link previews and favicons, also by plain HTTP), never inside a frame. API answers: `default-src 'none'` |
+| `Strict-Transport-Security` | `max-age=31536000`, only when reached via HTTPS (also `X-Forwarded-Proto: https`), so HTTP in a homelab keeps working; without `includeSubDomains` |
+| `X-Frame-Options` | `DENY` |
+| `Referrer-Policy` | `no-referrer`: opening a saved link tells the site nothing about your Ragbag |
+| `X-Content-Type-Options` | `nosniff` |
+| `Cross-Origin-Opener-Policy` | `same-origin` (not for the bookmarklet's window, which closes itself) |
+| `Permissions-Policy` | camera, microphone, location, payment, USB and topics off |
+| `Cache-Control` | `no-store` for API answers; images and assets are cached |
+
+Turning on HSTS in the proxy as well (nginx proxy manager: *HSTS Enabled*) does no harm.
+
 ### Rate limits
 
 On by default (`RATE_LIMIT_ENABLED`), kept in memory and reset by a restart. Refused requests answer `429` with a
