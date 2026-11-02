@@ -18,7 +18,7 @@ import (
 )
 
 type Config struct {
-	// Dev enables the demo account (admin/test123) and a generated JWT secret; never use it in production.
+	// Dev generates a JWT secret and allows the Vite dev server (CORS); never use it in production.
 	Dev  bool
 	Addr string
 	// DatabaseURL is "sqlite:<path>" or a "postgres://" URL.

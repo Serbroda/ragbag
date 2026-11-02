@@ -193,7 +193,7 @@ Everything is configured with environment variables. For local runs the server a
 | `LOG_FILE`              | Log into this file instead of stdout, e.g. `/var/log/ragbag/ragbag.log` (rotated) | – (stdout) |
 | `LOG_FORMAT`            | `text` or `json` (one object per line, for log shippers)             | `text`                  |
 | `LOG_MAX_SIZE_MB`, `LOG_MAX_FILES` | Rotation of `LOG_FILE`: size per file, compressed old files kept | `10`, `5`       |
-| `RAGBAG_DEV`            | Development mode: demo account `admin`/`test123`, no secret required. Never in production | `false` |
+| `RAGBAG_DEV`            | Development mode: generated JWT secret, CORS for the Vite dev server. Never in production | `false` |
 
 ### Reverse proxy
 
@@ -357,7 +357,8 @@ make dev        # API on :8080 with the settings from .env.local (created from .
 make dev-ui     # frontend with hot reload on :5173, talks to :8080
 ```
 
-Sign in with the demo account `admin` / `test123`. `make help` lists all targets, the most important:
+The first start with an empty database goes through the setup like on a server: sign in as `admin` with the
+password in `data/initial-admin-password`. `make help` lists all targets, the most important:
 
 ```bash
 make test           # Go tests against SQLite

@@ -10,7 +10,7 @@ Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag
 `make help` lists everything. The important ones:
 
 ```bash
-make dev            # server on :8080 with the settings from .env.local (demo account admin/test123)
+make dev            # server on :8080 with the settings from .env.local (an empty database starts with the setup, like in production)
 make dev-ui         # Vite dev server on :5173 against the server on :8080
 make build          # frontend → ui/v1/dist, then bin/ragbag with the frontend embedded
 make test           # go test ./... (SQLite)
@@ -62,7 +62,7 @@ as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), th
 When changing the API: edit the spec, `make generate`, implement the new method in `internal/server`.
 
 ### Packages
-- `cmd/ragbag` — main: config, database, demo seed (dev), setup admin, HTTP server with graceful shutdown;
+- `cmd/ragbag` — main: config, database, setup admin, HTTP server with graceful shutdown;
   `ragbag backup|restore` commands (`commands.go`, only need `DATABASE_URL`)
 - `internal/backup` — backup and restore of the whole instance, independent of the database
 - `internal/config` — environment configuration
