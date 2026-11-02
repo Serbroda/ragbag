@@ -2,6 +2,7 @@
 	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
 	import { Checkbox } from 'flowbite-svelte';
 	import Avatar from './Avatar.svelte';
+	import { shownName } from '../utils/format';
 	import RoleBadge from './RoleBadge.svelte';
 
 	let {
@@ -39,9 +40,9 @@
 					disabled={disabled || self}
 					onchange={() => toggle(member.userId)}
 				/>
-				<Avatar name={member.username} imageId={member.avatarId} class="h-7 w-7 rounded-full text-[10px]" />
+				<Avatar name={shownName(member)} imageId={member.avatarId} class="h-7 w-7 rounded-full text-[10px]" />
 				<span class="min-w-0 flex-1 truncate text-sm text-gray-900 dark:text-white">
-					{member.username}
+					{shownName(member)}{#if member.displayName}<span class="ms-1 text-xs font-normal text-gray-500 dark:text-gray-400">@{member.username}</span>{/if}
 					{#if self}<span class="text-gray-500 dark:text-gray-400">(you)</span>{/if}
 				</span>
 				<RoleBadge role={member.role} />

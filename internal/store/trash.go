@@ -21,7 +21,7 @@ type TrashedBookmark struct {
 func (s *Store) TrashedBookmarks(ctx context.Context, spaceID string) ([]TrashedBookmark, error) {
 	var bookmarks []TrashedBookmark
 	err := s.sel(ctx, &bookmarks, `SELECT b.id, b.collection_id, c.name AS collection_name, b.url, b.title, b.favicon,
-			b.deleted_at, u.username AS deleted_by_name
+			b.deleted_at, `+shownName+` AS deleted_by_name
 		FROM bookmarks b JOIN collections c ON c.id = b.collection_id LEFT JOIN users u ON u.id = b.deleted_by
 		WHERE c.space_id = ? AND b.deleted_at IS NOT NULL ORDER BY b.deleted_at DESC, b.id`, spaceID)
 	return bookmarks, err
@@ -39,7 +39,7 @@ func (s *Store) DeleterNames(ctx context.Context, ids []string) (map[string]stri
 	names := map[string]string{}
 	users, err := s.UsersByIDs(ctx, ids)
 	for _, user := range users {
-		names[user.ID] = user.Username
+		names[user.ID] = user.Name()
 	}
 	return names, err
 }

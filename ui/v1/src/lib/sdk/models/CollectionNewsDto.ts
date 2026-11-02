@@ -28,7 +28,7 @@ export interface CollectionNewsDto {
      */
     count: number;
     /**
-     * Usernames of the members who added them
+     * Display names (else usernames) of the members who added them
      */
     addedBy: Array<string>;
     /**

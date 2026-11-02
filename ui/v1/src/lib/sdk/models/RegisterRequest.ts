@@ -36,6 +36,10 @@ export interface RegisterRequest {
      */
     acceptTerms?: boolean;
     /**
+     * Optional, 1 to 50 characters; shown instead of the username
+     */
+    displayName?: string;
+    /**
      * A space invite: the new account joins that space (with email once it is confirmed). While registration is disabled only invites of instance admins allow registering.
      * 
      */
@@ -66,6 +70,7 @@ export function RegisterRequestFromJSONTyped(json: any, ignoreDiscriminator: boo
         'email': json['email'],
         'password': json['password'],
         'acceptTerms': json['acceptTerms'] == null ? undefined : json['acceptTerms'],
+        'displayName': json['displayName'] == null ? undefined : json['displayName'],
         'inviteToken': json['inviteToken'] == null ? undefined : json['inviteToken'],
     };
 }
@@ -85,6 +90,7 @@ export function RegisterRequestToJSONTyped(value?: RegisterRequest | null, ignor
         'email': value['email'],
         'password': value['password'],
         'acceptTerms': value['acceptTerms'],
+        'displayName': value['displayName'],
         'inviteToken': value['inviteToken'],
     };
 }

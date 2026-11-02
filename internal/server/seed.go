@@ -26,7 +26,7 @@ func (s *Server) SeedDemo(ctx context.Context) error {
 		return err
 	}
 	err = s.store.InTx(ctx, func(tx *store.Store) error {
-		user, err := tx.CreateUser(ctx, demoUser, "admin@example.com", hash, true)
+		user, err := tx.CreateUser(ctx, demoUser, "admin@example.com", hash, nil, true)
 		if err != nil {
 			return err
 		}

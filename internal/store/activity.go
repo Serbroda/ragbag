@@ -20,7 +20,7 @@ type NewBookmark struct {
 // NewBookmarks lists the links that are new for the user in one space, or in all their spaces if spaceID is
 // empty. Hidden collections are not filtered here; callers drop them.
 func (s *Store) NewBookmarks(ctx context.Context, userID, spaceID string) ([]NewBookmark, error) {
-	query := `SELECT b.id, c.space_id, b.collection_id, u.username AS created_by_name, b.created_at
+	query := `SELECT b.id, c.space_id, b.collection_id, ` + shownName + ` AS created_by_name, b.created_at
 		FROM bookmarks b
 		JOIN collections c ON c.id = b.collection_id
 		JOIN users u ON u.id = b.created_by
@@ -54,8 +54,9 @@ func (s *Store) MarkSeen(ctx context.Context, userID string, collectionIDs []str
 type Reaction struct {
 	BookmarkID string `db:"bookmark_id"`
 	UserID     string `db:"user_id"`
-	Username   string `db:"username"`
-	Emoji      string `db:"emoji"`
+	// Name is the display name, else the username
+	Name  string `db:"name"`
+	Emoji string `db:"emoji"`
 }
 
 func (s *Store) AddReaction(ctx context.Context, bookmarkID, userID, emoji string) error {
@@ -76,7 +77,7 @@ func (s *Store) Reactions(ctx context.Context, bookmarkIDs []string) ([]Reaction
 		return nil, nil
 	}
 	var reactions []Reaction
-	err := s.selIn(ctx, &reactions, `SELECT r.bookmark_id, r.user_id, u.username, r.emoji FROM bookmark_reactions r
+	err := s.selIn(ctx, &reactions, `SELECT r.bookmark_id, r.user_id, `+shownName+` AS name, r.emoji FROM bookmark_reactions r
 		JOIN users u ON u.id = r.user_id WHERE r.bookmark_id IN (?) ORDER BY r.created_at, u.username`, bookmarkIDs)
 	return reactions, err
 }

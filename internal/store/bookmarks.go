@@ -30,7 +30,7 @@ type Bookmark struct {
 
 const (
 	bookmarkColumns = `b.id, b.collection_id, c.space_id, b.url, b.title, b.description, b.og_image, b.favicon,
-		b.canonical, b.created_by, u.username AS created_by_name, b.created_at, b.updated_at, b.image_id, b.image_url,
+		b.canonical, b.created_by, ` + shownName + ` AS created_by_name, b.created_at, b.updated_at, b.image_id, b.image_url,
 		b.image_hidden`
 	// Links in the trash are left out of every query that uses these joins
 	bookmarkJoins  = ` JOIN collections c ON c.id = b.collection_id AND b.deleted_at IS NULL JOIN users u ON u.id = b.created_by`
@@ -343,17 +343,19 @@ func (s *Store) DeleteDashboard(ctx context.Context, userID, spaceID string) err
 // --- Invites ---
 
 type Invite struct {
-	ID            string     `db:"id"`
-	Token         string     `db:"token"`
-	TargetType    string     `db:"target_type"`
-	TargetID      string     `db:"target_id"`
-	Role          string     `db:"role"`
-	CreatedBy     string     `db:"created_by"`
-	CreatedByName string     `db:"created_by_name"`
-	ExpiresAt     *time.Time `db:"expires_at"`
-	MaxUses       int        `db:"max_uses"`
-	UsedCount     int        `db:"used_count"`
-	CreatedAt     time.Time  `db:"created_at"`
+	ID         string `db:"id"`
+	Token      string `db:"token"`
+	TargetType string `db:"target_type"`
+	TargetID   string `db:"target_id"`
+	Role       string `db:"role"`
+	CreatedBy  string `db:"created_by"`
+	// CreatedByName is the display name (else the username) of the creator, CreatedByUsername the username
+	CreatedByName     string     `db:"created_by_name"`
+	CreatedByUsername string     `db:"created_by_username"`
+	ExpiresAt         *time.Time `db:"expires_at"`
+	MaxUses           int        `db:"max_uses"`
+	UsedCount         int        `db:"used_count"`
+	CreatedAt         time.Time  `db:"created_at"`
 }
 
 // Usable is false once the invite expired or was used up.
@@ -364,8 +366,8 @@ func (i *Invite) Usable() bool {
 	return i.MaxUses < 0 || i.UsedCount < i.MaxUses
 }
 
-const inviteSelect = `SELECT i.id, i.token, i.target_type, i.target_id, i.role, i.created_by, u.username AS created_by_name,
-	i.expires_at, i.max_uses, i.used_count, i.created_at FROM invites i JOIN users u ON u.id = i.created_by`
+const inviteSelect = `SELECT i.id, i.token, i.target_type, i.target_id, i.role, i.created_by, ` + shownName + ` AS created_by_name,
+	u.username AS created_by_username, i.expires_at, i.max_uses, i.used_count, i.created_at FROM invites i JOIN users u ON u.id = i.created_by`
 
 func (s *Store) CreateInvite(ctx context.Context, invite *Invite) error {
 	invite.ID, invite.CreatedAt = newID(), now()

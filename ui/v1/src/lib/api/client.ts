@@ -110,10 +110,10 @@ function anonConfig(): Configuration {
 }
 
 export async function register(
-	username: string, email: string, password: string, acceptTerms = false, inviteToken?: string,
+	username: string, email: string, password: string, acceptTerms = false, inviteToken?: string, displayName?: string,
 ): Promise<void> {
 	const api = new AuthenticationApi(anonConfig());
-	await api.register({ registerRequest: { username, email, password, acceptTerms, inviteToken } });
+	await api.register({ registerRequest: { username, email, password, acceptTerms, inviteToken, displayName } });
 }
 
 /** An invite opened while signed out: where it leads and whether it can create an account. */

@@ -377,10 +377,11 @@ func (s *Server) accessView(c echo.Context, collection *store.Collection, role R
 		return err
 	}
 	members := make([]api.CollectionAccessMemberDto, 0, len(users))
+	sort.Slice(users, func(i, j int) bool { return strings.ToLower(users[i].Name()) < strings.ToLower(users[j].Name()) })
 	for _, user := range users {
-		members = append(members, api.CollectionAccessMemberDto{UserId: user.ID, Username: user.Username, AvatarId: user.AvatarImageID})
+		members = append(members, api.CollectionAccessMemberDto{UserId: user.ID, Username: user.Username,
+			DisplayName: user.DisplayName, AvatarId: user.AvatarImageID})
 	}
-	sort.Slice(members, func(i, j int) bool { return members[i].Username < members[j].Username })
 	return c.JSON(http.StatusOK, api.CollectionAccessDto{
 		Restricted: collection.Restricted, Members: members, CanManage: s.canManageAccess(c, collection, role),
 	})

@@ -28,6 +28,10 @@ export interface AdminUserDto {
      */
     username: string;
     /**
+     * Shown instead of the username where set (not unique)
+     */
+    displayName?: string;
+    /**
      * 
      */
     email: string;
@@ -80,6 +84,7 @@ export function AdminUserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolea
         
         'id': json['id'],
         'username': json['username'],
+        'displayName': json['displayName'] == null ? undefined : json['displayName'],
         'email': json['email'],
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
         'instanceAdmin': json['instanceAdmin'],
@@ -103,6 +108,7 @@ export function AdminUserDtoToJSONTyped(value?: AdminUserDto | null, ignoreDiscr
         
         'id': value['id'],
         'username': value['username'],
+        'displayName': value['displayName'],
         'email': value['email'],
         'avatarId': value['avatarId'],
         'instanceAdmin': value['instanceAdmin'],

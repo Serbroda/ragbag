@@ -39,6 +39,7 @@ models/DashboardSectionDto.ts
 models/DashboardSectionTypeEnum.ts
 models/DeleteAccountRequest.ts
 models/DiscoverableSpaceDto.ts
+models/DisplayNameDto.ts
 models/FetchMetadataRequest.ts
 models/HealthDto.ts
 models/ImportResultDto.ts

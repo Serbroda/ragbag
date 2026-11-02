@@ -36,6 +36,10 @@ export interface SpaceMemberDto {
      */
     username: string;
     /**
+     * Shown instead of the username where set (not unique)
+     */
+    displayName?: string;
+    /**
      * UUID
      */
     avatarId?: string;
@@ -69,6 +73,7 @@ export function SpaceMemberDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
         
         'userId': json['userId'],
         'username': json['username'],
+        'displayName': json['displayName'] == null ? undefined : json['displayName'],
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
         'role': SpaceMemberRoleEnumFromJSON(json['role']),
     };
@@ -87,6 +92,7 @@ export function SpaceMemberDtoToJSONTyped(value?: SpaceMemberDto | null, ignoreD
         
         'userId': value['userId'],
         'username': value['username'],
+        'displayName': value['displayName'],
         'avatarId': value['avatarId'],
         'role': SpaceMemberRoleEnumToJSON(value['role']),
     };

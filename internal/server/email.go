@@ -69,7 +69,7 @@ please confirm your email address to start using Ragbag:
 The link is valid for 48 hours. Accounts that are not confirmed within 7 days are deleted.
 
 If you did not create this account, just ignore this email.
-`, user.Username, s.cfg.PublicURL, token))
+`, user.Name(), s.cfg.PublicURL, token))
 	return nil
 }
 
@@ -161,7 +161,7 @@ somebody (hopefully you) asked to reset the password of your Ragbag account. Cho
 The link is valid for one hour and works once. Setting a new password signs you out on all devices.
 
 If you did not ask for this, just ignore this email; your password stays the same.
-`, user.Username, s.cfg.PublicURL, token))
+`, user.Name(), s.cfg.PublicURL, token))
 	audit(c, slog.LevelInfo, "password reset link sent by email", "for_user", user.ID)
 	return c.NoContent(http.StatusNoContent)
 }

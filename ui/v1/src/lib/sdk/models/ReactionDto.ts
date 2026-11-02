@@ -32,7 +32,7 @@ export interface ReactionDto {
      */
     reacted: boolean;
     /**
-     * Usernames of everybody who reacted
+     * Display names (else usernames) of everybody who reacted
      */
     users: Array<string>;
 }

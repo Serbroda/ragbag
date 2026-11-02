@@ -68,7 +68,7 @@ export interface BookmarkDto {
      */
     createdAt?: Date;
     /**
-     * Username of the member who added the bookmark
+     * Display name (else username) of the member who added the bookmark
      */
     createdBy?: string;
     /**

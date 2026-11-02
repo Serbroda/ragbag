@@ -67,7 +67,7 @@ func (s *Store) AnonymizeUser(ctx context.Context, user *User) error {
 	anonymous := "deleted-" + strings.ReplaceAll(user.ID, "-", "")[:12]
 	at := now()
 	_, err := s.exec(ctx, `UPDATE users SET username = ?, email = ?, password_hash = '', pin_hash = NULL,
-		token_version = token_version + 1, start_space_id = NULL, setup_admin = ?, must_change_password = ?,
+		token_version = token_version + 1, start_space_id = NULL, setup_admin = ?, must_change_password = ?, display_name = NULL,
 		blocked_at = NULL, blocked_reason = NULL, deleted_at = ?, updated_at = ? WHERE id = ?`,
 		anonymous, user.ID+"@deleted.invalid", false, false, at, at, user.ID)
 	return err
@@ -150,8 +150,8 @@ func (s *Store) CreateReport(ctx context.Context, report *AbuseReport) error {
 func (s *Store) Reports(ctx context.Context, limit int) ([]ReportView, error) {
 	var reports []ReportView
 	err := s.sel(ctx, &reports, `SELECT `+reportColumns+`, sp.name AS space_name, sh.created_by AS share_created_by,
-			u.username AS share_creator, sh.token AS current_token, sh.disabled_at AS share_disabled_at,
-			a.username AS resolved_by_name
+			`+shownName+` AS share_creator, sh.token AS current_token, sh.disabled_at AS share_disabled_at,
+			COALESCE(a.display_name, a.username) AS resolved_by_name
 		FROM abuse_reports r
 		LEFT JOIN collections c ON c.id = r.collection_id
 		LEFT JOIN spaces sp ON sp.id = c.space_id

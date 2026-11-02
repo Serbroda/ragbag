@@ -76,7 +76,7 @@ export interface AbuseReportDto {
      */
     currentToken?: string;
     /**
-     * The username of who created the current link
+     * The display name (else the username) of who created the current link
      */
     sharedBy?: string;
     /**

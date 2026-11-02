@@ -28,6 +28,10 @@ export interface CollectionAccessMemberDto {
      */
     username: string;
     /**
+     * Shown instead of the username where set (not unique)
+     */
+    displayName?: string;
+    /**
      * UUID
      */
     avatarId?: string;
@@ -54,6 +58,7 @@ export function CollectionAccessMemberDtoFromJSONTyped(json: any, ignoreDiscrimi
         
         'userId': json['userId'],
         'username': json['username'],
+        'displayName': json['displayName'] == null ? undefined : json['displayName'],
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
     };
 }
@@ -71,6 +76,7 @@ export function CollectionAccessMemberDtoToJSONTyped(value?: CollectionAccessMem
         
         'userId': value['userId'],
         'username': value['username'],
+        'displayName': value['displayName'],
         'avatarId': value['avatarId'],
     };
 }
