@@ -71,6 +71,10 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/SharePage.svelte'),
 		meta: { public: true },
 	},
+	'/legal/:page': {
+		'/': () => import('./pages/LegalPage.svelte'),
+		meta: { public: true },
+	},
 	'/reset-password/:token': {
 		'/': () => import('./pages/ResetPasswordPage.svelte'),
 		meta: { public: true },

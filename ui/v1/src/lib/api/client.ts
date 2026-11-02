@@ -12,6 +12,8 @@ import type {
 	BackupSummaryDto,
 	BookmarkDto,
 	CreateReportRequest,
+	GetLegalPagePageEnum,
+	LegalPageDto,
 	Middleware,
 	SharedCollectionDto,
 } from 'ragbag-frontend-sdk';
@@ -106,9 +108,14 @@ function anonConfig(): Configuration {
 	});
 }
 
-export async function register(username: string, email: string, password: string): Promise<void> {
+export async function register(username: string, email: string, password: string, acceptTerms = false): Promise<void> {
 	const api = new AuthenticationApi(anonConfig());
-	await api.register({ registerRequest: { username, email, password } });
+	await api.register({ registerRequest: { username, email, password, acceptTerms } });
+}
+
+/** Imprint, privacy policy or terms of use of this instance; works without being signed in. */
+export async function getLegalPage(page: string): Promise<LegalPageDto> {
+	return new AppApi(anonConfig()).getLegalPage({ page: page as GetLegalPagePageEnum });
 }
 
 /** The password of the last login, kept in memory only: the setup page needs the initial one once more. */

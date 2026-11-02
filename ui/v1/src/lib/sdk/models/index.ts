@@ -33,6 +33,7 @@ export * from './InviteDto';
 export * from './InvitePreviewDto';
 export * from './InviteRoleEnum';
 export * from './JoinRoleEnum';
+export * from './LegalPageDto';
 export * from './LoginRequest';
 export * from './LoginResponse';
 export * from './ModelError';

@@ -19,6 +19,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/FeatureFlags'
 
+  /app/legal/{page}:
+    get:
+      summary: A legal page (imprint, privacy policy, terms of use) from DATA_DIR/legal, rendered from Markdown
+      operationId: getLegalPage
+      tags:
+        - App
+      security: [ ]
+      parameters:
+        - in: path
+          name: page
+          required: true
+          schema:
+            type: string
+            enum: [ imprint, privacy, terms ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LegalPageDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   # Authentication
   /auth/register:
     post:
@@ -2690,6 +2714,13 @@ components:
           type: integer
         quotaUploadMbPerUser:
           type: integer
+        legalImprint:
+          type: string
+          description: Where the imprint is (an address or /app/legal/imprint), empty without one
+        legalPrivacy:
+          type: string
+        legalTerms:
+          type: string
       required:
         - publicUrl
         - registrationOpen
@@ -2903,10 +2934,28 @@ components:
           type: string
         password:
           type: string
+        acceptTerms:
+          type: boolean
+          description: Required when the instance has terms of use (legal_terms in the feature flags)
       required:
         - username
         - email
         - password
+
+    LegalPageDto:
+      type: object
+      properties:
+        page:
+          type: string
+        title:
+          type: string
+        html:
+          type: string
+          description: Rendered Markdown; raw HTML in the file is not passed through
+      required:
+        - page
+        - title
+        - html
 
     UserDto:
       properties:

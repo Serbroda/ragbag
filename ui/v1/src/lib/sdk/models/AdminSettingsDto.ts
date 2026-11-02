@@ -59,6 +59,18 @@ export interface AdminSettingsDto {
      * 
      */
     quotaUploadMbPerUser: number;
+    /**
+     * Where the imprint is (an address or /app/legal/imprint), empty without one
+     */
+    legalImprint?: string;
+    /**
+     * 
+     */
+    legalPrivacy?: string;
+    /**
+     * 
+     */
+    legalTerms?: string;
 }
 
 /**
@@ -98,6 +110,9 @@ export function AdminSettingsDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'quotaSpacesPerUser': json['quotaSpacesPerUser'],
         'quotaCollectionsPerSpace': json['quotaCollectionsPerSpace'],
         'quotaUploadMbPerUser': json['quotaUploadMbPerUser'],
+        'legalImprint': json['legalImprint'] == null ? undefined : json['legalImprint'],
+        'legalPrivacy': json['legalPrivacy'] == null ? undefined : json['legalPrivacy'],
+        'legalTerms': json['legalTerms'] == null ? undefined : json['legalTerms'],
     };
 }
 
@@ -122,6 +137,9 @@ export function AdminSettingsDtoToJSONTyped(value?: AdminSettingsDto | null, ign
         'quotaSpacesPerUser': value['quotaSpacesPerUser'],
         'quotaCollectionsPerSpace': value['quotaCollectionsPerSpace'],
         'quotaUploadMbPerUser': value['quotaUploadMbPerUser'],
+        'legalImprint': value['legalImprint'],
+        'legalPrivacy': value['legalPrivacy'],
+        'legalTerms': value['legalTerms'],
     };
 }
 

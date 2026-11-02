@@ -13,6 +13,18 @@
  */
 
 import * as runtime from '../runtime';
+import {
+    type LegalPageDto,
+    LegalPageDtoFromJSON,
+    LegalPageDtoToJSON,
+} from '../models/LegalPageDto';
+
+export interface GetLegalPageRequest {
+    /**
+     * 
+     */
+    page: GetLegalPagePageEnum;
+}
 
 /**
  * 
@@ -64,4 +76,59 @@ export class AppApi extends runtime.BaseAPI {
         return await response.value();
     }
 
+    /**
+     * Creates request options for getLegalPage without sending the request
+     */
+    async getLegalPageRequestOpts(requestParameters: GetLegalPageRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['page'] == null) {
+            throw new runtime.RequiredError(
+                'page',
+                'Required parameter "page" was null or undefined when calling getLegalPage().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/app/legal/{page}`;
+        urlPath = urlPath.replace('{page}', encodeURIComponent(String(requestParameters['page'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * A legal page (imprint, privacy policy, terms of use) from DATA_DIR/legal, rendered from Markdown
+     */
+    async getLegalPageRaw(requestParameters: GetLegalPageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LegalPageDto>> {
+        const requestOptions = await this.getLegalPageRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LegalPageDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * A legal page (imprint, privacy policy, terms of use) from DATA_DIR/legal, rendered from Markdown
+     */
+    async getLegalPage(requestParameters: GetLegalPageRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LegalPageDto> {
+        const response = await this.getLegalPageRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
 }
+
+/**
+ * @export
+ */
+export const GetLegalPagePageEnum = {
+    Imprint: 'imprint',
+    Privacy: 'privacy',
+    Terms: 'terms',
+} as const;
+export type GetLegalPagePageEnum = typeof GetLegalPagePageEnum[keyof typeof GetLegalPagePageEnum];

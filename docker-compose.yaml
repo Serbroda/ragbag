@@ -34,6 +34,10 @@ services:
       JWT_SECRET: ${JWT_SECRET:-dummy-jwt-secret-change-me-0123456789abcdef}
       # The address Ragbag is reached at (links in emails), e.g. https://ragbag.example.com
       PUBLIC_URL: ${PUBLIC_URL:-}
+      # Legal pages elsewhere; otherwise Markdown files in /data/legal (templates in docs/legal)
+      IMPRINT_URL: ${IMPRINT_URL:-}
+      PRIVACY_URL: ${PRIVACY_URL:-}
+      TERMS_URL: ${TERMS_URL:-}
       # Usernames (comma-separated) that may manage all users, decide on reports and download backups.
       # The first start creates the first of them (or "admin") with a random password, see
       # docker compose exec app cat /data/initial-admin-password

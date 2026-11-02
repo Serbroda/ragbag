@@ -211,3 +211,9 @@ func (s *Store) InstanceEmpty(ctx context.Context) (bool, error) {
 		false)
 	return count == 0, err
 }
+
+// AcceptTerms records when the account accepted the terms of use.
+func (s *Store) AcceptTerms(ctx context.Context, userID string) error {
+	_, err := s.exec(ctx, `UPDATE users SET terms_accepted_at = ? WHERE id = ?`, now(), userID)
+	return err
+}

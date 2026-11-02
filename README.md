@@ -181,10 +181,11 @@ Everything is configured with environment variables. For local runs the server a
 | `DATABASE_URL`          | `sqlite:<file>` or `postgres://user:password@host:5432/db?sslmode=disable` | `sqlite:data/ragbag.db` (Docker: `/data/ragbag.db`) |
 | `RAGBAG_ADDR`           | HTTP address                                                         | `:8080`                 |
 | `ADMIN_USERS`           | Comma-separated usernames that may manage all users and download backups; the first start creates the first of them | – (the account created on the first start) |
-| `DATA_DIR`              | Where the first start puts `initial-admin-password`                  | the SQLite file's directory, systemd's state directory, else `data` (Docker: `/data`) |
+| `DATA_DIR`              | Where the first start puts `initial-admin-password`; legal pages in `legal/` | the SQLite file's directory, systemd's state directory, else `data` (Docker: `/data`) |
 | `REGISTRATION_ENABLED`  | Whether new accounts can be registered                               | `true`                  |
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Sending email: account confirmation and password reset (see below) | – (no email), port `587` |
+| `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | Legal pages elsewhere instead of files in `DATA_DIR/legal` (see *Legal pages*) | – |
 | `PUBLIC_URL`            | Address of the instance for links in emails, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
 | `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
@@ -294,6 +295,19 @@ Act (DSA):
   Resolved reports are deleted after 180 days.
 
 Reports about anything else (spaces are not public) reach you through the contact address in your legal notice.
+
+### Legal pages
+
+A public instance needs an imprint and a privacy policy (in Germany § 5 DDG and Art. 13 GDPR), terms of use are
+recommended. Put them as Markdown into the data directory – `legal/imprint.md`, `legal/privacy.md`,
+`legal/terms.md` (systemd: `/var/lib/ragbag/legal/`, Docker: `/data/legal/`) – or link pages elsewhere with
+`IMPRINT_URL`, `PRIVACY_URL` and `TERMS_URL`. Ragbag shows them at `/app/legal/…` and links them on the sign-in
+page, on public links and in the account menu; with terms, registering needs accepting them (the time is
+stored). Changes to the files apply without a restart, raw HTML in them is not shown. The admin overview says
+which are missing.
+
+**Templates in German** for what Ragbag actually processes are in [`docs/legal`](docs/legal): copy them, fill in
+the `[…]` parts and drop what does not apply. They are drafts, not legal advice.
 
 ### Logs
 
