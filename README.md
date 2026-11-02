@@ -165,6 +165,8 @@ Everything is configured with environment variables. For local runs the server a
 | `ADMIN_USERS`           | Comma-separated usernames that may manage all users                  | –                       |
 | `REGISTRATION_ENABLED`  | Whether new accounts can be registered                               | `true`                  |
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
+| `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Sending email: account confirmation and password reset (see below) | – (no email), port `587` |
+| `PUBLIC_URL`            | Address of the instance for links in emails, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
 | `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
@@ -203,6 +205,21 @@ IPv6 addresses count by their /64. When the page limit is reached, new links are
 loading title and preview. The client IP comes from `X-Forwarded-For` only when the proxy is in your own network
 (loopback or private addresses, e.g. nginx proxy manager or a Cloudflare tunnel on the same host); otherwise every
 visitor would share the proxy's address.
+
+### Email
+
+Optional. With `SMTP_HOST` (plus `SMTP_FROM` and `PUBLIC_URL`) Ragbag sends two kinds of mail:
+
+- **Confirming new accounts:** after registering, an account can sign in only once it opened the link sent to its
+  address (valid 48 hours; signing in sends a new one). Its first space is created then. Accounts that are not
+  confirmed within 7 days are deleted.
+- **Forgotten passwords:** *Forgot your password?* on the sign-in page mails a reset link (valid one hour, works
+  once). The answer is the same whether the account exists or not.
+
+At most three mails per account every hour or so, whoever asks. `SMTP_TLS` is `starttls` (default, port 587),
+`tls` (default for port 465) or `none` (only for a relay on the same host). Without `SMTP_HOST` nothing changes:
+accounts can sign in right away and instance admins hand out reset links. Accounts that existed before count as
+confirmed, and so do those waiting when email is turned off again.
 
 ### Quotas
 

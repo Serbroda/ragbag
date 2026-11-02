@@ -64,6 +64,10 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/ResetPasswordPage.svelte'),
 		meta: { public: true },
 	},
+	'/verify-email/:token': {
+		'/': () => import('./pages/VerifyEmailPage.svelte'),
+		meta: { public: true },
+	},
 	hooks: {
 		beforeLoad({ meta }) {
 			if (!meta.public && !isAuthenticated()) {

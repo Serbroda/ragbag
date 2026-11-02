@@ -39,6 +39,11 @@ import {
     RegisterRequestToJSON,
 } from '../models/RegisterRequest';
 import {
+    type RequestPasswordResetRequest,
+    RequestPasswordResetRequestFromJSON,
+    RequestPasswordResetRequestToJSON,
+} from '../models/RequestPasswordResetRequest';
+import {
     type ResetPasswordRequest,
     ResetPasswordRequestFromJSON,
     ResetPasswordRequestToJSON,
@@ -84,6 +89,13 @@ export interface RegisterOperationRequest {
     registerRequest: RegisterRequest;
 }
 
+export interface RequestPasswordResetOperationRequest {
+    /**
+     * 
+     */
+    requestPasswordResetRequest: RequestPasswordResetRequest;
+}
+
 export interface ResetPasswordOperationRequest {
     /**
      * 
@@ -93,6 +105,13 @@ export interface ResetPasswordOperationRequest {
      * 
      */
     resetPasswordRequest: ResetPasswordRequest;
+}
+
+export interface VerifyEmailRequest {
+    /**
+     * 
+     */
+    token: string;
 }
 
 /**
@@ -428,7 +447,7 @@ export class AuthenticationApi extends runtime.BaseAPI {
     }
 
     /**
-     * Register a new user
+     * Register a new user. When the server sends email (feature flag \"email\"), the account must confirm its address with the link sent to it before it can sign in. 
      */
     async registerRaw(requestParameters: RegisterOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<UserDto>> {
         const requestOptions = await this.registerRequestOpts(requestParameters);
@@ -438,11 +457,57 @@ export class AuthenticationApi extends runtime.BaseAPI {
     }
 
     /**
-     * Register a new user
+     * Register a new user. When the server sends email (feature flag \"email\"), the account must confirm its address with the link sent to it before it can sign in. 
      */
     async register(requestParameters: RegisterOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
         const response = await this.registerRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for requestPasswordReset without sending the request
+     */
+    async requestPasswordResetRequestOpts(requestParameters: RequestPasswordResetOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['requestPasswordResetRequest'] == null) {
+            throw new runtime.RequiredError(
+                'requestPasswordResetRequest',
+                'Required parameter "requestPasswordResetRequest" was null or undefined when calling requestPasswordReset().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/auth/password-reset`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: RequestPasswordResetRequestToJSON(requestParameters['requestPasswordResetRequest']),
+        };
+    }
+
+    /**
+     * Send a password reset link to the account\'s email address (public, only when the server sends email). Answers 204 whether the account exists or not. 
+     */
+    async requestPasswordResetRaw(requestParameters: RequestPasswordResetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.requestPasswordResetRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Send a password reset link to the account\'s email address (public, only when the server sends email). Answers 204 whether the account exists or not. 
+     */
+    async requestPasswordReset(requestParameters: RequestPasswordResetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.requestPasswordResetRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -497,6 +562,51 @@ export class AuthenticationApi extends runtime.BaseAPI {
      */
     async resetPassword(requestParameters: ResetPasswordOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.resetPasswordRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for verifyEmail without sending the request
+     */
+    async verifyEmailRequestOpts(requestParameters: VerifyEmailRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling verifyEmail().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/auth/verify-email/{token}`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Confirm the email address of a new account with the link from the email (public); signs in
+     */
+    async verifyEmailRaw(requestParameters: VerifyEmailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResponse>> {
+        const requestOptions = await this.verifyEmailRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LoginResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Confirm the email address of a new account with the link from the email (public); signs in
+     */
+    async verifyEmail(requestParameters: VerifyEmailRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse> {
+        const response = await this.verifyEmailRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
 }

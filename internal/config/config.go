@@ -13,6 +13,7 @@ import (
 	"time"
 
 	"github.com/Serbroda/ragbag/internal/logging"
+	"github.com/Serbroda/ragbag/internal/mail"
 )
 
 type Config struct {
@@ -34,7 +35,11 @@ type Config struct {
 	// RateLimits slow down password guessing, bot sign-ups and floods (per IP, user and account)
 	RateLimits bool
 	Quotas     Quotas
-	Log        logging.Config
+	// Mail is used when Mail.Host is set: confirming new accounts and resetting passwords by email
+	Mail mail.Config
+	// PublicURL is the address the instance is reached at, for links in emails (never taken from a request)
+	PublicURL string
+	Log       logging.Config
 }
 
 // Quotas keep single accounts from filling the disk on public instances; 0 means unlimited.
@@ -70,6 +75,28 @@ func Load() (Config, error) {
 		SpacesPerUser:       envInt("QUOTA_SPACES_PER_USER", 0),
 		CollectionsPerSpace: envInt("QUOTA_COLLECTIONS_PER_SPACE", 0),
 		UploadMBPerUser:     envInt("QUOTA_UPLOAD_MB_PER_USER", 0),
+	}
+
+	cfg.Mail = mail.Config{
+		Host:     env("SMTP_HOST", ""),
+		Port:     envInt("SMTP_PORT", 587),
+		Username: env("SMTP_USERNAME", ""),
+		Password: os.Getenv("SMTP_PASSWORD"),
+		From:     env("SMTP_FROM", ""),
+	}
+	cfg.Mail.TLS = mail.TLSStartTLS
+	if cfg.Mail.Port == 465 {
+		cfg.Mail.TLS = mail.TLSImplicit
+	}
+	cfg.Mail.TLS = strings.ToLower(env("SMTP_TLS", cfg.Mail.TLS))
+	cfg.PublicURL = strings.TrimRight(env("PUBLIC_URL", ""), "/")
+	if cfg.Mail.Host != "" {
+		if cfg.Mail.From == "" {
+			return cfg, errors.New("SMTP_FROM is required with SMTP_HOST, e.g. Ragbag <ragbag@example.com>")
+		}
+		if !strings.HasPrefix(cfg.PublicURL, "https://") && !strings.HasPrefix(cfg.PublicURL, "http://") {
+			return cfg, errors.New("PUBLIC_URL is required with SMTP_HOST, e.g. https://ragbag.example.com (links in emails)")
+		}
 	}
 
 	level, err := logging.ParseLevel(env("LOG_LEVEL", "info"))

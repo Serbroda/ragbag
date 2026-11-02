@@ -124,6 +124,17 @@ export async function resetPassword(token: string, newPassword: string): Promise
 	await new AuthenticationApi(anonConfig()).resetPassword({ token, resetPasswordRequest: { newPassword } });
 }
 
+/** Confirms a new account's email address with the link from the mail and signs it in. */
+export async function verifyEmail(token: string): Promise<void> {
+	const response = await new AuthenticationApi(anonConfig()).verifyEmail({ token });
+	setAccessToken(response.accessToken);
+}
+
+/** Mails a reset link when the account exists (the server answers the same either way). */
+export async function requestPasswordReset(login: string): Promise<void> {
+	await new AuthenticationApi(anonConfig()).requestPasswordReset({ requestPasswordResetRequest: { login } });
+}
+
 /** Signs out on this device only. */
 export async function logout(): Promise<void> {
 	try {

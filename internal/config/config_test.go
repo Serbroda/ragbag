@@ -90,3 +90,26 @@ func TestLogSettings(t *testing.T) {
 		t.Setenv(key, "")
 	}
 }
+
+func TestMailNeedsASenderAndThePublicAddress(t *testing.T) {
+	t.Setenv("JWT_SECRET", "0123456789abcdef0123456789abcdef")
+	t.Setenv("SMTP_HOST", "smtp.example.com")
+	t.Setenv("SMTP_FROM", "")
+	t.Setenv("PUBLIC_URL", "")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected an error without SMTP_FROM")
+	}
+	t.Setenv("SMTP_FROM", "Ragbag <ragbag@example.com>")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected an error without PUBLIC_URL")
+	}
+	t.Setenv("PUBLIC_URL", "https://ragbag.example.com/")
+	t.Setenv("SMTP_PORT", "465")
+	cfg, err := Load()
+	if err != nil {
+		t.Fatal(err)
+	}
+	if cfg.PublicURL != "https://ragbag.example.com" || cfg.Mail.TLS != "tls" || cfg.Mail.Port != 465 {
+		t.Fatalf("unexpected config: %+v %+v", cfg.PublicURL, cfg.Mail)
+	}
+}

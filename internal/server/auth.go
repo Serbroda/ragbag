@@ -25,7 +25,9 @@ const passwordResetValidity = 24 * time.Hour
 func (s *Server) FeatureFlags(c echo.Context) error {
 	return c.JSON(http.StatusOK, map[string]string{
 		"registration_enabled": strconv.FormatBool(s.cfg.RegistrationOpen),
-		"version":              s.version,
+		// Accounts confirm their address and passwords can be reset by email
+		"email":   strconv.FormatBool(s.mailEnabled()),
+		"version": s.version,
 	})
 }
 
@@ -40,17 +42,18 @@ func (s *Server) Register(c echo.Context) error {
 	if err := auth.ValidatePassword(req.Password); err != nil {
 		return badRequest("%s", err.Error())
 	}
-	user, err := s.createUser(c, req.Username, req.Email, req.Password)
+	user, err := s.createUser(c, req.Username, req.Email, req.Password, !s.mailEnabled())
 	if err != nil {
 		return err
 	}
 	c.Set(usernameKey, user.Username)
-	audit(c, slog.LevelInfo, "account registered")
+	audit(c, slog.LevelInfo, "account registered", "confirmed", user.EmailVerifiedAt != nil)
 	return c.JSON(http.StatusOK, s.userDto(user))
 }
 
-// createUser registers an account with its own first space, like Discord gives you a server.
-func (s *Server) createUser(c echo.Context, username, email, password string) (*store.User, error) {
+// createUser registers an account with its own first space, like Discord gives you a server. Unconfirmed ones
+// get a confirmation link instead and their space with the confirmation.
+func (s *Server) createUser(c echo.Context, username, email, password string, confirmed bool) (*store.User, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
 	email = strings.ToLower(strings.TrimSpace(email))
 	if username == "" || len(username) > 80 || strings.ContainsFunc(username, unicode.IsSpace) {
@@ -72,16 +75,23 @@ func (s *Server) createUser(c echo.Context, username, email, password string) (*
 		if taken {
 			return conflict("User with same username or email already exists")
 		}
-		if user, err = tx.CreateUser(ctxOf(c), username, email, hash); err != nil {
+		if user, err = tx.CreateUser(ctxOf(c), username, email, hash, confirmed); err != nil {
 			return err
 		}
-		space, err := tx.CreateSpace(ctxOf(c), capitalize(username)+"'s Space", nil, user.ID)
-		if err != nil {
-			return err
+		if !confirmed {
+			return s.sendVerification(c, tx, user)
 		}
-		return tx.AddMember(ctxOf(c), space.ID, user.ID, string(RoleOwner))
+		return createFirstSpace(c, tx, user)
 	})
 	return user, err
+}
+
+func createFirstSpace(c echo.Context, tx *store.Store, user *store.User) error {
+	space, err := tx.CreateSpace(ctxOf(c), capitalize(user.Username)+"'s Space", nil, user.ID)
+	if err != nil {
+		return err
+	}
+	return tx.AddMember(ctxOf(c), space.ID, user.ID, string(RoleOwner))
 }
 
 func capitalize(value string) string {
@@ -117,6 +127,22 @@ func (s *Server) Login(c echo.Context) error {
 		return unauthorized("Invalid credentials")
 	}
 	c.Set(usernameKey, user.Username)
+	if user.EmailVerifiedAt == nil {
+		if s.mailEnabled() {
+			// The password was right, so a new link is no help for strangers
+			if s.mailAllowed(user) {
+				if err := s.sendVerification(c, s.store, user); err != nil {
+					return err
+				}
+			}
+			audit(c, slog.LevelInfo, "login refused until the email address is confirmed")
+			return forbidden("Please confirm your email address first: we sent a new link to %s", user.Email)
+		}
+		// Email was turned off since the registration: nothing left to wait for
+		if err := s.store.InTx(ctxOf(c), func(tx *store.Store) error { return s.confirmUser(c, tx, user) }); err != nil {
+			return err
+		}
+	}
 	audit(c, slog.LevelInfo, "login")
 	return s.issueTokens(c, user)
 }
