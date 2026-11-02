@@ -224,6 +224,10 @@ func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return badRequest("%s", err.Error())
 	}
+	// Before loading the page, which takes a while
+	if err := s.checkLinkQuota(ctxOf(c), s.store, currentUser(c), 1); err != nil {
+		return err
+	}
 	var metadata fetch.Metadata
 	if s.fetchAllowed(c) {
 		metadata = s.fetch.Metadata(ctxOf(c), url)
@@ -335,14 +339,17 @@ func (s *Server) SetBookmarkImage(c echo.Context, bookmarkID api.ID) error {
 		return err
 	}
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
-		imageID, err := tx.CreateImage(ctxOf(c), contentType, data)
+		imageID, err := tx.CreateImage(ctxOf(c), contentType, data, currentUser(c))
 		if err != nil {
 			return err
 		}
 		if err := tx.SetBookmarkImage(ctxOf(c), bookmarkID, &imageID, nil, false); err != nil {
 			return err
 		}
-		return tx.DeleteImage(ctxOf(c), bookmark.ImageID)
+		if err := tx.DeleteImage(ctxOf(c), bookmark.ImageID); err != nil {
+			return err
+		}
+		return s.checkUploadQuota(ctxOf(c), tx, currentUser(c))
 	})
 	if err != nil {
 		return err

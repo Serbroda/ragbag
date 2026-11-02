@@ -33,7 +33,19 @@ type Config struct {
 	CORSAllowedOrigins []string
 	// RateLimits slow down password guessing, bot sign-ups and floods (per IP, user and account)
 	RateLimits bool
+	Quotas     Quotas
 	Log        logging.Config
+}
+
+// Quotas keep single accounts from filling the disk on public instances; 0 means unlimited.
+type Quotas struct {
+	// LinksPerUser counts the links a user added, trashed ones included
+	LinksPerUser int
+	// SpacesPerUser counts the spaces a user owns; the first one of a new account is always created
+	SpacesPerUser       int
+	CollectionsPerSpace int
+	// UploadMBPerUser is the size of the uploaded images (avatar, space icons, preview images)
+	UploadMBPerUser int
 }
 
 // Load reads RAGBAG_* and the documented short variables (see .env.example).
@@ -51,6 +63,13 @@ func Load() (Config, error) {
 		AdminUsers:         envList("ADMIN_USERS"),
 		CORSAllowedOrigins: envList("CORS_ALLOWED_ORIGINS"),
 		RateLimits:         envBool("RATE_LIMIT_ENABLED", true),
+	}
+
+	cfg.Quotas = Quotas{
+		LinksPerUser:        envInt("QUOTA_LINKS_PER_USER", 0),
+		SpacesPerUser:       envInt("QUOTA_SPACES_PER_USER", 0),
+		CollectionsPerSpace: envInt("QUOTA_COLLECTIONS_PER_SPACE", 0),
+		UploadMBPerUser:     envInt("QUOTA_UPLOAD_MB_PER_USER", 0),
 	}
 
 	level, err := logging.ParseLevel(env("LOG_LEVEL", "info"))

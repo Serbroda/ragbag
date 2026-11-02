@@ -176,7 +176,13 @@ func (s *Server) ImportCollection(c echo.Context, collectionID api.ID, params ap
 		if err != nil {
 			return err
 		}
-		return s.importNode(c, tx, target, file.Collection, hidden, counter)
+		if err := s.importNode(c, tx, target, file.Collection, hidden, counter); err != nil {
+			return err
+		}
+		if err := s.checkCollectionQuota(ctxOf(c), tx, target.SpaceID, 0); err != nil {
+			return err
+		}
+		return s.checkLinkQuota(ctxOf(c), tx, currentUser(c), 0)
 	})
 	if err != nil {
 		return err

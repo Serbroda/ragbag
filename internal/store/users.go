@@ -111,10 +111,10 @@ func (s *Store) SetStartSpace(ctx context.Context, userID string, spaceID *strin
 	return err
 }
 
-func (s *Store) CreateImage(ctx context.Context, contentType string, data []byte) (string, error) {
+func (s *Store) CreateImage(ctx context.Context, contentType string, data []byte, createdBy string) (string, error) {
 	id := newID()
-	_, err := s.exec(ctx, `INSERT INTO images (id, content_type, data, created_at) VALUES (?, ?, ?, ?)`,
-		id, contentType, data, now())
+	_, err := s.exec(ctx, `INSERT INTO images (id, content_type, data, created_at, created_by) VALUES (?, ?, ?, ?, ?)`,
+		id, contentType, data, now(), createdBy)
 	return id, err
 }
 
