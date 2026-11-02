@@ -147,7 +147,7 @@ can start fresh or **restore a backup** of another Ragbag (see *Moving to anothe
 empty this account is the instance admin; otherwise the ones listed there are.
 
 Everybody else **registers** – every account gets its own first space. Admins manage all users in the profile menu
-(→ *Manage users*). Set `REGISTRATION_ENABLED=false` once everybody has an account if your instance is reachable
+(→ *Administration*). Set `REGISTRATION_ENABLED=false` once everybody has an account if your instance is reachable
 from the internet.
 
 Database migrations run automatically on start-up.
@@ -262,13 +262,13 @@ Act (DSA):
   are deleted with it; links they added to spaces shared with others stay there, shown as `deleted-…`. Name,
   email address, password, avatar, PIN, favorites, reactions and dashboards are gone. Being the only owner of a
   space with other members needs another owner first.
-- **Blocking accounts** (*Manage users*, optionally with a reason): the account is signed out, sees the reason
+- **Blocking accounts** (*Administration → Accounts*, optionally with a reason): the account is signed out, sees the reason
   when signing in, and its public links stop working. Unblocking undoes it. Instance admins cannot be blocked.
 - **Deleting accounts** as an admin works like the person deleting it themselves, except that spaces they were
   the only owner of go to the member with the highest role.
 - **Reports:** every public link has *Report this collection* at the bottom, for anybody, without an account
   (category, details, optionally name and email, and a confirmation of good faith). Admins find them under
-  *Manage users → Reports* (the account menu shows how many are open) and **disable the link** (the space cannot
+  *Administration → Reports* (the account menu shows how many are open) and **disable the link** (the space cannot
   share the collection again), **dismiss** the report or enable a disabled link again. With email, admins are
   told about new reports, and the reporter and the person who shared the link learn the decision and its reasons.
   Resolved reports are deleted after 180 days.
@@ -306,7 +306,7 @@ Ragbag backs up the whole instance into one file, the same for SQLite and Postgr
 password hash and PIN), space, collection, link, reaction, public link and image, with their ids. Left out are
 only pending reset and confirmation links.
 
-- **In the app:** profile menu → *Manage users* → *Download backup* (instance admins)
+- **In the app:** account menu → *Administration* → *Backup* (instance admins), which also shows the commands for automatic backups
 - **On the command line**, with the same environment as the server (it may keep running):
   ```bash
   ragbag backup ragbag-backup.json.gz            # or without a file to stdout

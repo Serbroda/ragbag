@@ -19,6 +19,11 @@ import {
     AbuseReportDtoToJSON,
 } from '../models/AbuseReportDto';
 import {
+    type AdminOverviewDto,
+    AdminOverviewDtoFromJSON,
+    AdminOverviewDtoToJSON,
+} from '../models/AdminOverviewDto';
+import {
     type AdminUserDto,
     AdminUserDtoFromJSON,
     AdminUserDtoToJSON,
@@ -318,6 +323,51 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async downloadBackup(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.HttpFile> {
         const response = await this.downloadBackupRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getAdminOverview without sending the request
+     */
+    async getAdminOverviewRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/overview`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * What the admin page shows first (version, database, counts and the effective configuration)
+     */
+    async getAdminOverviewRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminOverviewDto>> {
+        const requestOptions = await this.getAdminOverviewRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminOverviewDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * What the admin page shows first (version, database, counts and the effective configuration)
+     */
+    async getAdminOverview(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminOverviewDto> {
+        const response = await this.getAdminOverviewRaw(initOverrides);
         return await response.value();
     }
 

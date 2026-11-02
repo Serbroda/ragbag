@@ -1,6 +1,8 @@
 /* tslint:disable */
 /* eslint-disable */
 export * from './AbuseReportDto';
+export * from './AdminOverviewDto';
+export * from './AdminSettingsDto';
 export * from './AdminUserDto';
 export * from './BackupSummaryDto';
 export * from './BlockUserRequest';

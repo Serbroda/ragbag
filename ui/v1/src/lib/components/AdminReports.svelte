@@ -84,7 +84,7 @@
 {#if error}
 	<p class="text-sm text-red-500 dark:text-red-400">{error}</p>
 {/if}
-<ul class="-mx-2 max-h-[55vh] divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+<ul class="-mx-2 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
 	{#each reports as report (report.id)}
 		<li class="px-2 py-3 text-sm">
 			<div class="flex flex-wrap items-baseline gap-x-2">

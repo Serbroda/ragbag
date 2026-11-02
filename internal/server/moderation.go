@@ -11,6 +11,7 @@ import (
 
 	"github.com/Serbroda/ragbag/internal/api"
 	"github.com/Serbroda/ragbag/internal/auth"
+	"github.com/Serbroda/ragbag/internal/db"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/labstack/echo/v4"
 )
@@ -306,8 +307,8 @@ somebody reported the public link %s/app/share/%s ("%s") as %s:
 
 %s
 
-Decide in Ragbag: account menu → Users of this Ragbag → Reports.
-`, user.Username, s.cfg.PublicURL, report.ShareToken, report.CollectionName, report.Category, report.Details))
+Decide in Ragbag: %s/app/admin/reports
+`, user.Username, s.cfg.PublicURL, report.ShareToken, report.CollectionName, report.Category, report.Details, s.cfg.PublicURL))
 	}
 }
 
@@ -479,4 +480,35 @@ func valueOr(value *string, fallback string) string {
 		return fallback
 	}
 	return *value
+}
+
+// --- Admin page ---
+
+func (s *Server) GetAdminOverview(c echo.Context) error {
+	if err := s.requireInstanceAdmin(c); err != nil {
+		return err
+	}
+	stats, err := s.store.Stats(ctxOf(c))
+	if err != nil {
+		return err
+	}
+	version, err := db.SchemaVersion(ctxOf(c), s.store.DB(), s.store.Dialect)
+	if err != nil {
+		return err
+	}
+	admins := s.cfg.AdminUsers
+	if admins == nil {
+		admins = []string{}
+	}
+	quotas := s.cfg.Quotas
+	return c.JSON(http.StatusOK, api.AdminOverviewDto{
+		Version: s.version, Database: api.AdminOverviewDtoDatabase(s.store.Dialect), SchemaVersion: version,
+		Users: stats.Users, BlockedUsers: stats.BlockedUsers, UnconfirmedUsers: stats.UnconfirmedUsers,
+		Spaces: stats.Spaces, Collections: stats.Collections, Bookmarks: stats.Bookmarks,
+		PublicLinks: stats.PublicLinks, ImageBytes: stats.ImageBytes, OpenReports: stats.OpenReports,
+		Settings: api.AdminSettingsDto{PublicUrl: s.cfg.PublicURL, RegistrationOpen: s.cfg.RegistrationOpen,
+			Email: s.mailEnabled(), RateLimits: s.cfg.RateLimits, AllowPrivateHosts: s.cfg.AllowPrivateHosts,
+			AdminUsers: admins, QuotaLinksPerUser: quotas.LinksPerUser, QuotaSpacesPerUser: quotas.SpacesPerUser,
+			QuotaCollectionsPerSpace: quotas.CollectionsPerSpace, QuotaUploadMbPerUser: quotas.UploadMBPerUser},
+	})
 }

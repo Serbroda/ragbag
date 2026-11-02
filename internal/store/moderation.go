@@ -182,3 +182,32 @@ func (s *Store) ResolveReport(ctx context.Context, id, resolvedBy, resolution st
 func (s *Store) DeleteResolvedReports(ctx context.Context, resolvedBefore time.Time) (int64, error) {
 	return s.exec(ctx, `DELETE FROM abuse_reports WHERE resolved_at IS NOT NULL AND resolved_at < ?`, resolvedBefore.UTC())
 }
+
+// --- Instance overview ---
+
+type InstanceStats struct {
+	Users            int   `db:"users"`
+	BlockedUsers     int   `db:"blocked_users"`
+	UnconfirmedUsers int   `db:"unconfirmed_users"`
+	Spaces           int   `db:"spaces"`
+	Collections      int   `db:"collections"`
+	Bookmarks        int   `db:"bookmarks"`
+	PublicLinks      int   `db:"public_links"`
+	ImageBytes       int64 `db:"image_bytes"`
+	OpenReports      int   `db:"open_reports"`
+}
+
+// Stats counts what the admin page shows; deleted accounts are not counted.
+func (s *Store) Stats(ctx context.Context) (*InstanceStats, error) {
+	var stats InstanceStats
+	return &stats, s.get(ctx, &stats, `SELECT
+		(SELECT COUNT(*) FROM users WHERE deleted_at IS NULL) AS users,
+		(SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND blocked_at IS NOT NULL) AS blocked_users,
+		(SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND email_verified_at IS NULL) AS unconfirmed_users,
+		(SELECT COUNT(*) FROM spaces) AS spaces,
+		(SELECT COUNT(*) FROM collections) AS collections,
+		(SELECT COUNT(*) FROM bookmarks) AS bookmarks,
+		(SELECT COUNT(*) FROM collection_shares WHERE disabled_at IS NULL) AS public_links,
+		(SELECT COALESCE(SUM(LENGTH(data)), 0) FROM images) AS image_bytes,
+		(SELECT COUNT(*) FROM abuse_reports WHERE resolved_at IS NULL) AS open_reports`)
+}
