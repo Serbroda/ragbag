@@ -9,9 +9,12 @@
 
 	const MIN_PASSWORD_LENGTH = 8;
 
-	// password: replace the initial one; choose: start fresh or restore a backup (empty instances only)
+	// choose: start fresh or restore a backup (empty instances only); password: replace the initial one when
+	// starting fresh. A restore needs no own password: it replaces this account with those of the backup.
 	let step = $state<'loading' | 'password' | 'choose' | 'restored'>('loading');
 	let username = $state('');
+	let mustChangePassword = $state(false);
+	let canChoose = $state(false);
 	// Prefilled from the login right before; asked again after a reload
 	const remembered = takeLoginPassword();
 	let initialPassword = $state(remembered ?? '');
@@ -29,13 +32,13 @@
 			resetSession();
 			const me = await loadMe();
 			username = me.username;
-			if (me.mustChangePassword) {
-				step = 'password';
-				return;
-			}
+			mustChangePassword = !!me.mustChangePassword;
 			const instance = me.instanceAdmin ? await new AdminApi(apiConfig()).getInstance() : null;
-			if (instance?.empty) {
+			canChoose = !!instance?.empty;
+			if (canChoose) {
 				step = 'choose';
+			} else if (mustChangePassword) {
+				step = 'password';
 			} else {
 				navigate('/', { replace: true });
 			}
@@ -57,11 +60,21 @@
 		error = '';
 		try {
 			await completeSetup(initialPassword, password, email);
-			await init();
+			resetSession();
+			navigate('/', { replace: true });
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to save the password.');
 		} finally {
 			busy = false;
+		}
+	}
+
+	function startFresh() {
+		error = '';
+		if (mustChangePassword) {
+			step = 'password';
+		} else {
+			navigate('/');
 		}
 	}
 
@@ -107,14 +120,14 @@
 	}
 </script>
 
-<CenteredScreen subtitle={step === 'password' ? 'Set up your Ragbag' : step === 'restored' ? 'Backup restored' : 'Welcome to Ragbag'}>
+<CenteredScreen subtitle={step === 'password' ? 'Choose your password' : step === 'restored' ? 'Backup restored' : 'Welcome to Ragbag'}>
 	{#if step === 'loading'}
 		<p class="text-center text-gray-400">Loading…</p>
 	{:else if step === 'password'}
 		<form class="flex flex-col gap-4" onsubmit={savePassword}>
 			<p class="text-sm text-gray-300">
 				You signed in as <strong class="text-white">{username}</strong> with the initial password. Choose your own
-				one, it replaces the file on the server.
+				one; the file on the server is deleted then.
 			</p>
 			<input type="text" autocomplete="username" value={username} hidden readonly />
 			{#if !remembered}
@@ -149,12 +162,18 @@
 			<Button type="submit" disabled={busy || password.length < MIN_PASSWORD_LENGTH}>
 				{busy ? 'Saving…' : 'Save and continue'}
 			</Button>
-			<button type="button" class="text-sm text-gray-400 hover:underline" onclick={signOut}>Log out</button>
+			{#if canChoose}
+				<button type="button" class="text-sm text-gray-400 hover:underline" onclick={() => ((step = 'choose'), (error = ''))}>
+					Back: restore a backup instead
+				</button>
+			{:else}
+				<button type="button" class="text-sm text-gray-400 hover:underline" onclick={signOut}>Log out</button>
+			{/if}
 		</form>
 	{:else if step === 'choose'}
 		<div class="flex flex-col gap-4">
 			<p class="text-sm text-gray-300">This Ragbag is still empty. Start fresh or move an existing one here.</p>
-			<Button href={p('/')} color="alternative">Start fresh</Button>
+			<Button color="alternative" onclick={startFresh}>Start fresh</Button>
 
 			<div class="rounded-lg p-4 ring-1 ring-inset ring-gray-700">
 				<p class="mb-1 font-medium text-white">Restore a backup</p>
@@ -183,8 +202,8 @@
 						</p>
 					</div>
 					<Alert color="yellow" class="mt-3">
-						Restoring replaces this setup account ({username}) too. Sign in with an account from the backup
-						afterwards; admins are the ones in ADMIN_USERS.
+						Restoring replaces this setup account ({username}), so it needs no password of its own. Sign in
+						with your account from the backup afterwards; admins are the ones in ADMIN_USERS.
 					</Alert>
 					<Button class="mt-3 w-full" disabled={busy} onclick={restore}>
 						{busy ? 'Restoring…' : 'Restore this backup'}

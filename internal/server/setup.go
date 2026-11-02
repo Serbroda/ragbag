@@ -67,12 +67,14 @@ func (s *Server) removeInitialPassword() {
 	}
 }
 
-// allowedDuringSetup: what the setup admin may do before replacing the initial password.
+// allowedDuringSetup: what the setup admin may do before replacing the initial password. Restoring a backup
+// needs no own password first: it replaces the setup admin anyway (and only on an empty instance).
 func allowedDuringSetup(method, requestPath string) bool {
 	switch {
-	case method == http.MethodGet && requestPath == "/api/v1/users/me":
+	case method == http.MethodGet && (requestPath == "/api/v1/users/me" || requestPath == "/api/v1/admin/instance"):
 		return true
-	case method == http.MethodPost && (requestPath == "/api/auth/setup" || requestPath == "/api/auth/password"):
+	case method == http.MethodPost && (requestPath == "/api/auth/setup" || requestPath == "/api/auth/password" ||
+		requestPath == "/api/v1/admin/backup/restore"):
 		return true
 	}
 	return false
