@@ -79,6 +79,16 @@
     }
 }
 
+/* iOS zooms into focused fields with text below 16px and stays zoomed. Outside a layer, so it beats text-sm & co;
+   maximum-scale in the viewport would also prevent it, but takes pinch zoom away on Android */
+@media (any-pointer: coarse) {
+    input,
+    textarea,
+    select {
+        font-size: 16px;
+    }
+}
+
 /* --- Brand accents --- */
 
 /* Warm glow on primary buttons (dark mode) */
