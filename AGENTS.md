@@ -152,6 +152,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Quick saving**: `/app/add?url=&title=&text=` (route outside a space) is the target of the web app manifest's
   `share_target` (installed app on Android) and of the bookmarklet in the profile dialog; signed-out visitors
   return there after the login (`rememberPendingAdd`).
+- **Offline** (`ui/v1/public/sw.js`): the service worker only answers failed page loads with a notice built into
+  it. It deliberately caches nothing (no private links on the device, no stale versions) and leaves `/api` alone.
 - **Link previews** (`meta.go`): the server writes title, description and Open Graph tags into `index.html` per
   page (chat apps do not run JavaScript). Shared collections go through the same `sharedCollection` as the API,
   so private, revoked or unknown links get the generic preview; pages behind a login never reveal anything.
