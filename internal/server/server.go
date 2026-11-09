@@ -34,6 +34,8 @@ type Server struct {
 	store  *store.Store
 	tokens *auth.Tokens
 	fetch  *fetch.Client
+	// feeds caches the news feeds of links for their headlines
+	feeds  *feedCache
 	admins map[string]bool
 	limits *limits
 	// mailer sends confirmation and reset links, nil without SMTP_HOST
@@ -56,6 +58,7 @@ func New(cfg config.Config, st *store.Store, version string) (*Server, error) {
 		store:   st,
 		tokens:  auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
 		fetch:   fetch.NewClient(cfg.AllowPrivateHosts),
+		feeds:   newFeedCache(),
 		admins:  admins,
 		mails:   newLimiter(20*time.Minute, 3),
 		version: version,
@@ -111,7 +114,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
 	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/auth/invites/*", "/api/v1/images/*", "/api/v1/shares/*",
-	"/api/v1/shares/*/reports", "/api/app/legal/*", "/api/health",
+	"/api/v1/shares/*/reports", "/api/v1/shares/*/bookmarks/*/headlines", "/api/app/legal/*", "/api/health",
 }
 
 func isPublic(requestPath string) bool {

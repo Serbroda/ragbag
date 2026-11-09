@@ -38,6 +38,9 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Sort links (newest, oldest, name, domain) and narrow them down with tag chips.
 - Full-text search over titles, addresses, descriptions and tags; `#tag` finds exactly that tag.
 - Three ways to show links – cards with preview images, compact cards or a dense list – chosen per user and device.
+- **Headlines**: cards of news sites, patch notes or blogs can show the latest headlines of their RSS/Atom feed
+  (found on the page), optionally only those containing certain words. Loaded when shown, at most once an hour.
+  A **Headlines** section on the dashboard merges them into one list, newest first.
 
 **Personal**
 - **Favorites** and a **dashboard** per user and space: arrange sections of hand-picked links, favorites and recently
@@ -243,11 +246,11 @@ On by default (`RATE_LIMIT_ENABLED`), kept in memory and reset by a restart. Ref
 | Registrations                       | 5, then one every 10 minutes            | IP               |
 | Password reset links                | 10, then one per minute                 | IP               |
 | Changing the password               | 5, then one per minute                  | user             |
-| Loading pages and images by address | 60, then one every 2 seconds            | user             |
+| Loading pages, images and feeds     | 60, then one every 2 seconds            | user (public links: IP) |
 | Reports of public links             | 5, then one every 5 minutes             | IP               |
 
 IPv6 addresses count by their /64. When the page limit is reached, new links are still saved, only without
-loading title and preview. The client IP comes from `X-Forwarded-For` only when the proxy is in your own network
+loading title and preview; feeds kept for an hour do not count. The client IP comes from `X-Forwarded-For` only when the proxy is in your own network
 (loopback or private addresses, e.g. nginx proxy manager or a Cloudflare tunnel on the same host); otherwise every
 visitor would share the proxy's address.
 

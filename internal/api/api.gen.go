@@ -94,6 +94,7 @@ func (e CreateInviteRequestTargetType) Valid() bool {
 // Defines values for DashboardSectionTypeEnum.
 const (
 	FAVORITES DashboardSectionTypeEnum = "FAVORITES"
+	HEADLINES DashboardSectionTypeEnum = "HEADLINES"
 	LINKS     DashboardSectionTypeEnum = "LINKS"
 	RECENT    DashboardSectionTypeEnum = "RECENT"
 )
@@ -102,6 +103,8 @@ const (
 func (e DashboardSectionTypeEnum) Valid() bool {
 	switch e {
 	case FAVORITES:
+		return true
+	case HEADLINES:
 		return true
 	case LINKS:
 		return true
@@ -538,6 +541,12 @@ type BookmarkDto struct {
 	// Favorite Whether the current user marked this bookmark as favorite
 	Favorite *bool `json:"favorite,omitempty"`
 
+	// FeedFilter Comma separated words; only headlines containing one of them are shown
+	FeedFilter *string `json:"feedFilter,omitempty"`
+
+	// FeedUrl News feed (RSS or Atom) whose latest headlines the card shows
+	FeedUrl *string `json:"feedUrl,omitempty"`
+
 	// Id UUID
 	Id ID `json:"id"`
 
@@ -561,6 +570,9 @@ type BookmarkMetadataDto struct {
 	Canonical   *string `json:"canonical,omitempty"`
 	Description *string `json:"description,omitempty"`
 	Favicon     *string `json:"favicon,omitempty"`
+
+	// FeedUrl The news feed the page links to, if any
+	FeedUrl *string `json:"feedUrl,omitempty"`
 
 	// Found False if the page could not be loaded or had no usable metadata
 	Found    bool      `json:"found"`
@@ -668,10 +680,14 @@ type CompleteSetupRequest struct {
 
 // CreateBookmarkDto defines model for CreateBookmarkDto.
 type CreateBookmarkDto struct {
-	Description *string   `json:"description,omitempty"`
-	Tags        *[]string `json:"tags,omitempty"`
-	Title       *string   `json:"title,omitempty"`
-	Url         string    `json:"url"`
+	Description *string `json:"description,omitempty"`
+	FeedFilter  *string `json:"feedFilter,omitempty"`
+
+	// FeedUrl A news feed or a page linking to one (the server finds its feed); 400 if there is none
+	FeedUrl *string   `json:"feedUrl,omitempty"`
+	Tags    *[]string `json:"tags,omitempty"`
+	Title   *string   `json:"title,omitempty"`
+	Url     string    `json:"url"`
 }
 
 // CreateCollectionDto defines model for CreateCollectionDto.
@@ -734,17 +750,21 @@ type DashboardDto struct {
 
 // DashboardSectionDto defines model for DashboardSectionDto.
 type DashboardSectionDto struct {
+	// AllFeeds A HEADLINES section without picked links, showing every link of the space with a feed
+	AllFeeds *bool `json:"allFeeds,omitempty"`
+
+	// Bookmarks For HEADLINES the links whose feeds it shows
 	Bookmarks []BookmarkDto `json:"bookmarks"`
 
 	// Id Empty for sections of the default layout
 	Id    *string `json:"id,omitempty"`
 	Title string  `json:"title"`
 
-	// Type LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+	// Type LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically, HEADLINES merges the headlines of hand-picked links with a feed (all of the space's if none are picked)
 	Type DashboardSectionTypeEnum `json:"type"`
 }
 
-// DashboardSectionTypeEnum LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+// DashboardSectionTypeEnum LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically, HEADLINES merges the headlines of hand-picked links with a feed (all of the space's if none are picked)
 type DashboardSectionTypeEnum string
 
 // DeleteAccountRequest defines model for DeleteAccountRequest.
@@ -786,6 +806,23 @@ type FeatureFlags map[string]string
 // FetchMetadataRequest defines model for FetchMetadataRequest.
 type FetchMetadataRequest struct {
 	Url string `json:"url"`
+}
+
+// HeadlineDto defines model for HeadlineDto.
+type HeadlineDto struct {
+	// BookmarkId The link whose feed it comes from, when merging several
+	BookmarkId  *ID        `json:"bookmarkId,omitempty"`
+	PublishedAt *time.Time `json:"publishedAt,omitempty"`
+	Title       string     `json:"title"`
+	Url         string     `json:"url"`
+}
+
+// HeadlinesDto defines model for HeadlinesDto.
+type HeadlinesDto struct {
+	// Failed The feed (for several, every feed) could not be loaded
+	Failed    bool          `json:"failed"`
+	FeedTitle *string       `json:"feedTitle,omitempty"`
+	Items     []HeadlineDto `json:"items"`
 }
 
 // HealthDto defines model for HealthDto.
@@ -1004,6 +1041,9 @@ type SharedBookmarkDto struct {
 	Description   *string `json:"description,omitempty"`
 	Favicon       *string `json:"favicon,omitempty"`
 
+	// Headlines The link has a news feed; its headlines come from getSharedHeadlines
+	Headlines *bool `json:"headlines,omitempty"`
+
 	// Id UUID
 	Id ID `json:"id"`
 
@@ -1186,6 +1226,12 @@ type UpdateBookmarkDto struct {
 	CustomImageUrl *string `json:"customImageUrl,omitempty"`
 	Description    *string `json:"description,omitempty"`
 
+	// FeedFilter Left out it stays, an empty string removes it
+	FeedFilter *string `json:"feedFilter,omitempty"`
+
+	// FeedUrl A news feed or a page linking to one (the server finds its feed); an empty string removes it, left out it stays
+	FeedUrl *string `json:"feedUrl,omitempty"`
+
 	// ImageHidden Show no preview image at all
 	ImageHidden *bool     `json:"imageHidden,omitempty"`
 	Tags        *[]string `json:"tags,omitempty"`
@@ -1214,11 +1260,11 @@ type UpdateDashboardDto struct {
 
 // UpdateDashboardSectionDto defines model for UpdateDashboardSectionDto.
 type UpdateDashboardSectionDto struct {
-	// BookmarkIds Only used for LINKS sections, in display order
+	// BookmarkIds Only used for LINKS (in display order) and HEADLINES sections (none = every link with a feed)
 	BookmarkIds *[]ID  `json:"bookmarkIds,omitempty"`
 	Title       string `json:"title"`
 
-	// Type LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+	// Type LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically, HEADLINES merges the headlines of hand-picked links with a feed (all of the space's if none are picked)
 	Type DashboardSectionTypeEnum `json:"type"`
 }
 
@@ -1330,6 +1376,13 @@ type LookupBookmarksParams struct {
 type SearchBookmarksParams struct {
 	// Q Search query - matches title, URL, description, and tags; a single "#tag" matches that tag exactly
 	Q string `form:"q" json:"q"`
+}
+
+// GetSpaceHeadlinesParams defines parameters for GetSpaceHeadlines.
+type GetSpaceHeadlinesParams struct {
+	// BookmarkId Links of the space with a feed (others are left out), at most 50
+	BookmarkId []ID `form:"bookmarkId" json:"bookmarkId"`
+	Limit      *int `form:"limit,omitempty" json:"limit,omitempty"`
 }
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
@@ -1538,6 +1591,9 @@ type ServerInterface interface {
 	// AddFavorite Mark a bookmark as favorite for the current user
 	// (PUT /v1/bookmarks/{bookmarkId}/favorite)
 	AddFavorite(ctx echo.Context, bookmarkId ID) error
+	// GetBookmarkHeadlines The latest headlines of the link's news feed, loaded by the server and cached for an hour
+	// (GET /v1/bookmarks/{bookmarkId}/headlines)
+	GetBookmarkHeadlines(ctx echo.Context, bookmarkId ID) error
 	// ResetBookmarkImage Back to the page's own preview image (removes an upload, an own image URL and hiding)
 	// (DELETE /v1/bookmarks/{bookmarkId}/image)
 	ResetBookmarkImage(ctx echo.Context, bookmarkId ID) error
@@ -1619,6 +1675,9 @@ type ServerInterface interface {
 	// GetSharedCollection A shared collection or one of its sub-collections, for anybody with the link (no account needed)
 	// (GET /v1/shares/{token})
 	GetSharedCollection(ctx echo.Context, token string, params GetSharedCollectionParams) error
+	// GetSharedHeadlines The latest headlines of a shared link's news feed (no account needed)
+	// (GET /v1/shares/{token}/bookmarks/{bookmarkId}/headlines)
+	GetSharedHeadlines(ctx echo.Context, token string, bookmarkId ID) error
 	// ReportShare Report a public link to the administrators of this installation (no account needed)
 	// (POST /v1/shares/{token}/reports)
 	ReportShare(ctx echo.Context, token string) error
@@ -1667,6 +1726,9 @@ type ServerInterface interface {
 	// GetFavorites Favorites of the current user in a space
 	// (GET /v1/spaces/{spaceId}/favorites)
 	GetFavorites(ctx echo.Context, spaceId ID) error
+	// GetSpaceHeadlines The newest headlines of several links' feeds merged, newest first (a dashboard section)
+	// (GET /v1/spaces/{spaceId}/headlines)
+	GetSpaceHeadlines(ctx echo.Context, spaceId ID, params GetSpaceHeadlinesParams) error
 	// RemoveSpaceIcon Remove the icon of a space
 	// (DELETE /v1/spaces/{spaceId}/icon)
 	RemoveSpaceIcon(ctx echo.Context, spaceId ID) error
@@ -2193,6 +2255,22 @@ func (w *ServerInterfaceWrapper) AddFavorite(ctx echo.Context) error {
 	return err
 }
 
+// GetBookmarkHeadlines converts echo context to params.
+func (w *ServerInterfaceWrapper) GetBookmarkHeadlines(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetBookmarkHeadlines(ctx, bookmarkId)
+	return err
+}
+
 // ResetBookmarkImage converts echo context to params.
 func (w *ServerInterfaceWrapper) ResetBookmarkImage(ctx echo.Context) error {
 	var err error
@@ -2629,6 +2707,30 @@ func (w *ServerInterfaceWrapper) GetSharedCollection(ctx echo.Context) error {
 	return err
 }
 
+// GetSharedHeadlines converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSharedHeadlines(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "token" -------------
+	var token string
+
+	err = runtime.BindStyledParameterWithOptions("simple", "token", ctx.Param("token"), &token, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter token: %s", err))
+	}
+
+	// ------------- Path parameter "bookmarkId" -------------
+	var bookmarkId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "bookmarkId", ctx.Param("bookmarkId"), &bookmarkId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSharedHeadlines(ctx, token, bookmarkId)
+	return err
+}
+
 // ReportShare converts echo context to params.
 func (w *ServerInterfaceWrapper) ReportShare(ctx echo.Context) error {
 	var err error
@@ -2897,6 +2999,38 @@ func (w *ServerInterfaceWrapper) GetFavorites(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetFavorites(ctx, spaceId)
+	return err
+}
+
+// GetSpaceHeadlines converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSpaceHeadlines(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params GetSpaceHeadlinesParams
+	// ------------- Required query parameter "bookmarkId" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, true, "bookmarkId", ctx.QueryParams(), &params.BookmarkId, runtime.BindQueryParameterOptions{Type: "array", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter bookmarkId: %s", err))
+	}
+
+	// ------------- Optional query parameter "limit" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "limit", ctx.QueryParams(), &params.Limit, runtime.BindQueryParameterOptions{Type: "integer", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter limit: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSpaceHeadlines(ctx, spaceId, params)
 	return err
 }
 
@@ -3370,6 +3504,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId/share", wrapper.ShareCollection, options.OperationMiddlewares["shareCollection"]...)
 	router.GET(options.BaseURL+"/v1/shares/:token", wrapper.GetSharedCollection, options.OperationMiddlewares["getSharedCollection"]...)
 	router.POST(options.BaseURL+"/v1/shares/:token/reports", wrapper.ReportShare, options.OperationMiddlewares["reportShare"]...)
+	router.GET(options.BaseURL+"/v1/shares/:token/bookmarks/:bookmarkId/headlines", wrapper.GetSharedHeadlines, options.OperationMiddlewares["getSharedHeadlines"]...)
 	router.DELETE(options.BaseURL+"/v1/collections/:collectionId/lock", wrapper.UnlockCollection, options.OperationMiddlewares["unlockCollection"]...)
 	router.PUT(options.BaseURL+"/v1/collections/:collectionId/lock", wrapper.LockCollection, options.OperationMiddlewares["lockCollection"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/seen", wrapper.MarkCollectionSeen, options.OperationMiddlewares["markCollectionSeen"]...)
@@ -3389,6 +3524,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks", wrapper.CreateBookmark, options.OperationMiddlewares["createBookmark"]...)
 	router.POST(options.BaseURL+"/v1/collections/:collectionId/bookmarks/metadata", wrapper.FetchBookmarkMetadata, options.OperationMiddlewares["fetchBookmarkMetadata"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/favorites", wrapper.GetFavorites, options.OperationMiddlewares["getFavorites"]...)
+	router.GET(options.BaseURL+"/v1/spaces/:spaceId/headlines", wrapper.GetSpaceHeadlines, options.OperationMiddlewares["getSpaceHeadlines"]...)
+	router.GET(options.BaseURL+"/v1/bookmarks/:bookmarkId/headlines", wrapper.GetBookmarkHeadlines, options.OperationMiddlewares["getBookmarkHeadlines"]...)
 	router.DELETE(options.BaseURL+"/v1/bookmarks/:bookmarkId/image", wrapper.ResetBookmarkImage, options.OperationMiddlewares["resetBookmarkImage"]...)
 	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/image", wrapper.SetBookmarkImage, options.OperationMiddlewares["setBookmarkImage"]...)
 	router.PUT(options.BaseURL+"/v1/bookmarks/:bookmarkId/reactions", wrapper.SetReaction, options.OperationMiddlewares["setReaction"]...)

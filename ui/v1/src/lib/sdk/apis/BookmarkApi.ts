@@ -34,6 +34,11 @@ import {
     FetchMetadataRequestToJSON,
 } from '../models/FetchMetadataRequest';
 import {
+    type HeadlinesDto,
+    HeadlinesDtoFromJSON,
+    HeadlinesDtoToJSON,
+} from '../models/HeadlinesDto';
+import {
     type ReactionDto,
     ReactionDtoFromJSON,
     ReactionDtoToJSON,
@@ -86,6 +91,13 @@ export interface FetchBookmarkMetadataRequest {
 }
 
 export interface GetBookmarkRequest {
+    /**
+     * 
+     */
+    bookmarkId: string;
+}
+
+export interface GetBookmarkHeadlinesRequest {
     /**
      * 
      */
@@ -475,6 +487,59 @@ export class BookmarkApi extends runtime.BaseAPI {
      */
     async getBookmark(requestParameters: GetBookmarkRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BookmarkDto> {
         const response = await this.getBookmarkRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getBookmarkHeadlines without sending the request
+     */
+    async getBookmarkHeadlinesRequestOpts(requestParameters: GetBookmarkHeadlinesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['bookmarkId'] == null) {
+            throw new runtime.RequiredError(
+                'bookmarkId',
+                'Required parameter "bookmarkId" was null or undefined when calling getBookmarkHeadlines().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/bookmarks/{bookmarkId}/headlines`;
+        urlPath = urlPath.replace('{bookmarkId}', encodeURIComponent(String(requestParameters['bookmarkId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The latest headlines of the link\'s news feed, loaded by the server and cached for an hour
+     */
+    async getBookmarkHeadlinesRaw(requestParameters: GetBookmarkHeadlinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HeadlinesDto>> {
+        const requestOptions = await this.getBookmarkHeadlinesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HeadlinesDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The latest headlines of the link\'s news feed, loaded by the server and cached for an hour
+     */
+    async getBookmarkHeadlines(requestParameters: GetBookmarkHeadlinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HeadlinesDto> {
+        const response = await this.getBookmarkHeadlinesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

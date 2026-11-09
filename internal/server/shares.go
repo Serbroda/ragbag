@@ -200,7 +200,7 @@ func (s *Server) sharedCollection(c echo.Context, token string, collectionID *st
 		// Deliberately without who added it, favorites or reactions
 		dto.Bookmarks = append(dto.Bookmarks, api.SharedBookmarkDto{Id: b.ID, Url: b.URL, Title: b.Title,
 			Description: b.Description, Tags: tags, OgImage: image, CustomImageId: imageID, Favicon: b.Favicon,
-			CreatedAt: &createdAt})
+			CreatedAt: &createdAt, Headlines: ptr(b.FeedURL != nil)})
 	}
 	return &dto, nil
 }

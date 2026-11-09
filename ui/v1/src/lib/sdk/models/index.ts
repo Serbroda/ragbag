@@ -30,6 +30,8 @@ export * from './DeleteAccountRequest';
 export * from './DiscoverableSpaceDto';
 export * from './DisplayNameDto';
 export * from './FetchMetadataRequest';
+export * from './HeadlineDto';
+export * from './HeadlinesDto';
 export * from './HealthDto';
 export * from './ImportResultDto';
 export * from './InstanceDto';

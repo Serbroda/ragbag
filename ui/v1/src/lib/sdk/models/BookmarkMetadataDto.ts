@@ -51,6 +51,10 @@ export interface BookmarkMetadataDto {
      * 
      */
     keywords?: Array<string>;
+    /**
+     * The news feed the page links to, if any
+     */
+    feedUrl?: string;
 }
 
 /**
@@ -80,6 +84,7 @@ export function BookmarkMetadataDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'favicon': json['favicon'] == null ? undefined : json['favicon'],
         'canonical': json['canonical'] == null ? undefined : json['canonical'],
         'keywords': json['keywords'] == null ? undefined : json['keywords'],
+        'feedUrl': json['feedUrl'] == null ? undefined : json['feedUrl'],
     };
 }
 
@@ -102,6 +107,7 @@ export function BookmarkMetadataDtoToJSONTyped(value?: BookmarkMetadataDto | nul
         'favicon': value['favicon'],
         'canonical': value['canonical'],
         'keywords': value['keywords'],
+        'feedUrl': value['feedUrl'],
     };
 }
 

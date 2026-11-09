@@ -19,6 +19,11 @@ import {
     CreateReportRequestToJSON,
 } from '../models/CreateReportRequest';
 import {
+    type HeadlinesDto,
+    HeadlinesDtoFromJSON,
+    HeadlinesDtoToJSON,
+} from '../models/HeadlinesDto';
+import {
     type SharedCollectionDto,
     SharedCollectionDtoFromJSON,
     SharedCollectionDtoToJSON,
@@ -33,6 +38,17 @@ export interface GetSharedCollectionRequest {
      * A sub-collection of the shared one; the shared collection itself if omitted
      */
     collectionId?: string;
+}
+
+export interface GetSharedHeadlinesRequest {
+    /**
+     * 
+     */
+    token: string;
+    /**
+     * 
+     */
+    bookmarkId: string;
 }
 
 export interface ReportShareRequest {
@@ -105,6 +121,59 @@ export class ShareApi extends runtime.BaseAPI {
      */
     async getSharedCollection(requestParameters: GetSharedCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SharedCollectionDto> {
         const response = await this.getSharedCollectionRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSharedHeadlines without sending the request
+     */
+    async getSharedHeadlinesRequestOpts(requestParameters: GetSharedHeadlinesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['token'] == null) {
+            throw new runtime.RequiredError(
+                'token',
+                'Required parameter "token" was null or undefined when calling getSharedHeadlines().'
+            );
+        }
+
+        if (requestParameters['bookmarkId'] == null) {
+            throw new runtime.RequiredError(
+                'bookmarkId',
+                'Required parameter "bookmarkId" was null or undefined when calling getSharedHeadlines().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/v1/shares/{token}/bookmarks/{bookmarkId}/headlines`;
+        urlPath = urlPath.replace('{token}', encodeURIComponent(String(requestParameters['token'])));
+        urlPath = urlPath.replace('{bookmarkId}', encodeURIComponent(String(requestParameters['bookmarkId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The latest headlines of a shared link\'s news feed (no account needed)
+     */
+    async getSharedHeadlinesRaw(requestParameters: GetSharedHeadlinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HeadlinesDto>> {
+        const requestOptions = await this.getSharedHeadlinesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HeadlinesDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The latest headlines of a shared link\'s news feed (no account needed)
+     */
+    async getSharedHeadlines(requestParameters: GetSharedHeadlinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HeadlinesDto> {
+        const response = await this.getSharedHeadlinesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -47,9 +47,13 @@ export interface DashboardSectionDto {
      */
     type: DashboardSectionTypeEnum;
     /**
-     * 
+     * For HEADLINES the links whose feeds it shows
      */
     bookmarks: Array<BookmarkDto>;
+    /**
+     * A HEADLINES section without picked links, showing every link of the space with a feed
+     */
+    allFeeds?: boolean;
 }
 
 
@@ -78,6 +82,7 @@ export function DashboardSectionDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'title': json['title'],
         'type': DashboardSectionTypeEnumFromJSON(json['type']),
         'bookmarks': ((json['bookmarks'] as Array<any>).map(BookmarkDtoFromJSON)),
+        'allFeeds': json['allFeeds'] == null ? undefined : json['allFeeds'],
     };
 }
 
@@ -96,6 +101,7 @@ export function DashboardSectionDtoToJSONTyped(value?: DashboardSectionDto | nul
         'title': value['title'],
         'type': DashboardSectionTypeEnumToJSON(value['type']),
         'bookmarks': ((value['bookmarks'] as Array<any>).map(BookmarkDtoToJSON)),
+        'allFeeds': value['allFeeds'],
     };
 }
 

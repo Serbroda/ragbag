@@ -1730,6 +1730,34 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /v1/shares/{token}/bookmarks/{bookmarkId}/headlines:
+    get:
+      summary: The latest headlines of a shared link's news feed (no account needed)
+      operationId: getSharedHeadlines
+      tags:
+        - Share
+      security: [ ]
+      parameters:
+        - in: path
+          name: token
+          required: true
+          schema:
+            type: string
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeadlinesDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/collections/{collectionId}/lock:
     put:
       summary: Lock the collection (and everything below it) for the current user only; needs a PIN
@@ -2285,6 +2313,74 @@ paths:
                 $ref: '#/components/schemas/BookmarkDtoList'
         '403':
           $ref: '#/components/responses/Forbidden'
+
+  /v1/spaces/{spaceId}/headlines:
+    get:
+      summary: The newest headlines of several links' feeds merged, newest first (a dashboard section)
+      operationId: getSpaceHeadlines
+      tags:
+        - Dashboard
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+        - in: query
+          name: bookmarkId
+          required: true
+          description: Links of the space with a feed (others are left out), at most 50
+          schema:
+            type: array
+            maxItems: 50
+            items:
+              $ref: '#/components/schemas/ID'
+        - in: query
+          name: limit
+          required: false
+          schema:
+            type: integer
+            minimum: 1
+            maximum: 50
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeadlinesDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /v1/bookmarks/{bookmarkId}/headlines:
+    get:
+      summary: The latest headlines of the link's news feed, loaded by the server and cached for an hour
+      operationId: getBookmarkHeadlines
+      tags:
+        - Bookmark
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: bookmarkId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/HeadlinesDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /v1/bookmarks/{bookmarkId}/image:
     put:
@@ -3666,6 +3762,12 @@ components:
         imageHidden:
           type: boolean
           description: Show no preview image at all
+        feedUrl:
+          type: string
+          description: News feed (RSS or Atom) whose latest headlines the card shows
+        feedFilter:
+          type: string
+          description: Comma separated words; only headlines containing one of them are shown
         isNew:
           type: boolean
           description: >
@@ -3892,6 +3994,9 @@ components:
         createdAt:
           type: string
           format: date-time
+        headlines:
+          type: boolean
+          description: The link has a news feed; its headlines come from getSharedHeadlines
       required:
         - id
         - url
@@ -3946,11 +4051,13 @@ components:
     DashboardSectionTypeEnum:
       type: string
       description: >
-        LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+        LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically,
+        HEADLINES merges the headlines of hand-picked links with a feed (all of the space's if none are picked)
       enum:
         - LINKS
         - FAVORITES
         - RECENT
+        - HEADLINES
 
     DashboardDto:
       properties:
@@ -3976,8 +4083,12 @@ components:
           $ref: '#/components/schemas/DashboardSectionTypeEnum'
         bookmarks:
           type: array
+          description: For HEADLINES the links whose feeds it shows
           items:
             $ref: '#/components/schemas/BookmarkDto'
+        allFeeds:
+          type: boolean
+          description: A HEADLINES section without picked links, showing every link of the space with a feed
       required:
         - title
         - type
@@ -4001,7 +4112,7 @@ components:
           $ref: '#/components/schemas/DashboardSectionTypeEnum'
         bookmarkIds:
           type: array
-          description: Only used for LINKS sections, in display order
+          description: Only used for LINKS (in display order) and HEADLINES sections (none = every link with a feed)
           items:
             $ref: '#/components/schemas/ID'
       required:
@@ -4037,9 +4148,43 @@ components:
           type: array
           items:
             type: string
+        feedUrl:
+          type: string
+          description: The news feed the page links to, if any
       required:
         - url
         - found
+
+    HeadlinesDto:
+      properties:
+        feedTitle:
+          type: string
+        items:
+          type: array
+          items:
+            $ref: '#/components/schemas/HeadlineDto'
+        failed:
+          type: boolean
+          description: The feed (for several, every feed) could not be loaded
+      required:
+        - items
+        - failed
+
+    HeadlineDto:
+      properties:
+        title:
+          type: string
+        url:
+          type: string
+        publishedAt:
+          type: string
+          format: date-time
+        bookmarkId:
+          $ref: '#/components/schemas/ID'
+          description: The link whose feed it comes from, when merging several
+      required:
+        - title
+        - url
 
     BookmarkDtoList:
       type: array
@@ -4058,6 +4203,11 @@ components:
           type: array
           items:
             type: string
+        feedUrl:
+          type: string
+          description: A news feed or a page linking to one (the server finds its feed); 400 if there is none
+        feedFilter:
+          type: string
       required:
         - url
 
@@ -4082,6 +4232,14 @@ components:
         imageHidden:
           type: boolean
           description: Show no preview image at all
+        feedUrl:
+          type: string
+          description: >
+            A news feed or a page linking to one (the server finds its feed); an empty string removes it, left out
+            it stays
+        feedFilter:
+          type: string
+          description: Left out it stays, an empty string removes it
       required:
         - url
 

@@ -88,6 +88,14 @@ export interface BookmarkDto {
      */
     imageHidden?: boolean;
     /**
+     * News feed (RSS or Atom) whose latest headlines the card shows
+     */
+    feedUrl?: string;
+    /**
+     * Comma separated words; only headlines containing one of them are shown
+     */
+    feedFilter?: string;
+    /**
      * Added by another member since the current user last looked at the collection; only set when listing a collection
      * 
      */
@@ -132,6 +140,8 @@ export function BookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'customImageId': json['customImageId'] == null ? undefined : json['customImageId'],
         'customImageUrl': json['customImageUrl'] == null ? undefined : json['customImageUrl'],
         'imageHidden': json['imageHidden'] == null ? undefined : json['imageHidden'],
+        'feedUrl': json['feedUrl'] == null ? undefined : json['feedUrl'],
+        'feedFilter': json['feedFilter'] == null ? undefined : json['feedFilter'],
         'isNew': json['isNew'] == null ? undefined : json['isNew'],
         'reactions': json['reactions'] == null ? undefined : ((json['reactions'] as Array<any>).map(ReactionDtoFromJSON)),
     };
@@ -163,6 +173,8 @@ export function BookmarkDtoToJSONTyped(value?: BookmarkDto | null, ignoreDiscrim
         'customImageId': value['customImageId'],
         'customImageUrl': value['customImageUrl'],
         'imageHidden': value['imageHidden'],
+        'feedUrl': value['feedUrl'],
+        'feedFilter': value['feedFilter'],
         'isNew': value['isNew'],
         'reactions': value['reactions'] == null ? undefined : ((value['reactions'] as Array<any>).map(ReactionDtoToJSON)),
     };

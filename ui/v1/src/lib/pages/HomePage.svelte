@@ -10,6 +10,7 @@
 		CloseOutline,
 		GridPlusOutline,
 		LinkOutline,
+		NewspaperOutline,
 		PenOutline,
 		PlusOutline,
 		StarSolid,
@@ -18,6 +19,7 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import { navigate, route } from '../router';
 	import LinkTile from '../components/LinkTile.svelte';
+	import DashboardHeadlines from '../components/DashboardHeadlines.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import { shownName } from '../utils/format';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
@@ -95,7 +97,17 @@
 		LINKS: { label: 'Links', icon: LinkOutline, hint: 'Links you pick and arrange yourself' },
 		FAVORITES: { label: 'Favorites', icon: StarSolid, hint: 'Shows your starred links automatically' },
 		RECENT: { label: 'Recently added', icon: ClockSolid, hint: 'Shows the newest links of the space automatically' },
+		HEADLINES: {
+			label: 'Headlines',
+			icon: NewspaperOutline,
+			hint: 'The newest headlines of links with a news feed, merged',
+		},
 	};
+
+	/** Sections with links to pick: arranged for LINKS, the feeds to merge for HEADLINES. */
+	function hasItems(type: DashboardSectionTypeEnum): boolean {
+		return type === 'LINKS' || type === 'HEADLINES';
+	}
 
 	// --- Edit mode ---------------------------------------------------------
 	// Draft items get their own ids: the same link may sit in several sections, and the
@@ -120,7 +132,11 @@
 			id: uid(),
 			title: section.title,
 			type: section.type,
-			items: section.type === 'LINKS' ? section.bookmarks.map((bookmark) => ({ id: uid(), bookmark })) : [],
+			// A headlines section with all feeds has nothing picked
+			items:
+				section.type === 'LINKS' || (section.type === 'HEADLINES' && !section.allFeeds)
+					? section.bookmarks.map((bookmark) => ({ id: uid(), bookmark }))
+					: [],
 		}));
 		saveError = '';
 		editing = true;
@@ -163,7 +179,7 @@
 					sections: draft.map((s) => ({
 						title: s.title.trim(),
 						type: s.type,
-						bookmarkIds: s.type === 'LINKS' ? s.items.map((item) => item.bookmark.id) : undefined,
+						bookmarkIds: hasItems(s.type) ? s.items.map((item) => item.bookmark.id) : undefined,
 					})),
 				},
 			});
@@ -263,14 +279,22 @@
 					<h2 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
 						<meta.icon class="h-3.5 w-3.5" />
 						{section.title}
-						<span class="font-normal normal-case tracking-normal text-gray-400">· {section.bookmarks.length}</span>
+						<span class="font-normal normal-case tracking-normal text-gray-400"
+							>· {section.bookmarks.length}{section.type === 'HEADLINES'
+								? ` feed${section.bookmarks.length === 1 ? '' : 's'}`
+								: ''}</span
+						>
 					</h2>
-					{#if section.bookmarks.length === 0}
+					{#if section.type === 'HEADLINES' && section.bookmarks.length > 0}
+						<DashboardHeadlines {spaceId} sources={section.bookmarks} />
+					{:else if section.bookmarks.length === 0}
 						<div class="rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-800">
 							{#if section.type === 'FAVORITES'}
 								Star links to see them here.
 							{:else if section.type === 'RECENT'}
 								Nothing has been added to this space yet.
+							{:else if section.type === 'HEADLINES'}
+								No links with headlines yet: turn them on in a link’s edit dialog.
 							{:else}
 								No links yet. Use
 								<button type="button" class="text-primary-600 hover:underline dark:text-primary-400" onclick={startEditing}>
@@ -356,13 +380,23 @@
 						</button>
 					</div>
 
-					{#if section.type === 'LINKS'}
+					{#if hasItems(section.type)}
+						{#if section.type === 'HEADLINES'}
+							<p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
+								{section.items.length === 0
+									? 'Shows all links of the space with headlines. Pick some to show only theirs.'
+									: 'Shows the headlines of these links.'}
+							</p>
+						{/if}
 						<div
-							class="grid min-h-16 gap-3 rounded-lg sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4"
+							class="grid gap-3 rounded-lg sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 {section.type === 'LINKS' ||
+							section.items.length > 0
+								? 'min-h-16'
+								: ''}"
 							use:dndzone={{
 								items: section.items,
 								flipDurationMs: FLIP_MS,
-								type: 'links',
+								type: section.type === 'HEADLINES' ? 'feeds' : 'links',
 								dropTargetStyle: { outline: '2px dashed var(--color-primary-500)', outlineOffset: '4px' },
 							}}
 							onconsider={(e) => (section.items = e.detail.items as DraftItem[])}
@@ -393,7 +427,8 @@
 							class="mt-3 flex w-full items-center justify-center gap-2 rounded-lg border-2 border-dashed border-gray-300 py-2.5 text-sm text-gray-500 transition hover:border-primary-500 hover:text-primary-600 dark:border-gray-700 dark:hover:text-primary-400"
 							onclick={() => openPicker(section)}
 						>
-							<PlusOutline class="h-4 w-4" /> Add links
+							<PlusOutline class="h-4 w-4" />
+							{section.type === 'HEADLINES' ? 'Pick links with headlines' : 'Add links'}
 						</button>
 					{:else}
 						<p class="text-sm text-gray-500 dark:text-gray-400">{meta.hint}.</p>
@@ -413,6 +448,9 @@
 			<Button size="sm" color="alternative" onclick={() => addSection('RECENT')}>
 				<ClockSolid class="me-1.5 h-4 w-4" /> Recently added
 			</Button>
+			<Button size="sm" color="alternative" onclick={() => addSection('HEADLINES')}>
+				<NewspaperOutline class="me-1.5 h-4 w-4" /> Headlines
+			</Button>
 			{#if dashboard?.customized}
 				<button
 					type="button"
@@ -430,6 +468,7 @@
 	bind:open={pickerOpen}
 	{spaceId}
 	excludeIds={new Set(pickerSection?.items.map((item) => item.bookmark.id) ?? [])}
+	onlyFeeds={pickerSection?.type === 'HEADLINES'}
 	onpick={addLinks}
 />
 

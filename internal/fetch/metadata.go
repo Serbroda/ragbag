@@ -24,6 +24,8 @@ type Metadata struct {
 	Favicon     string
 	Canonical   string
 	Keywords    []string
+	// Feed is the page's news feed (RSS or Atom), if it links to one
+	Feed string
 }
 
 // Found tells whether the page had anything worth showing.
@@ -78,7 +80,7 @@ func imageMetadata(location *url.URL) Metadata {
 // ParseMetadata reads the head of a parsed page; relative URLs are resolved against base.
 func ParseMetadata(doc *html.Node, base *url.URL) Metadata {
 	var (
-		title, ogTitle, description, ogDescription, ogImage, canonical, icon, keywords string
+		title, ogTitle, description, ogDescription, ogImage, canonical, icon, keywords, feed string
 	)
 	var walk func(*html.Node)
 	walk = func(n *html.Node) {
@@ -109,6 +111,8 @@ func ParseMetadata(doc *html.Node, base *url.URL) Metadata {
 					canonical = attr(n, "href")
 				case strings.Contains(rel, " icon ") && icon == "":
 					icon = attr(n, "href")
+				case strings.Contains(rel, " alternate ") && feed == "" && isFeedType(attr(n, "type")):
+					feed = attr(n, "href")
 				}
 			}
 		}
@@ -126,11 +130,17 @@ func ParseMetadata(doc *html.Node, base *url.URL) Metadata {
 		Canonical:   resolve(base, canonical),
 		Favicon:     resolve(base, icon),
 		Keywords:    parseKeywords(keywords),
+		Feed:        resolve(base, feed),
 	}
 	if metadata.Favicon == "" {
 		metadata.Favicon = resolve(base, "/favicon.ico")
 	}
 	return metadata
+}
+
+func isFeedType(value string) bool {
+	value = strings.ToLower(strings.TrimSpace(value))
+	return value == "application/rss+xml" || value == "application/atom+xml"
 }
 
 func parseKeywords(content string) []string {

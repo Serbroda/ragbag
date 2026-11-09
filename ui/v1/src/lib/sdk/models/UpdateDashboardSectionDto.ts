@@ -36,7 +36,7 @@ export interface UpdateDashboardSectionDto {
      */
     type: DashboardSectionTypeEnum;
     /**
-     * Only used for LINKS sections, in display order
+     * Only used for LINKS (in display order) and HEADLINES sections (none = every link with a feed)
      */
     bookmarkIds?: Array<string>;
 }

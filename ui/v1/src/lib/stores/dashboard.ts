@@ -11,7 +11,10 @@ export function toLayout(dashboard: DashboardDto): UpdateDashboardSectionDto[] {
 	return dashboard.sections.map((section) => ({
 		title: section.title,
 		type: section.type,
-		bookmarkIds: section.type === 'LINKS' ? section.bookmarks.map((b) => b.id) : undefined,
+		bookmarkIds:
+			section.type === 'LINKS' || (section.type === 'HEADLINES' && !section.allFeeds)
+				? section.bookmarks.map((b) => b.id)
+				: undefined,
 	}));
 }
 

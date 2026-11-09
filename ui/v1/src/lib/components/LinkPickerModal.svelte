@@ -10,12 +10,15 @@
 		open = $bindable(false),
 		spaceId,
 		excludeIds = new Set<string>(),
+		onlyFeeds = false,
 		onpick,
 	}: {
 		open?: boolean;
 		spaceId: string;
 		/** Links already in the section; shown but not selectable. */
 		excludeIds?: Set<string>;
+		/** Only links with headlines (a news feed). */
+		onlyFeeds?: boolean;
 		onpick: (bookmarks: BookmarkDto[]) => void;
 	} = $props();
 
@@ -41,7 +44,7 @@
 			const found = q.trim()
 				? await searchBookmarks(spaceId, q.trim())
 				: await new BookmarkApi(apiConfig()).getRecentBookmarks({ spaceId, limit: 100 });
-			if (q === query) results = found;
+			if (q === query) results = onlyFeeds ? found.filter((b) => b.feedUrl) : found;
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to load links.');
 		} finally {
@@ -99,7 +102,13 @@
 			</li>
 		{:else}
 			<li class="px-2 py-8 text-center text-sm text-gray-500">
-				{loading ? 'Loading…' : query ? 'No links match your search.' : 'This space has no links yet.'}
+				{loading
+					? 'Loading…'
+					: query
+						? 'No links match your search.'
+						: onlyFeeds
+							? 'No links with headlines yet: turn them on in a link’s edit dialog.'
+							: 'This space has no links yet.'}
 			</li>
 		{/each}
 	</ul>

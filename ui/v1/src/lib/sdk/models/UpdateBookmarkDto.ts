@@ -47,6 +47,15 @@ export interface UpdateBookmarkDto {
      * Show no preview image at all
      */
     imageHidden?: boolean;
+    /**
+     * A news feed or a page linking to one (the server finds its feed); an empty string removes it, left out it stays
+     * 
+     */
+    feedUrl?: string;
+    /**
+     * Left out it stays, an empty string removes it
+     */
+    feedFilter?: string;
 }
 
 /**
@@ -74,6 +83,8 @@ export function UpdateBookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'collectionId': json['collectionId'] == null ? undefined : json['collectionId'],
         'customImageUrl': json['customImageUrl'] == null ? undefined : json['customImageUrl'],
         'imageHidden': json['imageHidden'] == null ? undefined : json['imageHidden'],
+        'feedUrl': json['feedUrl'] == null ? undefined : json['feedUrl'],
+        'feedFilter': json['feedFilter'] == null ? undefined : json['feedFilter'],
     };
 }
 
@@ -95,6 +106,8 @@ export function UpdateBookmarkDtoToJSONTyped(value?: UpdateBookmarkDto | null, i
         'collectionId': value['collectionId'],
         'customImageUrl': value['customImageUrl'],
         'imageHidden': value['imageHidden'],
+        'feedUrl': value['feedUrl'],
+        'feedFilter': value['feedFilter'],
     };
 }
 

@@ -158,7 +158,7 @@
 			{#if bookmarks.length > 0}
 				<div class={linkListClass(preferences.linkView)}>
 					{#each bookmarks as bookmark (bookmark.id)}
-						<BookmarkCard {bookmark} publicView />
+						<BookmarkCard {bookmark} publicView shareToken={bookmark.headlines ? token : undefined} />
 					{/each}
 				</div>
 			{:else if filter.trim() || selectedTags.length > 0}
