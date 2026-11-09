@@ -69,3 +69,33 @@ export function previewImage(link: ImageSource): string | undefined {
 	if (link.customImageId) return imageUrl(link.customImageId);
 	return safeUrl(link.customImageUrl) ?? safeUrl(link.ogImage);
 }
+
+/** Whether and which headlines a link's card shows (`HeadlinesField`). */
+export interface HeadlineSettings {
+	feedUrl: string;
+	filter: string;
+}
+
+export function headlineSettings(bookmark: { feedUrl?: string; feedFilter?: string }): HeadlineSettings | null {
+	return bookmark.feedUrl ? { feedUrl: bookmark.feedUrl, filter: bookmark.feedFilter ?? '' } : null;
+}
+
+/** The fields to save: without a feed address the server looks on the link's page, "" removes the headlines. */
+export function headlineFields(settings: HeadlineSettings | null, url: string): { feedUrl: string; feedFilter: string } {
+	if (!settings) return { feedUrl: '', feedFilter: '' };
+	return { feedUrl: settings.feedUrl.trim() || url.trim(), feedFilter: settings.filter.trim() };
+}
+
+/** Headlines of the last 24 hours are highlighted. */
+export function isFreshHeadline(date: Date | undefined): boolean {
+	return !!date && Date.now() - date.getTime() < 24 * 60 * 60 * 1000;
+}
+
+/** Short enough for a column next to a headline: 5m, 14h, 3d, else the date. */
+export function headlineAge(date: Date): string {
+	const minutes = Math.max(0, (Date.now() - date.getTime()) / 60000);
+	if (minutes < 60) return `${Math.max(1, Math.round(minutes))}m`;
+	if (minutes < 24 * 60) return `${Math.round(minutes / 60)}h`;
+	if (minutes < 7 * 24 * 60) return `${Math.round(minutes / (24 * 60))}d`;
+	return date.toLocaleDateString(undefined, { day: 'numeric', month: 'short' });
+}

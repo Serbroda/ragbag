@@ -54,6 +54,8 @@ type exchangeLink struct {
 	Favicon     *string    `json:"favicon"`
 	Canonical   *string    `json:"canonical"`
 	CreatedAt   *time.Time `json:"created_at"`
+	FeedURL     *string    `json:"feed_url,omitempty"`
+	FeedFilter  *string    `json:"feed_filter,omitempty"`
 }
 
 // ExportCollection returns the collection as the user sees it: private sub-collections of others are left out.
@@ -98,7 +100,8 @@ func (s *Server) exportNode(c echo.Context, collection *store.Collection, childr
 		b := bookmarks[i]
 		createdAt := b.CreatedAt
 		node.Links = append(node.Links, exchangeLink{URL: b.URL, Title: b.Title, Description: b.Description,
-			Tags: b.Tags, OgImage: b.OgImage, Favicon: b.Favicon, Canonical: b.Canonical, CreatedAt: &createdAt})
+			Tags: b.Tags, OgImage: b.OgImage, Favicon: b.Favicon, Canonical: b.Canonical, CreatedAt: &createdAt,
+			FeedURL: b.FeedURL, FeedFilter: b.FeedFilter})
 	}
 	list := children[collection.ID]
 	sort.Slice(list, func(i, j int) bool { return strings.ToLower(list[i].Name) < strings.ToLower(list[j].Name) })
@@ -237,17 +240,24 @@ func (s *Server) importNode(c echo.Context, tx *store.Store, target *store.Colle
 			continue
 		}
 		known[url] = true
+		// Not checked like a feed entered by hand (that would load every one): a wrong one shows no headlines
+		feedFilter, err := normalizeFeedFilter(link.FeedFilter)
+		if err != nil {
+			feedFilter = nil
+		}
 		bookmark := &store.Bookmark{
 			CollectionID: target.ID,
 			URL:          url,
 			Title:        ptr(truncate(firstNonEmpty(strings.TrimSpace(deref(link.Title)), url), maxTitleLength)),
 			Description:  blankToNil(link.Description),
 			// Rendered as images and links for every member, so only http(s) URLs are kept
-			OgImage:   httpURLOrNil(link.OgImage),
-			Favicon:   httpURLOrNil(link.Favicon),
-			Canonical: httpURLOrNil(link.Canonical),
-			CreatedBy: currentUser(c),
-			Tags:      normalizeTags(&link.Tags),
+			OgImage:    httpURLOrNil(link.OgImage),
+			Favicon:    httpURLOrNil(link.Favicon),
+			Canonical:  httpURLOrNil(link.Canonical),
+			CreatedBy:  currentUser(c),
+			Tags:       normalizeTags(&link.Tags),
+			FeedURL:    httpURLOrNil(link.FeedURL),
+			FeedFilter: feedFilter,
 		}
 		// Original date if the file has one, otherwise strictly increasing in file order (oldest first)
 		if link.CreatedAt != nil {

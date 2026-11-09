@@ -17,6 +17,7 @@
 		title = $bindable(''),
 		description = $bindable(''),
 		tags = $bindable(''),
+		feed = $bindable(),
 		excludeId,
 		spaceId: spaceIdProp,
 	}: {
@@ -31,6 +32,8 @@
 		title?: string;
 		description?: string;
 		tags?: string;
+		/** The news feed the page links to, found by "Fetch details". */
+		feed?: string;
 	} = $props();
 
 	const spaceId = $derived(spaceIdProp ?? route.params.spaceId);
@@ -65,6 +68,7 @@
 		if (url.trim() !== lastFetchedUrl) {
 			status = null;
 			preview = null;
+			feed = undefined;
 		}
 	});
 
@@ -79,6 +83,7 @@
 			});
 			url = metadata.url;
 			lastFetchedUrl = metadata.url;
+			feed = metadata.feedUrl;
 			if (!metadata.found) {
 				preview = null;
 				status = { kind: 'info', text: 'No details found for this page. You can fill them in yourself.' };

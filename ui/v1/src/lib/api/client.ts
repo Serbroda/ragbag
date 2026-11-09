@@ -13,6 +13,7 @@ import type {
 	BookmarkDto,
 	CreateReportRequest,
 	GetLegalPagePageEnum,
+	HeadlinesDto,
 	InvitePreviewDto,
 	LegalPageDto,
 	Middleware,
@@ -182,6 +183,11 @@ export async function changePassword(currentPassword: string, newPassword: strin
 /** A collection shared by a public link (or one of its sub-collections); works without being signed in. */
 export async function getSharedCollection(token: string, collectionId?: string): Promise<SharedCollectionDto> {
 	return new ShareApi(anonConfig()).getSharedCollection({ token, collectionId });
+}
+
+/** The headlines of a link in a public link; works without being signed in. */
+export async function getSharedHeadlines(token: string, bookmarkId: string): Promise<HeadlinesDto> {
+	return new ShareApi(anonConfig()).getSharedHeadlines({ token, bookmarkId });
 }
 
 /** Reports a public link to the administrators; works without being signed in. */

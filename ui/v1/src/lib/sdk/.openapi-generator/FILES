@@ -41,6 +41,8 @@ models/DeleteAccountRequest.ts
 models/DiscoverableSpaceDto.ts
 models/DisplayNameDto.ts
 models/FetchMetadataRequest.ts
+models/HeadlineDto.ts
+models/HeadlinesDto.ts
 models/HealthDto.ts
 models/ImportResultDto.ts
 models/InstanceDto.ts

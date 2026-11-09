@@ -46,22 +46,22 @@ func (s *Server) dashboardView(c echo.Context, spaceID string) error {
 	result := api.DashboardDto{Customized: customized, Sections: []api.DashboardSectionDto{}}
 	for _, section := range sections {
 		var bookmarks []store.Bookmark
+		var allFeeds *bool
 		switch api.DashboardSectionTypeEnum(section.Type) {
 		case api.LINKS:
-			pinned, err := s.store.BookmarksByIDs(ctxOf(c), section.BookmarkIDs)
-			if err != nil {
-				return err
-			}
-			// Pinned links stay pinned when their collection turns private, but only those who can see it get them
-			byID := map[string]store.Bookmark{}
-			for _, b := range pinned {
-				if !hidden[b.CollectionID] {
-					byID[b.ID] = b
-				}
-			}
-			for _, id := range section.BookmarkIDs {
-				if b, ok := byID[id]; ok {
-					bookmarks = append(bookmarks, b)
+			bookmarks, err = s.pinnedBookmarks(c, section.BookmarkIDs, hidden)
+		case api.HEADLINES:
+			// The links whose feeds it shows: the picked ones that (still) have a feed, else all of the space's
+			allFeeds = ptr(len(section.BookmarkIDs) == 0)
+			if *allFeeds {
+				bookmarks, err = s.store.BookmarksWithFeeds(ctxOf(c), spaceID, keys(hidden), maxMergedFeeds)
+			} else {
+				var picked []store.Bookmark
+				picked, err = s.pinnedBookmarks(c, section.BookmarkIDs, hidden)
+				for _, b := range picked {
+					if b.FeedURL != nil {
+						bookmarks = append(bookmarks, b)
+					}
 				}
 			}
 		case api.FAVORITES:
@@ -79,9 +79,32 @@ func (s *Server) dashboardView(c echo.Context, spaceID string) error {
 		result.Sections = append(result.Sections, api.DashboardSectionDto{
 			// Sections of the default layout have no id
 			Id: nilIfEmpty(section.ID), Title: section.Title, Type: api.DashboardSectionTypeEnum(section.Type), Bookmarks: dtos,
+			AllFeeds: allFeeds,
 		})
 	}
 	return c.JSON(http.StatusOK, result)
+}
+
+// pinnedBookmarks loads the links in their order. Pinned links stay pinned when their collection turns private,
+// but only those who can see it get them.
+func (s *Server) pinnedBookmarks(c echo.Context, ids []string, hidden map[string]bool) ([]store.Bookmark, error) {
+	pinned, err := s.store.BookmarksByIDs(ctxOf(c), ids)
+	if err != nil {
+		return nil, err
+	}
+	byID := map[string]store.Bookmark{}
+	for _, b := range pinned {
+		if !hidden[b.CollectionID] {
+			byID[b.ID] = b
+		}
+	}
+	var bookmarks []store.Bookmark
+	for _, id := range ids {
+		if b, ok := byID[id]; ok {
+			bookmarks = append(bookmarks, b)
+		}
+	}
+	return bookmarks, nil
 }
 
 func (s *Server) UpdateDashboard(c echo.Context, spaceID api.ID) error {
@@ -110,11 +133,11 @@ func (s *Server) UpdateDashboard(c echo.Context, spaceID api.ID) error {
 		if len([]rune(title)) > 80 {
 			return badRequest("Section title must be at most 80 characters")
 		}
-		if !slices.Contains([]api.DashboardSectionTypeEnum{api.LINKS, api.FAVORITES, api.RECENT}, section.Type) {
+		if !slices.Contains([]api.DashboardSectionTypeEnum{api.LINKS, api.FAVORITES, api.RECENT, api.HEADLINES}, section.Type) {
 			return badRequest("Section type is required")
 		}
 		var ids []string
-		if section.Type == api.LINKS && section.BookmarkIds != nil {
+		if (section.Type == api.LINKS || section.Type == api.HEADLINES) && section.BookmarkIds != nil {
 			// Keep the first occurrence if a link was added twice
 			for _, id := range *section.BookmarkIds {
 				if !slices.Contains(ids, id) {
@@ -123,6 +146,9 @@ func (s *Server) UpdateDashboard(c echo.Context, spaceID api.ID) error {
 			}
 			if len(ids) > maxLinksPerSection {
 				return badRequest("A section can hold at most %d links", maxLinksPerSection)
+			}
+			if section.Type == api.HEADLINES && len(ids) > maxMergedFeeds {
+				return badRequest("A headlines section can show at most %d feeds", maxMergedFeeds)
 			}
 			for _, id := range ids {
 				if !slices.Contains(referenced, id) {

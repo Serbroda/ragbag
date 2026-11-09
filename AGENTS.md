@@ -154,6 +154,14 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   return there after the login (`rememberPendingAdd`).
 - **Offline** (`ui/v1/public/sw.js`): the service worker only answers failed page loads with a notice built into
   it. It deliberately caches nothing (no private links on the device, no stale versions) and leaves `/api` alone.
+- **Headlines** (`headlines.go`, `fetch/feed.go`, `Headlines.svelte`): a link may have a news feed (`feed_url`,
+  RSS or Atom) and a filter (`feed_filter`, comma separated, any word in a headline or its categories). Saving
+  takes a feed or a page linking to one (`FindFeed`, 400 if none); an unchanged address is not loaded again, a left
+  out one stays. The cards load `GET /bookmarks/{id}/headlines` (public links: `/shares/{token}/bookmarks/{id}/headlines`,
+  same checks as `sharedCollection`) when shown; the server keeps each feed in memory for an hour (failures 10
+  minutes), shared by all users, and only a load counts against the fetch limit. Nothing of a feed is stored.
+  The dashboard section `HEADLINES` merges the feeds of picked links (none picked: every link of the space with a
+  feed, `allFeeds`) via `GET /spaces/{id}/headlines?bookmarkId=…`, newest first, each article once.
 - **Link previews** (`meta.go`): the server writes title, description and Open Graph tags into `index.html` per
   page (chat apps do not run JavaScript). Shared collections go through the same `sharedCollection` as the API,
   so private, revoked or unknown links get the generic preview; pages behind a login never reveal anything.

@@ -35,6 +35,14 @@ export interface CreateBookmarkDto {
      * 
      */
     tags?: Array<string>;
+    /**
+     * A news feed or a page linking to one (the server finds its feed); 400 if there is none
+     */
+    feedUrl?: string;
+    /**
+     * 
+     */
+    feedFilter?: string;
 }
 
 /**
@@ -59,6 +67,8 @@ export function CreateBookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'title': json['title'] == null ? undefined : json['title'],
         'description': json['description'] == null ? undefined : json['description'],
         'tags': json['tags'] == null ? undefined : json['tags'],
+        'feedUrl': json['feedUrl'] == null ? undefined : json['feedUrl'],
+        'feedFilter': json['feedFilter'] == null ? undefined : json['feedFilter'],
     };
 }
 
@@ -77,6 +87,8 @@ export function CreateBookmarkDtoToJSONTyped(value?: CreateBookmarkDto | null, i
         'title': value['title'],
         'description': value['description'],
         'tags': value['tags'],
+        'feedUrl': value['feedUrl'],
+        'feedFilter': value['feedFilter'],
     };
 }
 

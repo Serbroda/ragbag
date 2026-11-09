@@ -26,12 +26,15 @@ type Bookmark struct {
 	ImageID     *string `db:"image_id"`
 	ImageURL    *string `db:"image_url"`
 	ImageHidden bool    `db:"image_hidden"`
+	// News feed whose latest headlines the card shows, optionally only those containing a filter word
+	FeedURL    *string `db:"feed_url"`
+	FeedFilter *string `db:"feed_filter"`
 }
 
 const (
 	bookmarkColumns = `b.id, b.collection_id, c.space_id, b.url, b.title, b.description, b.og_image, b.favicon,
 		b.canonical, b.created_by, ` + shownName + ` AS created_by_name, b.created_at, b.updated_at, b.image_id, b.image_url,
-		b.image_hidden`
+		b.image_hidden, b.feed_url, b.feed_filter`
 	// Links in the trash are left out of every query that uses these joins
 	bookmarkJoins  = ` JOIN collections c ON c.id = b.collection_id AND b.deleted_at IS NULL JOIN users u ON u.id = b.created_by`
 	bookmarkSelect = `SELECT ` + bookmarkColumns + ` FROM bookmarks b` + bookmarkJoins
@@ -45,9 +48,9 @@ func (s *Store) CreateBookmark(ctx context.Context, b *Bookmark) error {
 		b.CreatedAt = at
 	}
 	if _, err := s.exec(ctx, `INSERT INTO bookmarks (id, collection_id, url, title, description, og_image, favicon,
-		canonical, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		canonical, created_by, created_at, updated_at, feed_url, feed_filter) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
 		b.ID, b.CollectionID, b.URL, b.Title, b.Description, b.OgImage, b.Favicon, b.Canonical, b.CreatedBy,
-		b.CreatedAt.UTC(), at); err != nil {
+		b.CreatedAt.UTC(), at, b.FeedURL, b.FeedFilter); err != nil {
 		return err
 	}
 	return s.setTags(ctx, b.ID, b.Tags)
@@ -55,8 +58,9 @@ func (s *Store) CreateBookmark(ctx context.Context, b *Bookmark) error {
 
 func (s *Store) UpdateBookmark(ctx context.Context, b *Bookmark) error {
 	if _, err := s.exec(ctx, `UPDATE bookmarks SET collection_id = ?, url = ?, title = ?, description = ?, og_image = ?,
-		favicon = ?, canonical = ?, updated_at = ? WHERE id = ?`,
-		b.CollectionID, b.URL, b.Title, b.Description, b.OgImage, b.Favicon, b.Canonical, now(), b.ID); err != nil {
+		favicon = ?, canonical = ?, feed_url = ?, feed_filter = ?, updated_at = ? WHERE id = ?`,
+		b.CollectionID, b.URL, b.Title, b.Description, b.OgImage, b.Favicon, b.Canonical, b.FeedURL, b.FeedFilter, now(),
+		b.ID); err != nil {
 		return err
 	}
 	return s.setTags(ctx, b.ID, b.Tags)
@@ -271,6 +275,17 @@ func (s *Store) Favorites(ctx context.Context, userID, spaceID string, hidden []
 	query, args := excludeCollections(query+` WHERE f.user_id = ? AND c.space_id = ?`, []any{userID, spaceID}, hidden)
 	var bookmarks []Bookmark
 	if err := s.selIn(ctx, &bookmarks, query+` ORDER BY f.created_at DESC LIMIT ?`, append(args, limit)...); err != nil {
+		return nil, err
+	}
+	return bookmarks, s.loadTags(ctx, bookmarks)
+}
+
+// BookmarksWithFeeds lists the space's links with a news feed outside the hidden collections, newest first.
+func (s *Store) BookmarksWithFeeds(ctx context.Context, spaceID string, hidden []string, limit int) ([]Bookmark, error) {
+	query, args := bookmarkSelect+` WHERE c.space_id = ? AND b.feed_url IS NOT NULL`, []any{spaceID}
+	query, args = excludeCollections(query, args, hidden)
+	var bookmarks []Bookmark
+	if err := s.selIn(ctx, &bookmarks, query+` ORDER BY b.created_at DESC, b.id LIMIT ?`, append(args, limit)...); err != nil {
 		return nil, err
 	}
 	return bookmarks, s.loadTags(ctx, bookmarks)

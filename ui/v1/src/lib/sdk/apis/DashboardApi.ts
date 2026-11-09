@@ -19,6 +19,11 @@ import {
     DashboardDtoToJSON,
 } from '../models/DashboardDto';
 import {
+    type HeadlinesDto,
+    HeadlinesDtoFromJSON,
+    HeadlinesDtoToJSON,
+} from '../models/HeadlinesDto';
+import {
     type UpdateDashboardDto,
     UpdateDashboardDtoFromJSON,
     UpdateDashboardDtoToJSON,
@@ -29,6 +34,21 @@ export interface GetDashboardRequest {
      * 
      */
     spaceId: string;
+}
+
+export interface GetSpaceHeadlinesRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+    /**
+     * Links of the space with a feed (others are left out), at most 50
+     */
+    bookmarkId: Array<string>;
+    /**
+     * 
+     */
+    limit?: number;
 }
 
 export interface ResetDashboardRequest {
@@ -104,6 +124,74 @@ export class DashboardApi extends runtime.BaseAPI {
      */
     async getDashboard(requestParameters: GetDashboardRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<DashboardDto> {
         const response = await this.getDashboardRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSpaceHeadlines without sending the request
+     */
+    async getSpaceHeadlinesRequestOpts(requestParameters: GetSpaceHeadlinesRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling getSpaceHeadlines().'
+            );
+        }
+
+        if (requestParameters['bookmarkId'] == null) {
+            throw new runtime.RequiredError(
+                'bookmarkId',
+                'Required parameter "bookmarkId" was null or undefined when calling getSpaceHeadlines().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        if (requestParameters['bookmarkId'] != null) {
+            queryParameters['bookmarkId'] = requestParameters['bookmarkId'];
+        }
+
+        if (requestParameters['limit'] != null) {
+            queryParameters['limit'] = requestParameters['limit'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/headlines`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The newest headlines of several links\' feeds merged, newest first (a dashboard section)
+     */
+    async getSpaceHeadlinesRaw(requestParameters: GetSpaceHeadlinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<HeadlinesDto>> {
+        const requestOptions = await this.getSpaceHeadlinesRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => HeadlinesDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The newest headlines of several links\' feeds merged, newest first (a dashboard section)
+     */
+    async getSpaceHeadlines(requestParameters: GetSpaceHeadlinesRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<HeadlinesDto> {
+        const response = await this.getSpaceHeadlinesRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

@@ -29,6 +29,7 @@ func bookmarkDto(b *store.Bookmark, favorite bool) api.BookmarkDto {
 		Id: b.ID, CollectionId: &collectionID, Url: b.URL, Title: b.Title, Description: b.Description, Tags: &tags,
 		OgImage: b.OgImage, Favicon: b.Favicon, Canonical: b.Canonical, CreatedAt: &createdAt, CreatedBy: &createdBy,
 		Favorite: &favorite, CustomImageId: b.ImageID, CustomImageUrl: b.ImageURL, ImageHidden: &hidden,
+		FeedUrl: b.FeedURL, FeedFilter: b.FeedFilter,
 	}
 }
 
@@ -228,6 +229,18 @@ func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
 	if err := s.checkLinkQuota(ctxOf(c), s.store, currentUser(c), 1); err != nil {
 		return err
 	}
+	feedFilter, err := normalizeFeedFilter(req.FeedFilter)
+	if err != nil {
+		return err
+	}
+	var feedURL *string
+	if address := strings.TrimSpace(deref(req.FeedUrl)); address != "" {
+		found, err := s.resolveFeed(c, address)
+		if err != nil {
+			return err
+		}
+		feedURL = &found
+	}
 	var metadata fetch.Metadata
 	if s.fetchAllowed(c) {
 		metadata = s.fetch.Metadata(ctxOf(c), url)
@@ -242,6 +255,8 @@ func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
 		Canonical:    nilIfEmpty(metadata.Canonical),
 		CreatedBy:    currentUser(c),
 		Tags:         normalizeTags(req.Tags),
+		FeedURL:      feedURL,
+		FeedFilter:   feedFilter,
 	}
 	if err := s.store.CreateBookmark(ctxOf(c), bookmark); err != nil {
 		return err
@@ -279,6 +294,25 @@ func (s *Server) UpdateBookmark(c echo.Context, bookmarkID api.ID) error {
 	bookmark.Description = nilIfEmpty(deref(req.Description))
 	if req.Tags != nil {
 		bookmark.Tags = normalizeTags(req.Tags)
+	}
+	if req.FeedFilter != nil {
+		if bookmark.FeedFilter, err = normalizeFeedFilter(req.FeedFilter); err != nil {
+			return err
+		}
+	}
+	if req.FeedUrl != nil {
+		// The stored address (or the page it was found on, which the form shows) is kept without loading it again
+		address := strings.TrimSpace(*req.FeedUrl)
+		switch {
+		case address == "":
+			bookmark.FeedURL = nil
+		case address != deref(bookmark.FeedURL):
+			found, err := s.resolveFeed(c, address)
+			if err != nil {
+				return err
+			}
+			bookmark.FeedURL = &found
+		}
 	}
 	if urlChanged {
 		var metadata fetch.Metadata
@@ -414,7 +448,7 @@ func (s *Server) FetchBookmarkMetadata(c echo.Context, collectionID api.ID) erro
 	return c.JSON(http.StatusOK, api.BookmarkMetadataDto{
 		Url: url, Found: metadata.Found(), Title: nilIfEmpty(metadata.Title), Description: nilIfEmpty(metadata.Description),
 		OgImage: nilIfEmpty(metadata.OgImage), Favicon: nilIfEmpty(metadata.Favicon), Canonical: nilIfEmpty(metadata.Canonical),
-		Keywords: &keywords,
+		Keywords: &keywords, FeedUrl: nilIfEmpty(metadata.Feed),
 	})
 }
 

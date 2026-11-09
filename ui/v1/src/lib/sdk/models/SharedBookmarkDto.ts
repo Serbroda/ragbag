@@ -55,6 +55,10 @@ export interface SharedBookmarkDto {
      * 
      */
     createdAt?: Date;
+    /**
+     * The link has a news feed; its headlines come from getSharedHeadlines
+     */
+    headlines?: boolean;
 }
 
 /**
@@ -86,6 +90,7 @@ export function SharedBookmarkDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'customImageId': json['customImageId'] == null ? undefined : json['customImageId'],
         'favicon': json['favicon'] == null ? undefined : json['favicon'],
         'createdAt': json['createdAt'] == null ? undefined : (parseDateTime(json['createdAt'])),
+        'headlines': json['headlines'] == null ? undefined : json['headlines'],
     };
 }
 
@@ -109,6 +114,7 @@ export function SharedBookmarkDtoToJSONTyped(value?: SharedBookmarkDto | null, i
         'customImageId': value['customImageId'],
         'favicon': value['favicon'],
         'createdAt': value['createdAt'] == null ? value['createdAt'] : serializeDateTime(value['createdAt']),
+        'headlines': value['headlines'],
     };
 }
 

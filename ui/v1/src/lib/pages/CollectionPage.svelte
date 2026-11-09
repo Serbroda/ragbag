@@ -6,10 +6,11 @@
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
 	import LinkSortSelect from '../components/LinkSortSelect.svelte';
-	import { filterByTags, sortLinks } from '../utils/links';
+	import { filterByTags, headlineFields, headlineSettings, sortLinks, type HeadlineSettings } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
 	import TagInput from '../components/TagInput.svelte';
 	import PreviewImageField from '../components/PreviewImageField.svelte';
+	import HeadlinesField from '../components/HeadlinesField.svelte';
 	import { linkListClass, preferences } from '../stores/preferences.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
 	import PinToDashboardModal from '../components/PinToDashboardModal.svelte';
@@ -70,6 +71,8 @@
 	let newTitle = $state('');
 	let newDescription = $state('');
 	let newTags = $state('');
+	let newHeadlines = $state<HeadlineSettings | null>(null);
+	let newFeedFound = $state<string | undefined>();
 	let saving = $state(false);
 
 	// Edit bookmark
@@ -80,6 +83,8 @@
 	let editTags = $state('');
 	let editImageUrl = $state('');
 	let editImageHidden = $state(false);
+	let editHeadlines = $state<HeadlineSettings | null>(null);
+	let editFeedFound = $state<string | undefined>();
 	let addLinkForm = $state<LinkFormFields | null>(null);
 	let bookmarkToMove = $state<BookmarkDto | null>(null);
 	let moveTargetId = $state('');
@@ -210,6 +215,7 @@
 					title: newTitle || undefined,
 					description: newDescription || undefined,
 					tags: parseTags(newTags),
+					...headlineFields(newHeadlines, newUrl),
 				},
 			});
 			bookmarks = [created, ...bookmarks];
@@ -218,6 +224,7 @@
 			newTitle = '';
 			newDescription = '';
 			newTags = '';
+			newHeadlines = null;
 			showAddModal = false;
 		} catch (err) {
 			modalError = await errorMessage(err, 'Failed to add link.');
@@ -235,6 +242,8 @@
 		editTags = bookmark.tags?.join(', ') ?? '';
 		editImageUrl = bookmark.customImageUrl ?? '';
 		editImageHidden = bookmark.imageHidden ?? false;
+		editHeadlines = headlineSettings(bookmark);
+		editFeedFound = undefined;
 		modalError = '';
 	}
 
@@ -260,6 +269,7 @@
 					// "" keeps an upload and removes an own address
 					customImageUrl: editImageUrl.trim(),
 					imageHidden: editImageHidden,
+					...headlineFields(editHeadlines, editUrl),
 				},
 			});
 			bookmarks = bookmarks.map((b) => (b.id === updated.id ? { ...updated, isNew: b.isNew } : b));
@@ -917,7 +927,9 @@
 			bind:title={newTitle}
 			bind:description={newDescription}
 			bind:tags={newTags}
+			bind:feed={newFeedFound}
 		/>
+		<HeadlinesField idPrefix="add-link" bind:headlines={newHeadlines} found={newFeedFound} />
 		{#if modalError}
 			<p class="text-sm text-red-500 dark:text-red-400">{modalError}</p>
 		{/if}
@@ -951,7 +963,9 @@
 			bind:title={editTitle}
 			bind:description={editDescription}
 			bind:tags={editTags}
+			bind:feed={editFeedFound}
 		/>
+		<HeadlinesField idPrefix="edit-link" bind:headlines={editHeadlines} found={editFeedFound} />
 		{#if editingBookmark}
 			<PreviewImageField
 				bookmark={editingBookmark}

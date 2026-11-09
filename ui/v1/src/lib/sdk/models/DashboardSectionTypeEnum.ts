@@ -14,7 +14,7 @@
 
 
 /**
- * LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically
+ * LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically, HEADLINES merges the headlines of hand-picked links with a feed (all of the space's if none are picked)
  * 
  * @export
  */
@@ -22,6 +22,7 @@ export const DashboardSectionTypeEnum = {
     Links: 'LINKS',
     Favorites: 'FAVORITES',
     Recent: 'RECENT',
+    Headlines: 'HEADLINES',
 } as const;
 export type DashboardSectionTypeEnum = typeof DashboardSectionTypeEnum[keyof typeof DashboardSectionTypeEnum];
 

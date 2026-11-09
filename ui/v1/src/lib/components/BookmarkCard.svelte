@@ -7,6 +7,7 @@
 	import { preferences, type LinkView } from '../stores/preferences.svelte';
 	import FavoriteButton from './FavoriteButton.svelte';
 	import Reactions from './Reactions.svelte';
+	import Headlines from './Headlines.svelte';
 	import { p, route } from '../router';
 
 	let {
@@ -19,6 +20,7 @@
 		ondragstart,
 		ondragend,
 		publicView = false,
+		shareToken,
 		selectable = false,
 		selected = false,
 		selecting = false,
@@ -38,6 +40,8 @@
 		ondragend?: (event: DragEvent) => void;
 		/** Shown through a public link: no favorites, reactions, authors or links into the app. */
 		publicView?: boolean;
+		/** The public link the card is shown through, when the link has headlines (they load from there). */
+		shareToken?: string;
 		/** Multi-select: a checkbox on the card (on hover, always once something is selected). */
 		selectable?: boolean;
 		selected?: boolean;
@@ -102,6 +106,7 @@
 	const favicon = $derived(faviconFailed ? undefined : safeUrl(bookmark.favicon));
 	const source = $derived(previewImage(bookmark));
 	const image = $derived(view !== 'cards' || source === failedImage ? undefined : source);
+	const hasHeadlines = $derived(!!shareToken || !!bookmark.feedUrl);
 </script>
 
 {#snippet faviconIcon(size: string)}
@@ -318,6 +323,15 @@
 				>
 					{bookmark.description}
 				</p>
+			{/if}
+
+			{#if hasHeadlines}
+				<Headlines
+					bookmarkId={bookmark.id}
+					{shareToken}
+					limit={view === 'compact' ? 3 : 5}
+					reloadKey="{bookmark.feedUrl}|{bookmark.feedFilter}"
+				/>
 			{/if}
 
 			{#if bookmark.tags && bookmark.tags.length > 0}
