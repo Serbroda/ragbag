@@ -110,7 +110,7 @@ func (s *Server) GetPlan(c echo.Context) error {
 	}
 	return c.JSON(http.StatusOK, api.PlanDto{Plan: *s.planName(user), ProSource: s.proSource(user),
 		Usage: api.PlanUsageDto{Links: links, Spaces: spaces, UploadBytes: uploaded},
-		Free:  quotasDto(s.cfg.Quotas), Pro: quotasDto(s.cfg.Plans.Pro)})
+		Free:  quotasDto(s.cfg.Quotas), Pro: quotasDto(s.cfg.Plans.Pro), FreeApiTokens: s.cfg.Plans.FreeAPITokens})
 }
 
 func quotasDto(q config.Quotas) api.QuotasDto {

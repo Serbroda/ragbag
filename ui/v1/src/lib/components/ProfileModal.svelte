@@ -9,6 +9,7 @@
 	import { lockState } from '../stores/lock.svelte';
 	import ImagePicker from './ImagePicker.svelte';
 	import TwoFactorSettings from './TwoFactorSettings.svelte';
+	import ApiTokenSettings from './ApiTokenSettings.svelte';
 	import { shownName } from '../utils/format';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -272,6 +273,8 @@
 					onclick={(e) => e.preventDefault()}>＋ Save to Ragbag</a
 				>
 			</section>
+
+			<ApiTokenSettings {open} />
 
 			<section>
 				<Label class="mb-1">Link display</Label>

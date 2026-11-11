@@ -14,6 +14,21 @@
 
 import * as runtime from '../runtime';
 import {
+    type ApiTokenCreatedDto,
+    ApiTokenCreatedDtoFromJSON,
+    ApiTokenCreatedDtoToJSON,
+} from '../models/ApiTokenCreatedDto';
+import {
+    type ApiTokenDto,
+    ApiTokenDtoFromJSON,
+    ApiTokenDtoToJSON,
+} from '../models/ApiTokenDto';
+import {
+    type CreateApiTokenRequest,
+    CreateApiTokenRequestFromJSON,
+    CreateApiTokenRequestToJSON,
+} from '../models/CreateApiTokenRequest';
+import {
     type DeleteAccountRequest,
     DeleteAccountRequestFromJSON,
     DeleteAccountRequestToJSON,
@@ -79,11 +94,25 @@ import {
     UserDtoToJSON,
 } from '../models/UserDto';
 
+export interface CreateApiTokenOperationRequest {
+    /**
+     * 
+     */
+    createApiTokenRequest: CreateApiTokenRequest;
+}
+
 export interface DeleteAccountOperationRequest {
     /**
      * 
      */
     deleteAccountRequest: DeleteAccountRequest;
+}
+
+export interface DeleteApiTokenRequest {
+    /**
+     * 
+     */
+    tokenId: string;
 }
 
 export interface DisableTwoFactorRequest {
@@ -159,6 +188,61 @@ export interface UpdateSpaceBarRequest {
 export class UserApi extends runtime.BaseAPI {
 
     /**
+     * Creates request options for createApiToken without sending the request
+     */
+    async createApiTokenRequestOpts(requestParameters: CreateApiTokenOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['createApiTokenRequest'] == null) {
+            throw new runtime.RequiredError(
+                'createApiTokenRequest',
+                'Required parameter "createApiTokenRequest" was null or undefined when calling createApiToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/tokens`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: CreateApiTokenRequestToJSON(requestParameters['createApiTokenRequest']),
+        };
+    }
+
+    /**
+     * Create a personal API token (needs the account password). Scripts and apps send it as \"Authorization: Bearer rb_…\" to read (READ) or also change (WRITE) links and collections; the account, spaces\' settings, members, invites and public links are out of reach for tokens. 
+     */
+    async createApiTokenRaw(requestParameters: CreateApiTokenOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ApiTokenCreatedDto>> {
+        const requestOptions = await this.createApiTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => ApiTokenCreatedDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Create a personal API token (needs the account password). Scripts and apps send it as \"Authorization: Bearer rb_…\" to read (READ) or also change (WRITE) links and collections; the account, spaces\' settings, members, invites and public links are out of reach for tokens. 
+     */
+    async createApiToken(requestParameters: CreateApiTokenOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ApiTokenCreatedDto> {
+        const response = await this.createApiTokenRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for deleteAccount without sending the request
      */
     async deleteAccountRequestOpts(requestParameters: DeleteAccountOperationRequest): Promise<runtime.RequestOpts> {
@@ -210,6 +294,58 @@ export class UserApi extends runtime.BaseAPI {
      */
     async deleteAccount(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteAccountRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for deleteApiToken without sending the request
+     */
+    async deleteApiTokenRequestOpts(requestParameters: DeleteApiTokenRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['tokenId'] == null) {
+            throw new runtime.RequiredError(
+                'tokenId',
+                'Required parameter "tokenId" was null or undefined when calling deleteApiToken().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/tokens/{tokenId}`;
+        urlPath = urlPath.replace('{tokenId}', encodeURIComponent(String(requestParameters['tokenId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Revoke a personal API token
+     */
+    async deleteApiTokenRaw(requestParameters: DeleteApiTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteApiTokenRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Revoke a personal API token
+     */
+    async deleteApiToken(requestParameters: DeleteApiTokenRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteApiTokenRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -318,6 +454,51 @@ export class UserApi extends runtime.BaseAPI {
      */
     async enableTwoFactor(requestParameters: EnableTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TwoFactorRecoveryDto> {
         const response = await this.enableTwoFactorRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getApiTokens without sending the request
+     */
+    async getApiTokensRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/tokens`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The own personal API tokens (without the tokens themselves, which are only shown when created)
+     */
+    async getApiTokensRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<Array<ApiTokenDto>>> {
+        const requestOptions = await this.getApiTokensRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => jsonValue.map(ApiTokenDtoFromJSON));
+    }
+
+    /**
+     * The own personal API tokens (without the tokens themselves, which are only shown when created)
+     */
+    async getApiTokens(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<ApiTokenDto>> {
+        const response = await this.getApiTokensRaw(initOverrides);
         return await response.value();
     }
 

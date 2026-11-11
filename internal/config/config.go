@@ -75,6 +75,8 @@ type Quotas struct {
 type Plans struct {
 	Enabled bool
 	Pro     Quotas
+	// FreeAPITokens lets Free accounts use personal API tokens too; otherwise they are part of Pro
+	FreeAPITokens bool
 }
 
 // Load reads RAGBAG_* and the documented short variables (see .env.example).
@@ -103,7 +105,8 @@ func Load() (Config, error) {
 	}
 
 	cfg.Plans = Plans{
-		Enabled: envBool("PLANS_ENABLED", false),
+		Enabled:       envBool("PLANS_ENABLED", false),
+		FreeAPITokens: envBool("PLANS_FREE_API_TOKENS", false),
 		Pro: Quotas{
 			LinksPerUser:        envInt("QUOTA_PRO_LINKS_PER_USER", 0),
 			SpacesPerUser:       envInt("QUOTA_PRO_SPACES_PER_USER", 0),

@@ -77,6 +77,8 @@ services:
       QUOTA_PRO_SPACES_PER_USER: ${QUOTA_PRO_SPACES_PER_USER:-}
       QUOTA_PRO_COLLECTIONS_PER_SPACE: ${QUOTA_PRO_COLLECTIONS_PER_SPACE:-}
       QUOTA_PRO_UPLOAD_MB_PER_USER: ${QUOTA_PRO_UPLOAD_MB_PER_USER:-}
+      # With plans, personal API tokens are part of Pro unless this is true
+      PLANS_FREE_API_TOKENS: ${PLANS_FREE_API_TOKENS:-false}
       # A donation page linked next to the search, e.g. https://ko-fi.com/<name> (unlocks nothing)
       SUPPORT_URL: ${SUPPORT_URL:-}
       # Backups into /data/backups: the newest BACKUP_KEEP are kept, 0 is off

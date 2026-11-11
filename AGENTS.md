@@ -48,7 +48,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required, also locally), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `PLANS_ENABLED`, `SUPPORT_URL`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `IMPRINT_URL`/`PRIVACY_URL`/`TERMS_URL`, `BACKUP_*`, `LOG_MAX_AGE_DAYS`, `LOG_ANONYMIZE_IP`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `PLANS_ENABLED`, `PLANS_FREE_API_TOKENS`, `SUPPORT_URL`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `IMPRINT_URL`/`PRIVACY_URL`/`TERMS_URL`, `BACKUP_*`, `LOG_MAX_AGE_DAYS`, `LOG_ANONYMIZE_IP`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
@@ -226,6 +226,15 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   `JWT_SECRET` only recovery codes work. Reset links sign nobody in, so they never bypass it; admins reset it
   (`DELETE /admin/users/{id}/two-factor`), `ragbag reset-2fa <username>` is the way back in for an admin. The QR
   code is drawn in the browser (`QrCode.svelte`, `qrcode-generator` loaded on demand).
+- **API tokens** (`tokens.go`, `api_tokens`, `ApiTokenSettings.svelte`): personal tokens `rb_…` (SHA-256 hash
+  stored, shown once, created with the password at `/users/me/tokens`, at most 20, optional expiry) are accepted
+  by `authenticate` like access tokens, but only for what `tokenMay` allows: scope READ = GET, WRITE = everything,
+  both only below `/v1/spaces`, `/v1/collections`, `/v1/bookmarks` (plus `GET /users/me`) and without the paths
+  that manage a space or decide who sees what (`tokenNever`, `tokenNoWrite`). New endpoints elsewhere are closed
+  to tokens by default; add management endpoints below those prefixes to the lists. Tokens never unlock locked
+  collections and are not revoked by password changes (blocked/deleted accounts lose them). With plans they are
+  part of Pro unless `PLANS_FREE_API_TOKENS` (`apiTokensFor`, sent as `UserDto.apiTokens`): Free accounts get 403
+  when creating one, and existing tokens of an account that is Free again answer 403 until it is Pro again.
 - **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users, create
   one-time password reset links (only SHA-256 hashes stored, 24 h, one per user) and download backups. The one
   exception: while `ADMIN_USERS` is empty, the setup admin (`users.setup_admin`) is the admin. Everything they do lives on

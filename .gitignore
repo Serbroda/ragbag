@@ -308,3 +308,6 @@ bin/
 
 # Template for .env.local (the merge-backup rule *.LOCAL.* matches it on case-insensitive file systems)
 !.env.local.example
+
+# Passwords and tokens for the requests in http/
+http-client.private.env.json

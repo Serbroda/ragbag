@@ -44,6 +44,7 @@ func (s *Server) meView(c echo.Context, user *store.User, hasPin bool) error {
 		return err
 	}
 	dto.TwoFactor = ptr(twoFactor.EnabledAt != nil)
+	dto.ApiTokens = ptr(s.apiTokensFor(user))
 	start, err := s.store.StartSpace(ctxOf(c), user.ID)
 	if err != nil {
 		return err
