@@ -66,7 +66,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 
 ### Packages
 - `cmd/ragbag` — main: config, database, setup admin, HTTP server with graceful shutdown;
-  `ragbag backup|restore` commands (`commands.go`, only need `DATABASE_URL`)
+  `ragbag backup|restore|reset-2fa` commands (`commands.go`, only need `DATABASE_URL`)
 - `internal/backup` — backup and restore of the whole instance, independent of the database
 - `internal/config` — environment configuration
 - `internal/db` — opens SQLite (pure Go `modernc.org/sqlite`, `CGO_ENABLED=0`) or PostgreSQL (pgx) and runs goose
@@ -216,6 +216,16 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.
+- **Two-factor authentication** (`twofactor.go`, `auth/totp.go`, `TwoFactorSettings.svelte`): TOTP, off unless
+  the user turns it on (`POST /users/me/two-factor/setup` with the password → secret and `otpauth://` address,
+  `…/enable` with the first code → 10 recovery codes shown once, `…/disable` with password and a code). `POST
+  /auth/login` then takes `code` (app or recovery code): without or with a wrong one it answers 401 with
+  `X-Ragbag-Two-Factor: required`, only after the password was right. A code works once (`totp_last_step`), 5
+  wrong ones pause checking for 5 minutes (like PINs, also without rate limits). The secret is stored encrypted
+  with a key derived from `JWT_SECRET` (`auth.SecretBox`), recovery codes as SHA-256 hashes; with another
+  `JWT_SECRET` only recovery codes work. Reset links sign nobody in, so they never bypass it; admins reset it
+  (`DELETE /admin/users/{id}/two-factor`), `ragbag reset-2fa <username>` is the way back in for an admin. The QR
+  code is drawn in the browser (`QrCode.svelte`, `qrcode-generator` loaded on demand).
 - **Instance admins** are configured by username (`ADMIN_USERS`), never stored, and may list users, create
   one-time password reset links (only SHA-256 hashes stored, 24 h, one per user) and download backups. The one
   exception: while `ADMIN_USERS` is empty, the setup admin (`users.setup_admin`) is the admin. Everything they do lives on

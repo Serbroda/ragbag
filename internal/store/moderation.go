@@ -67,6 +67,7 @@ func (s *Store) AnonymizeUser(ctx context.Context, user *User) error {
 	anonymous := "deleted-" + strings.ReplaceAll(user.ID, "-", "")[:12]
 	at := now()
 	_, err := s.exec(ctx, `UPDATE users SET username = ?, email = ?, password_hash = '', pin_hash = NULL,
+		totp_secret = NULL, totp_enabled_at = NULL, totp_recovery = NULL,
 		token_version = token_version + 1, start_space_id = NULL, setup_admin = ?, must_change_password = ?, display_name = NULL,
 		blocked_at = NULL, blocked_reason = NULL, pro_granted_at = NULL, deleted_at = ?, updated_at = ? WHERE id = ?`,
 		anonymous, user.ID+"@deleted.invalid", false, false, at, at, user.ID)

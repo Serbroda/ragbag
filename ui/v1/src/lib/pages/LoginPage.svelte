@@ -5,6 +5,7 @@
 	import type { InvitePreviewDto } from 'ragbag-frontend-sdk';
 	import {
 		errorMessage, login, register, fetchFeatureFlags, requestPasswordReset, pendingInvite, getRegistrationInvite,
+		needsTwoFactorCode,
 	} from '../api/client';
 	import { route } from '../router';
 	import { continueAfterSignIn } from '../utils/signin';
@@ -49,6 +50,9 @@
 	let email = $state('');
 	let password = $state('');
 	let confirmPassword = $state('');
+	// Second step of signing in to an account with two-factor authentication
+	let codeStep = $state(false);
+	let code = $state('');
 	let error = $state('');
 	// Set after a password reset, which sends the user here
 	let success = $state(route.search.reset ? 'Your password has been changed. Sign in with the new one.' : '');
@@ -61,6 +65,8 @@
 		password = '';
 		confirmPassword = '';
 		acceptTerms = false;
+		codeStep = false;
+		code = '';
 		error = '';
 		success = '';
 	}
@@ -110,10 +116,17 @@
 				password = '';
 				confirmPassword = '';
 			} else {
-				await login(username, password);
+				await login(username, password, codeStep ? code : undefined);
 				continueAfterSignIn();
 			}
 		} catch (err) {
+			if (needsTwoFactorCode(err)) {
+				// The password was right: ask for the code, or say that it was wrong
+				error = codeStep ? 'That code is not right. Codes change every 30 seconds.' : '';
+				codeStep = true;
+				code = '';
+				return;
+			}
 			// Wrong credentials get the friendly text; unconfirmed addresses and rate limits the server's
 			error = isForgot
 				? await errorMessage(err, 'The reset link could not be sent. Please try again.')
@@ -129,7 +142,13 @@
 </script>
 
 <CenteredScreen
-	subtitle={isForgot ? 'Reset your password' : isRegister ? 'Create your account' : 'Welcome back! Sign in to continue.'}
+	subtitle={isForgot
+		? 'Reset your password'
+		: isRegister
+			? 'Create your account'
+			: codeStep
+				? 'Enter the code of your authenticator app.'
+				: 'Welcome back! Sign in to continue.'}
 >
 
 		{#if invite?.valid && !success}
@@ -147,7 +166,24 @@
 		{/if}
 
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
-			<div>
+			{#if codeStep}
+				<div>
+					<Label for="code" class="mb-2">Code</Label>
+					<!-- svelte-ignore a11y_autofocus -->
+					<Input
+						id="code"
+						type="text"
+						inputmode="numeric"
+						autocomplete="one-time-code"
+						placeholder="123 456"
+						bind:value={code}
+						required
+						autofocus
+					/>
+					<p class="mt-1 text-xs text-gray-500">No access to the app? Enter one of your recovery codes instead.</p>
+				</div>
+			{/if}
+			<div class={codeStep ? 'hidden' : ''}>
 				<Label for="username" class="mb-2">{isForgot ? 'Username or email' : 'Username'}</Label>
 				<Input id="username" type="text" autocomplete="username" bind:value={username} required />
 				{#if isRegister}
@@ -165,7 +201,7 @@
 				</div>
 			{/if}
 			{#if !isForgot}
-				<div>
+				<div class={codeStep ? 'hidden' : ''}>
 					<Label for="password" class="mb-2">Password</Label>
 					<Input
 						id="password"
@@ -217,7 +253,17 @@
 			</Button>
 		</form>
 
-		{#if isForgot}
+		{#if codeStep}
+			<div class="mt-4 text-center text-sm">
+				<button type="button" class="text-gray-500 hover:underline dark:text-gray-400" onclick={resetForm}>
+					Back to sign in
+				</button>
+			</div>
+		{/if}
+
+		{#if codeStep}
+			<!-- Nothing else to choose in the second step -->
+		{:else if isForgot}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleForgot}>
 					Back to sign in
@@ -237,7 +283,7 @@
 			{/if}
 		{/if}
 
-		{#if (registrationEnabled || inviteRegisters) && !isForgot}
+		{#if (registrationEnabled || inviteRegisters) && !isForgot && !codeStep}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				{#if isRegister}
 					Already have an account?

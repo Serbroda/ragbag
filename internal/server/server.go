@@ -33,7 +33,9 @@ type Server struct {
 	cfg    config.Config
 	store  *store.Store
 	tokens *auth.Tokens
-	fetch  *fetch.Client
+	// secrets encrypts the two-factor secrets
+	secrets *auth.SecretBox
+	fetch   *fetch.Client
 	// feeds caches the news feeds of links for their headlines
 	feeds  *feedCache
 	admins map[string]bool
@@ -57,6 +59,7 @@ func New(cfg config.Config, st *store.Store, version string) (*Server, error) {
 		cfg:     cfg,
 		store:   st,
 		tokens:  auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
+		secrets: auth.NewSecretBox(cfg.JWTSecret, "two-factor"),
 		fetch:   fetch.NewClient(cfg.AllowPrivateHosts),
 		feeds:   newFeedCache(),
 		admins:  admins,
@@ -98,7 +101,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 			// No AllowHeaders: the requested headers are echoed; browsers ignore "*" for requests with credentials
 			AllowCredentials: true,
-			ExposeHeaders:    []string{"X-Ragbag-Setup", "Retry-After"},
+			ExposeHeaders:    []string{"X-Ragbag-Setup", twoFactorHeader, "Retry-After"},
 		}))
 	}
 

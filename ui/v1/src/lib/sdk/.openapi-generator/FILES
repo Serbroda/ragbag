@@ -86,6 +86,11 @@ models/TrashDto.ts
 models/TrashSelectionDto.ts
 models/TrashedBookmarkDto.ts
 models/TrashedCollectionDto.ts
+models/TwoFactorCodeRequest.ts
+models/TwoFactorDisableRequest.ts
+models/TwoFactorRecoveryDto.ts
+models/TwoFactorSetupDto.ts
+models/TwoFactorSetupRequest.ts
 models/UnlockDto.ts
 models/UnlockRequest.ts
 models/UpdateBookmarkDto.ts

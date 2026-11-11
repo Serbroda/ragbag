@@ -16,12 +16,14 @@ import (
 	"github.com/Serbroda/ragbag/internal/backup"
 	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/Serbroda/ragbag/internal/db"
+	"github.com/Serbroda/ragbag/internal/store"
 )
 
 const usage = `Usage:
   ragbag                          run the server
   ragbag backup [file]            write a backup of DATABASE_URL to file (default: stdout)
   ragbag restore [-dry-run] file  restore a backup into the empty database at DATABASE_URL
+  ragbag reset-2fa username       turn off the two-factor authentication of an account (lost app and codes)
   ragbag version                  print the version
 
 Both commands read the same environment (and .env/.env.local) as the server; the server may keep running
@@ -34,6 +36,8 @@ func command(name string, args []string) error {
 		return backupCommand(args)
 	case "restore":
 		return restoreCommand(args)
+	case "reset-2fa":
+		return resetTwoFactorCommand(args)
 	case "version", "--version", "-v":
 		fmt.Println(version)
 		return nil
@@ -88,6 +92,29 @@ func backupCommand(args []string) error {
 	if len(args) == 1 && args[0] != "-" {
 		slog.Info("backup written", "file", args[0])
 	}
+	return nil
+}
+
+// resetTwoFactorCommand is the way back in for an admin nobody else can help.
+func resetTwoFactorCommand(args []string) error {
+	if len(args) != 1 {
+		return errors.New("usage: ragbag reset-2fa username")
+	}
+	ctx, stop := signal.NotifyContext(context.Background(), os.Interrupt, syscall.SIGTERM)
+	defer stop()
+	database, err := openDatabase(ctx)
+	if err != nil {
+		return err
+	}
+	defer database.DB.Close()
+	found, err := store.New(database.DB, database.Dialect).ClearTwoFactorOf(ctx, args[0])
+	if err != nil {
+		return err
+	}
+	if !found {
+		return fmt.Errorf("no account named %q", args[0])
+	}
+	slog.Info("two-factor authentication turned off: the account signs in with its password alone", "account", args[0])
 	return nil
 }
 

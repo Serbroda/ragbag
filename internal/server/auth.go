@@ -231,6 +231,9 @@ func (s *Server) Login(c echo.Context) error {
 		audit(c, slog.LevelWarn, "login of a blocked account refused")
 		return blockedMessage(user)
 	}
+	if err := s.loginSecondFactor(c, user, req.Code, account); err != nil {
+		return err
+	}
 	if user.EmailVerifiedAt == nil {
 		if s.mailEnabled() {
 			// The password was right, so a new link is no help for strangers

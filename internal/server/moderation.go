@@ -223,7 +223,8 @@ func (s *Server) adminUserDto(user store.UserWithSpaces) api.AdminUserDto {
 	return api.AdminUserDto{Id: user.ID, Username: user.Username, DisplayName: user.DisplayName, Email: user.Email,
 		AvatarId:      user.AvatarImageID,
 		InstanceAdmin: s.isAdmin(&user.User), CreatedAt: &createdAt, Spaces: &spaces, BlockedAt: user.BlockedAt,
-		BlockedReason: user.BlockedReason, Plan: s.planName(&user.User), ProSource: s.proSource(&user.User)}
+		BlockedReason: user.BlockedReason, Plan: s.planName(&user.User), ProSource: s.proSource(&user.User),
+		TwoFactor: ptr(user.TwoFactorAt != nil)}
 }
 
 // blockedMessage is what a blocked account is told when signing in.

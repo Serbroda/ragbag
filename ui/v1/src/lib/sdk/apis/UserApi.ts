@@ -39,6 +39,31 @@ import {
     StartSpaceDtoToJSON,
 } from '../models/StartSpaceDto';
 import {
+    type TwoFactorCodeRequest,
+    TwoFactorCodeRequestFromJSON,
+    TwoFactorCodeRequestToJSON,
+} from '../models/TwoFactorCodeRequest';
+import {
+    type TwoFactorDisableRequest,
+    TwoFactorDisableRequestFromJSON,
+    TwoFactorDisableRequestToJSON,
+} from '../models/TwoFactorDisableRequest';
+import {
+    type TwoFactorRecoveryDto,
+    TwoFactorRecoveryDtoFromJSON,
+    TwoFactorRecoveryDtoToJSON,
+} from '../models/TwoFactorRecoveryDto';
+import {
+    type TwoFactorSetupDto,
+    TwoFactorSetupDtoFromJSON,
+    TwoFactorSetupDtoToJSON,
+} from '../models/TwoFactorSetupDto';
+import {
+    type TwoFactorSetupRequest,
+    TwoFactorSetupRequestFromJSON,
+    TwoFactorSetupRequestToJSON,
+} from '../models/TwoFactorSetupRequest';
+import {
     type UnlockDto,
     UnlockDtoFromJSON,
     UnlockDtoToJSON,
@@ -59,6 +84,20 @@ export interface DeleteAccountOperationRequest {
      * 
      */
     deleteAccountRequest: DeleteAccountRequest;
+}
+
+export interface DisableTwoFactorRequest {
+    /**
+     * 
+     */
+    twoFactorDisableRequest: TwoFactorDisableRequest;
+}
+
+export interface EnableTwoFactorRequest {
+    /**
+     * 
+     */
+    twoFactorCodeRequest: TwoFactorCodeRequest;
 }
 
 export interface SetAvatarRequest {
@@ -91,6 +130,13 @@ export interface SetStartSpaceRequest {
      * 
      */
     startSpaceDto: StartSpaceDto;
+}
+
+export interface SetupTwoFactorRequest {
+    /**
+     * 
+     */
+    twoFactorSetupRequest: TwoFactorSetupRequest;
 }
 
 export interface UnlockOperationRequest {
@@ -164,6 +210,115 @@ export class UserApi extends runtime.BaseAPI {
      */
     async deleteAccount(requestParameters: DeleteAccountOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteAccountRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for disableTwoFactor without sending the request
+     */
+    async disableTwoFactorRequestOpts(requestParameters: DisableTwoFactorRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['twoFactorDisableRequest'] == null) {
+            throw new runtime.RequiredError(
+                'twoFactorDisableRequest',
+                'Required parameter "twoFactorDisableRequest" was null or undefined when calling disableTwoFactor().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/two-factor/disable`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TwoFactorDisableRequestToJSON(requestParameters['twoFactorDisableRequest']),
+        };
+    }
+
+    /**
+     * Turn two-factor authentication off (needs the password and a code of the app or a recovery code)
+     */
+    async disableTwoFactorRaw(requestParameters: DisableTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.disableTwoFactorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Turn two-factor authentication off (needs the password and a code of the app or a recovery code)
+     */
+    async disableTwoFactor(requestParameters: DisableTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.disableTwoFactorRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for enableTwoFactor without sending the request
+     */
+    async enableTwoFactorRequestOpts(requestParameters: EnableTwoFactorRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['twoFactorCodeRequest'] == null) {
+            throw new runtime.RequiredError(
+                'twoFactorCodeRequest',
+                'Required parameter "twoFactorCodeRequest" was null or undefined when calling enableTwoFactor().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/two-factor/enable`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TwoFactorCodeRequestToJSON(requestParameters['twoFactorCodeRequest']),
+        };
+    }
+
+    /**
+     * Turn two-factor authentication on with the first code of the app; returns the recovery codes
+     */
+    async enableTwoFactorRaw(requestParameters: EnableTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TwoFactorRecoveryDto>> {
+        const requestOptions = await this.enableTwoFactorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TwoFactorRecoveryDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Turn two-factor authentication on with the first code of the app; returns the recovery codes
+     */
+    async enableTwoFactor(requestParameters: EnableTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TwoFactorRecoveryDto> {
+        const response = await this.enableTwoFactorRaw(requestParameters, initOverrides);
+        return await response.value();
     }
 
     /**
@@ -577,6 +732,61 @@ export class UserApi extends runtime.BaseAPI {
      */
     async setStartSpace(requestParameters: SetStartSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<UserDto> {
         const response = await this.setStartSpaceRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for setupTwoFactor without sending the request
+     */
+    async setupTwoFactorRequestOpts(requestParameters: SetupTwoFactorRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['twoFactorSetupRequest'] == null) {
+            throw new runtime.RequiredError(
+                'twoFactorSetupRequest',
+                'Required parameter "twoFactorSetupRequest" was null or undefined when calling setupTwoFactor().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/two-factor/setup`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: TwoFactorSetupRequestToJSON(requestParameters['twoFactorSetupRequest']),
+        };
+    }
+
+    /**
+     * Start setting up two-factor authentication (needs the account password): returns the secret for the authenticator app. The login only asks for codes once the first one was confirmed. 
+     */
+    async setupTwoFactorRaw(requestParameters: SetupTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TwoFactorSetupDto>> {
+        const requestOptions = await this.setupTwoFactorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TwoFactorSetupDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Start setting up two-factor authentication (needs the account password): returns the secret for the authenticator app. The login only asks for codes once the first one was confirmed. 
+     */
+    async setupTwoFactor(requestParameters: SetupTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TwoFactorSetupDto> {
+        const response = await this.setupTwoFactorRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
