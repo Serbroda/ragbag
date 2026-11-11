@@ -7,7 +7,7 @@
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
 	import LinkSortSelect from '../components/LinkSortSelect.svelte';
-	import { filterByTags, sortLinks } from '../utils/links';
+	import { filterByTags, previewImage, sortLinks } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
 	import { linkListClass, preferences } from '../stores/preferences.svelte';
 
@@ -83,6 +83,7 @@
 			{#each sortLinks(filterByTags(bookmarks, selectedTags), preferences.linkSort) as bookmark (bookmark.id)}
 				<BookmarkCard
 					{bookmark}
+					imagePlaceholder={bookmarks.some((b) => previewImage(b))}
 					collectionName={bookmark.collectionId ? collectionName?.(bookmark.collectionId) : undefined}
 					collectionHref={bookmark.collectionId
 						? p('/space/:spaceId/collections/:collectionId', {

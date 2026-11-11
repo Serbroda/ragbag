@@ -157,7 +157,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   never cached. Links that point straight to an image become their own preview (`fetch.isImage`, by content
   type or first bytes). Unused uploads are deleted by the hourly job (`DeleteOrphanImages`).
 - **Quick saving**: `/app/add?url=&title=&text=` (route outside a space) is the target of the web app manifest's
-  `share_target` (installed app on Android) and of the bookmarklet in the profile dialog; signed-out visitors
+  `share_target` (installed app on Android) and of the bookmarklet in the settings (*Apps & API*); signed-out visitors
   return there after the login (`rememberPendingAdd`).
 - **Offline** (`ui/v1/public/sw.js`): the service worker only answers failed page loads with a notice built into
   it. It deliberately caches nothing (no private links on the device, no stale versions) and leaves `/api` alone.
@@ -277,8 +277,20 @@ change, never edit an applied one. Times are stored in UTC, truncated to microse
 - `stores/spaces.svelte.ts` — shared reactive session state (spaces, current user). The start page opens
   `startSpaceId()`: the chosen start space (`users.start_space_id`, unset by leaving or deleting the space), else
   the last visited one (localStorage per user), else the first in the user's space bar
+- `pages/SettingsPage.svelte` — personal settings at `/settings/:tab` (profile, security, appearance, apps & API,
+  account), outside the space layout like `/admin` and `/plan`. Every setting is a `SettingsItem.svelte`: a row
+  with its current state and one button; its form, and the password some need, only shows after that button, so
+  there is never more than one form open per setting and no page full of password fields. New personal settings
+  go there, not into dialogs
 - `stores/preferences.svelte.ts` — personal display settings (link view: cards / compact / list), stored in localStorage per user and device
 - `utils/format.ts` — formatting helpers; always render bookmark URLs through `safeUrl()`; show users and spaces with `Avatar.svelte`
+- Wording: sentence case for buttons, titles and labels ("Add link", "New collection"), "…" on buttons that ask
+  for more before acting. Fields are darker than their surface (`app.css`), lists of rows get one main button and
+  a "⋯" menu with destructive entries in red (`AdminUsers.svelte`), and cards without a preview image get a
+  stand-in only next to cards that have one (`imagePlaceholder`). Cards name who added a link only in spaces
+  with several members (`SpaceDto.memberCount`, context `solo-space`). In the sidebar a collection keeps its
+  icon (folder, or filter for smart ones); locked, private and shared show as a small mark next to the name
+  (`TreeNode.mark`); link counts are deliberately not shown there. Space settings are tabs as well (`?tab=members`)
 - Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
 - `api/client.ts` — auth handling, `errorMessage()` to surface problem detail texts
 - `sdk/` — generated, do not edit (see API-first)

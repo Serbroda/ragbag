@@ -216,7 +216,7 @@
 			{/if}
 			{#if isRegister}
 				<div>
-					<Label for="confirmPassword" class="mb-2">Confirm Password</Label>
+					<Label for="confirmPassword" class="mb-2">Confirm password</Label>
 					<Input id="confirmPassword" type="password" bind:value={confirmPassword} required />
 				</div>
 			{/if}

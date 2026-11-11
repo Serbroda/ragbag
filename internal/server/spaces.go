@@ -43,6 +43,7 @@ func spaceDto(space *store.Space, role Role) api.SpaceDto {
 func memberSpaceDto(space *store.SpaceWithRole) api.SpaceDto {
 	dto := spaceDto(&space.Space, Role(space.Role))
 	dto.Welcomed = ptr(space.WelcomedAt != nil)
+	dto.MemberCount = &space.Members
 	return dto
 }
 

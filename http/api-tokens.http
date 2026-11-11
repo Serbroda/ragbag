@@ -2,7 +2,7 @@
 ###
 ### Pick the environment "local" (top right), put your username and password into
 ### http-client.private.env.json (not committed) and run the requests from top to bottom: each one remembers
-### what the next ones need (token, space, collection, link). Or paste a token from the profile dialog into
+### what the next ones need (token, space, collection, link). Or paste a token from the settings (Apps & API) into
 ### "token" there and start at "Who am I?".
 ###
 ### With PLANS_ENABLED the account has to be Pro (admins are): Free accounts get 403 "API tokens are part of Pro".

@@ -89,14 +89,28 @@
     }
 }
 
+/* Fields: darker than the surface they sit on, with a clear outline. Flowbite's lighter fill looks disabled on
+   the dark theme, and placeholders were hard to tell from what somebody typed. Outside a layer to beat the
+   utilities of the components. */
+:where(.dark) input:where([type='text'], [type='password'], [type='email'], [type='url'], [type='search'], [type='number'], :not([type])),
+:where(.dark) textarea,
+:where(.dark) select {
+    background-color: color-mix(in srgb, var(--color-gray-950) 60%, var(--color-gray-900));
+    border-color: var(--color-gray-700);
+}
+:where(.dark) input::placeholder,
+:where(.dark) textarea::placeholder {
+    color: var(--color-gray-500);
+}
+
 /* --- Brand accents --- */
 
-/* Warm glow on primary buttons (dark mode) */
-:where(.dark) button[type='submit'] {
+/* Warm glow on primary buttons (dark mode); the close button of dialogs is a submit button too, but no action */
+:where(.dark) button[type='submit']:not([aria-label='Close']) {
     box-shadow: 0 0 10px rgba(245, 158, 11, 0.25);
     transition: box-shadow 0.2s ease;
 }
-:where(.dark) button[type='submit']:hover {
+:where(.dark) button[type='submit']:not([aria-label='Close']):hover {
     box-shadow: 0 0 16px rgba(245, 158, 11, 0.4);
 }
 

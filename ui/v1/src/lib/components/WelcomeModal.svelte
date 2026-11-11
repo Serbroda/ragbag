@@ -67,7 +67,7 @@
 			</li>
 			<li>
 				<span class="font-semibold text-gray-900 dark:text-white">Save from anywhere</span> with the bookmarklet in
-				your profile, or the share menu of your phone once Ragbag is installed.
+				your settings, or the share menu of your phone once Ragbag is installed.
 			</li>
 		</ul>
 		<div class="flex flex-wrap justify-end gap-2">

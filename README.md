@@ -14,7 +14,7 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Spaces with members and roles: **owner**, **admin**, **contributor** (adds and edits links and collections)
   and **viewer**. A space bar like in Discord switches between them, `Ctrl/⌘ K` jumps anywhere.
 - Arrange the space bar your way: drag spaces into your own order and group them in **folders**.
-- Choose the space Ragbag **opens on start** (profile, or right-click a space); otherwise it reopens the last one.
+- Choose the space Ragbag **opens on start** (settings, or right-click a space); otherwise it reopens the last one.
 - **Invite links** with role, expiry and maximum uses – send them via any messenger.
 - **Public spaces** show up under *Discover spaces* for everybody on your instance, who can join with one click
   as viewer or contributor.
@@ -60,9 +60,9 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Users change their password themselves. Without email, **admins create one-time reset links** for people who
   forgot theirs.
 - **Two-factor authentication** with any authenticator app (TOTP), turned on and off by each user in their
-  profile; ten recovery codes for a lost phone. Password reset links never get around it. Who lost app and codes
+  settings; ten recovery codes for a lost phone. Password reset links never get around it. Who lost app and codes
   is helped by an admin (*Reset 2FA* in the accounts list), an admin by `ragbag reset-2fa <username>` on the server.
-- **API tokens** for scripts, shortcuts and apps, read only or read & write, created and revoked in the profile
+- **API tokens** for scripts, shortcuts and apps, read only or read & write, created and revoked in the settings
   (see [API](#api)).
 - Registration can be switched off once everybody has an account.
 - Users **delete their account** themselves; admins **block or delete accounts** and decide on **reports of public
@@ -162,7 +162,7 @@ backup** of another Ragbag (see *Moving to another server*), which replaces this
 Either way the file is deleted. While `ADMIN_USERS` is empty this account is the instance admin; otherwise the
 ones listed there are.
 
-Everybody else **registers** – every account gets its own first space. Admins manage all users in the profile menu
+Everybody else **registers** – every account gets its own first space. Admins manage all users in the account menu
 (→ *Administration*). Set `REGISTRATION_ENABLED=false` once everybody has an account if your instance is reachable
 from the internet. Invite links of admins still let new people register (and join the space right away); invite
 links of everybody else then only work for existing accounts.
@@ -223,7 +223,7 @@ Everything is configured with environment variables. For local runs the server a
 
 Everything the app does goes through the REST API under `/api/v1`, described in
 [`openapi/openapi.yaml`](openapi/openapi.yaml). Scripts and apps use it with a **personal API token** from the
-profile (*API tokens*), sent as `Authorization: Bearer rb_…`:
+settings (*Apps & API*), sent as `Authorization: Bearer rb_…`:
 
 ```bash
 TOKEN=rb_…; URL=https://ragbag.example.org/api/v1
@@ -350,7 +350,7 @@ menu then link it, with or without plans. Donations unlock nothing, and the plan
 What an instance open to the public needs, for its users and for notice and action under the EU Digital Services
 Act (DSA):
 
-- **Deleting the own account** (*Profile & appearance*, with the password): spaces only that person is a member of
+- **Deleting the own account** (*Settings → Account*, with the password): spaces only that person is a member of
   are deleted with it; links they added to spaces shared with others stay there, shown as `deleted-…`. Name,
   email address, password, avatar, PIN, favorites, reactions and dashboards are gone. Being the only owner of a
   space with other members needs another owner first.

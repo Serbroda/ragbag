@@ -3855,6 +3855,9 @@ components:
         newCount:
           type: integer
           description: Links other members added since the current user last looked; only set in the space list
+        memberCount:
+          type: integer
+          description: How many people are in the space; set for its members
         welcomeMessage:
           type: string
           description: Markdown shown to members when they first open the space

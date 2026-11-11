@@ -231,7 +231,7 @@
 						type="button"
 						class="hover:text-gray-700 hover:underline dark:hover:text-gray-200"
 						title="Show members in space settings"
-						onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId } })}
+						onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId }, search: { tab: 'members' } })}
 					>
 						{memberCount} member{memberCount === 1 ? '' : 's'}
 					</button>
@@ -255,7 +255,7 @@
 				{:else}
 					{#if canAddLinks}
 						<Button onclick={() => quickAdd?.show()} title="Or paste a URL anywhere on this page">
-							<PlusOutline class="me-1.5 h-4 w-4" /> Add Link
+							<PlusOutline class="me-1.5 h-4 w-4" /> Add link
 						</Button>
 					{/if}
 					<Button color="alternative" onclick={startEditing}>

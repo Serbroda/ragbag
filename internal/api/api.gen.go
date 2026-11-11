@@ -1285,7 +1285,10 @@ type SpaceDto struct {
 
 	// JoinRole Role of people joining a discoverable space
 	JoinRole *JoinRoleEnum `json:"joinRole,omitempty"`
-	Name     string        `json:"name"`
+
+	// MemberCount How many people are in the space; set for its members
+	MemberCount *int   `json:"memberCount,omitempty"`
+	Name        string `json:"name"`
 
 	// NewCount Links other members added since the current user last looked; only set in the space list
 	NewCount    *int                   `json:"newCount,omitempty"`

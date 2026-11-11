@@ -2,6 +2,7 @@
 	import { AdminApi } from 'ragbag-frontend-sdk';
 	import type { AdminUserDto } from 'ragbag-frontend-sdk';
 	import { Button, Input } from 'flowbite-svelte';
+	import { DotsHorizontalOutline } from 'flowbite-svelte-icons';
 	import { apiConfig, appBase, errorMessage } from '../api/client';
 	import { copyText } from '../utils/clipboard';
 	import { session } from '../stores/spaces.svelte';
@@ -24,6 +25,17 @@
 	/** Blocking or deleting asks first, in the user's row. */
 	let pending = $state<{ userId: string; kind: 'block' | 'delete' } | null>(null);
 	let reason = $state('');
+	/** The account whose "more" menu is open: everything but the reset link, destructive actions set apart. */
+	let menuUserId = $state<string | null>(null);
+	const menuItem = 'flex w-full rounded-md px-2 py-1.5 text-left hover:bg-primary-500 hover:text-white';
+	const dangerItem = 'flex w-full rounded-md px-2 py-1.5 text-left text-red-400 hover:bg-red-600 hover:text-white';
+
+	function hasMore(user: AdminUserDto): boolean {
+		return (
+			!!user.twoFactor || user.plan === 'FREE' || user.proSource === 'GRANTED' ||
+			(!user.instanceAdmin && user.id !== session.me?.id)
+		);
+	}
 
 	const visible = $derived(
 		users.filter((user) =>
@@ -150,6 +162,8 @@
 	}
 </script>
 
+<svelte:window onclick={() => (menuUserId = null)} />
+
 <div class="flex flex-col gap-4">
 	<p class="text-sm text-gray-500 dark:text-gray-400">
 		Without email, forgotten passwords are reset with a link you send the person yourself. A link works once, for
@@ -159,7 +173,7 @@
 	{#if error}
 		<p class="text-sm text-red-500 dark:text-red-400">{error}</p>
 	{/if}
-	<ul class="-mx-2 divide-y divide-gray-100 overflow-y-auto dark:divide-gray-800">
+	<ul class="-mx-2 divide-y divide-gray-100 dark:divide-gray-800">
 		{#each visible as user (user.id)}
 			<li class="px-2 py-2.5">
 				<div class="flex items-center gap-3">
@@ -198,39 +212,58 @@
 							{#if user.createdAt}· joined {user.createdAt.toLocaleDateString()}{/if}
 						</p>
 					</div>
-					<div class="flex shrink-0 flex-wrap justify-end gap-1">
+					<div class="flex shrink-0 items-center gap-1">
 						<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => createLink(user)}>
 							Reset link
 						</Button>
-						{#if user.twoFactor}
-							<Button
-								size="xs"
-								color="light"
-								disabled={busyUserId === user.id}
-								title="Lost app and recovery codes: the account signs in with its password alone again"
-								onclick={() => resetTwoFactor(user)}
-							>
-								Reset 2FA
-							</Button>
-						{/if}
-						{#if user.plan === 'FREE'}
-							<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => setPro(user, true)}>
-								Make Pro
-							</Button>
-						{:else if user.proSource === 'GRANTED'}
-							<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => setPro(user, false)}>
-								Remove Pro
-							</Button>
-						{/if}
-						{#if !user.instanceAdmin && user.id !== session.me?.id}
-							{#if user.blockedAt}
-								<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => unblock(user)}>
-									Unblock
+						{#if hasMore(user)}
+							<div class="relative">
+								<Button
+									size="xs"
+									color="light"
+									aria-label="More actions for {user.username}"
+									aria-haspopup="menu"
+									aria-expanded={menuUserId === user.id}
+									disabled={busyUserId === user.id}
+									onclick={(e: MouseEvent) => {
+										e.stopPropagation();
+										menuUserId = menuUserId === user.id ? null : user.id;
+									}}
+								>
+									<DotsHorizontalOutline class="h-4 w-4" />
 								</Button>
-							{:else}
-								<Button size="xs" color="light" onclick={() => ask(user.id, 'block')}>Block…</Button>
-							{/if}
-							<Button size="xs" color="light" onclick={() => ask(user.id, 'delete')}>Delete…</Button>
+								{#if menuUserId === user.id}
+									<div
+										role="menu"
+										class="absolute right-0 top-[calc(100%+4px)] z-30 w-48 rounded-lg bg-gray-950 p-1.5 text-sm text-gray-200 shadow-2xl ring-1 ring-white/10"
+									>
+										{#if user.twoFactor}
+											<button
+												role="menuitem"
+												class={menuItem}
+												title="Lost app and recovery codes: the account signs in with its password alone again"
+												onclick={() => resetTwoFactor(user)}>Reset two-factor</button
+											>
+										{/if}
+										{#if user.plan === 'FREE'}
+											<button role="menuitem" class={menuItem} onclick={() => setPro(user, true)}>Make Pro</button>
+										{:else if user.proSource === 'GRANTED'}
+											<button role="menuitem" class={menuItem} onclick={() => setPro(user, false)}>Remove Pro</button>
+										{/if}
+										{#if !user.instanceAdmin && user.id !== session.me?.id}
+											{#if user.twoFactor || user.plan === 'FREE' || user.proSource === 'GRANTED'}
+												<div class="my-1 h-px bg-gray-800"></div>
+											{/if}
+											{#if user.blockedAt}
+												<button role="menuitem" class={menuItem} onclick={() => unblock(user)}>Unblock</button>
+											{:else}
+												<button role="menuitem" class={dangerItem} onclick={() => ask(user.id, 'block')}>Block…</button>
+											{/if}
+											<button role="menuitem" class={dangerItem} onclick={() => ask(user.id, 'delete')}>Delete…</button>
+										{/if}
+									</div>
+								{/if}
+							</div>
 						{/if}
 					</div>
 				</div>

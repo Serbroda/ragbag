@@ -1,4 +1,5 @@
 <script lang="ts">
+	import { previewImage } from '../utils/links';
 	import { BookmarkApi } from 'ragbag-frontend-sdk';
 	import type { BookmarkDto } from 'ragbag-frontend-sdk';
 	import { getContext } from 'svelte';
@@ -66,6 +67,7 @@
 			{#each favorites as bookmark (bookmark.id)}
 				<BookmarkCard
 					{bookmark}
+					imagePlaceholder={favorites.some((b) => previewImage(b))}
 					collectionName={bookmark.collectionId ? collectionName?.(bookmark.collectionId) : undefined}
 					collectionHref={bookmark.collectionId
 						? p('/space/:spaceId/collections/:collectionId', {

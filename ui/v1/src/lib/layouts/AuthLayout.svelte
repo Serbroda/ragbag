@@ -44,7 +44,6 @@
 	import Avatar from '../components/Avatar.svelte';
 	import { shownName } from '../utils/format';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
-	import ProfileModal from '../components/ProfileModal.svelte';
 	import KoFiIcon from '../components/KoFiIcon.svelte';
 	import SupportButton from '../components/SupportButton.svelte';
 	import LegalLinks from '../components/LegalLinks.svelte';
@@ -252,6 +251,8 @@
 
 	/** The collection tree of the sidebar, e.g. for sub-collections and move targets on the collection page. */
 	setContext('collection-tree', () => menuTree);
+	// Alone in a space, who added a link goes without saying
+	setContext('solo-space', () => activeSpace?.memberCount === 1);
 
 	// Visibility is inherited: below a private collection only its members see anything
 	setContext('private-ancestor', (collectionId: string) =>
@@ -343,7 +344,6 @@
 	let switcherOpen = $state(false);
 	let showCreateOrJoin = $state(false);
 	let showInvite = $state(false);
-	let showProfile = $state(false);
 
 	function closeMenus() {
 		spaceMenuOpen = false;
@@ -812,10 +812,10 @@
 				{#if session.me}
 					<button
 						type="button"
-						title="Profile & appearance"
-						aria-label="Profile & appearance"
+						title="Settings"
+						aria-label="Settings"
 						class="shrink-0 rounded-full transition-opacity hover:opacity-80"
-						onclick={(e) => (e.stopPropagation(), closeMenus(), (showProfile = true))}
+						onclick={(e) => (e.stopPropagation(), closeMenus(), navigate('/settings'))}
 					>
 						<Avatar name={shownName(session.me)} imageId={session.me.avatarId} />
 					</button>
@@ -861,9 +861,9 @@
 						<button
 							role="menuitem"
 							class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
-							onclick={() => (closeMenus(), (showProfile = true))}
+							onclick={() => (closeMenus(), navigate('/settings'))}
 						>
-							Profile & appearance <UserCircleOutline class="h-4 w-4" />
+							Settings <UserCircleOutline class="h-4 w-4" />
 						</button>
 						{#if plansEnabled}
 							<button
@@ -1083,7 +1083,7 @@
 </div>
 
 <!-- Add Collection Modal -->
-<Modal title="New Collection" bind:open={showAddModal} size="sm" autoclose={false}>
+<Modal title="New collection" bind:open={showAddModal} size="sm" autoclose={false}>
 	<form
 		onsubmit={(e) => {
 			e.preventDefault();
@@ -1103,7 +1103,7 @@
 			/>
 		</div>
 		<div>
-			<Label for="col-parent" class="mb-2">Parent Collection (optional)</Label>
+			<Label for="col-parent" class="mb-2">Parent collection (optional)</Label>
 			<Select id="col-parent" placeholder="" bind:value={newCollectionParentId}>
 				<option value="">None (top level)</option>
 				{#each parentOptions as opt (opt.id)}
@@ -1288,5 +1288,4 @@
 
 <Toasts />
 
-<ProfileModal bind:open={showProfile} />
 
