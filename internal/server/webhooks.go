@@ -88,6 +88,7 @@ type discordEmbed struct {
 	Description string         `json:"description,omitempty"`
 	Color       int            `json:"color"`
 	Author      *discordNamed  `json:"author,omitempty"`
+	Fields      []discordField `json:"fields,omitempty"`
 	Footer      *discordFooter `json:"footer,omitempty"`
 	Image       *discordImage  `json:"image,omitempty"`
 	Timestamp   string         `json:"timestamp,omitempty"`
@@ -95,6 +96,11 @@ type discordEmbed struct {
 
 type discordNamed struct {
 	Name string `json:"name"`
+}
+
+type discordField struct {
+	Name  string `json:"name"`
+	Value string `json:"value"`
 }
 
 type discordFooter struct {
@@ -109,15 +115,21 @@ type discordImage struct {
 var plainText = strings.NewReplacer(`\`, `\\`, "`", "\\`", "*", `\*`, "_", `\_`, "~", `\~`, "|", `\|`, "[", `\[`, "]", `\]`,
 	"(", `\(`, ")", `\)`, "<", `\<`, ">", `\>`, "#", `\#`)
 
-func discordMessageFor(bookmark *store.Bookmark, spaceName, collectionName string) discordMessage {
+// discordMessageFor is the card of a new link. collectionURL leads to its collection in Ragbag: the last thing
+// of the card that can be a link (footers cannot), so it sits in a field below the description.
+func discordMessageFor(bookmark *store.Bookmark, spaceName, collectionName, collectionURL string) discordMessage {
 	embed := discordEmbed{
 		Title:       truncate(firstNonEmpty(deref(bookmark.Title), bookmark.URL), 250),
 		URL:         bookmark.URL,
 		Description: plainText.Replace(truncate(deref(bookmark.Description), 300)),
 		Color:       discordEmbedCol,
 		Author:      &discordNamed{Name: truncate(bookmark.CreatedByName+" added a link", 250)},
-		Footer:      &discordFooter{Text: truncate(spaceName+" › "+collectionName, 250)},
-		Timestamp:   bookmark.CreatedAt.UTC().Format(time.RFC3339),
+		Fields: []discordField{{
+			Name:  "Collection",
+			Value: "[" + plainText.Replace(truncate(collectionName, 100)) + "](" + collectionURL + ")",
+		}},
+		Footer:    &discordFooter{Text: truncate(spaceName, 250)},
+		Timestamp: bookmark.CreatedAt.UTC().Format(time.RFC3339),
 	}
 	// The preview as the app shows it, if Discord can load it: an own address, else the page's image
 	if !bookmark.ImageHidden {
@@ -162,7 +174,13 @@ func (s *Server) announceLink(c echo.Context, bookmarkID string) {
 	if err != nil {
 		return
 	}
-	s.postToDiscord(space.ID, *webhook.URL, discordMessageFor(bookmark, space.Name, collection.Name))
+	// Like the link previews: PUBLIC_URL, else the address the app was just used at
+	base := s.cfg.PublicURL
+	if base == "" {
+		base = c.Scheme() + "://" + c.Request().Host
+	}
+	collectionURL := fmt.Sprintf("%s/app/space/%s/collections/%s", base, space.ID, collection.ID)
+	s.postToDiscord(space.ID, *webhook.URL, discordMessageFor(bookmark, space.Name, collection.Name, collectionURL))
 }
 
 func (s *Server) postToDiscord(spaceID, address string, message discordMessage) {

@@ -228,7 +228,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   code is drawn in the browser (`QrCode.svelte`, `qrcode-generator` loaded on demand).
 - **Discord webhook** (`webhooks.go`, `spaces.discord_webhook_url`, `DiscordWebhookSettings.svelte`): one per
   space, set by members with `EDIT_SPACE` (`/spaces/{id}/webhook`, `…/test`); `CreateBookmark` calls
-  `announceLink`, which posts an embed in the background. Never posted: links in or below private collections
+  `announceLink`, which posts an embed in the background (its "Collection" field links to the collection in
+  Ragbag: `PUBLIC_URL`, else the request's host; embed footers cannot hold links). Never posted: links in or below private collections
   (`privateInPath`) and imports (they do not go through `CreateBookmark`). Only `https://discord.com/api/webhooks/…`
   addresses are accepted and redirects are not followed, so it is no way to make the server call other hosts.
   The address is a secret: not in `SpaceDto`, not for API tokens (`tokenNever`), never logged (not even errors

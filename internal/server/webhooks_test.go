@@ -99,7 +99,11 @@ func TestNewLinksArePostedToTheDiscordWebhookOfTheSpace(t *testing.T) {
 	require.Equal(t, "Patch notes", embed.Get("title").String())
 	require.Equal(t, "http://127.0.0.1/Pat", embed.Get("url").String())
 	require.Equal(t, f.owner.Username+" added a link", embed.Get("author.name").String())
-	require.Contains(t, embed.Get("footer.text").String(), "› News")
+	// The collection is a link into Ragbag, the last line of text on the card
+	require.Equal(t, "Collection", embed.Get("fields.0.name").String())
+	require.Equal(t, fmt.Sprintf("[News](%s/app/space/%s/collections/%s)", f.url, f.space, f.collection),
+		embed.Get("fields.0.value").String())
+	require.NotEmpty(t, embed.Get("footer.text").String())
 	// Text of others is neither Markdown nor a mention
 	require.Contains(t, embed.Get("description").String(), `\[here\]\(http://evil.example\)`)
 	require.Equal(t, "[]", gjson.Get(message, "allowed_mentions.parse").Raw)

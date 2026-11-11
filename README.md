@@ -39,7 +39,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - Full-text search over titles, addresses, descriptions and tags: links have to match every word, `#tag` finds
   exactly that tag, `"two words"` a phrase.
 - **Discord**: a space can post every newly saved link to a Discord channel (space settings → Integrations, with
-  a webhook of that channel). Links in private collections and imports are never posted.
+  a webhook of that channel), with a link to its collection in Ragbag (set `PUBLIC_URL` behind a reverse proxy).
+  Links in private collections and imports are never posted.
 - **Smart collections** show every link of the space matching a search (e.g. `#recipe vegan`), wherever it is
   saved, and for every member only what that member may see.
 - Three ways to show links – cards with preview images, compact cards or a dense list – chosen per user and device.
