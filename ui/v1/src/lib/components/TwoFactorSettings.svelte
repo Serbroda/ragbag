@@ -1,14 +1,15 @@
 <script lang="ts">
 	import { UserApi } from 'ragbag-frontend-sdk';
 	import type { TwoFactorSetupDto } from 'ragbag-frontend-sdk';
-	import { Button, Input, Label } from 'flowbite-svelte';
+	import { Button, Input } from 'flowbite-svelte';
 	import { apiConfig, errorMessage } from '../api/client';
 	import { session } from '../stores/spaces.svelte';
 	import { showToast } from '../stores/toast.svelte';
 	import { copyText } from '../utils/clipboard';
 	import QrCode from './QrCode.svelte';
+	import SettingsItem from './SettingsItem.svelte';
 
-	/** The profile dialog: closing it forgets everything typed or shown here. */
+	/** False while its settings tab is not shown: forgets everything typed or shown here. */
 	let { open }: { open: boolean } = $props();
 
 	const userApi = new UserApi(apiConfig());
@@ -21,7 +22,8 @@
 	let setup = $state<TwoFactorSetupDto | null>(null);
 	/** Shown once after turning it on. */
 	let recoveryCodes = $state<string[] | null>(null);
-	let turningOff = $state(false);
+	/** The row was opened: turning it off, or starting the setup. */
+	let active = $state(false);
 
 	const enabled = $derived(session.me?.twoFactor ?? false);
 
@@ -30,7 +32,7 @@
 		password = code = error = '';
 		setup = null;
 		recoveryCodes = null;
-		turningOff = false;
+		active = false;
 	});
 
 	async function run(action: () => Promise<void>, fallback: string) {
@@ -59,6 +61,7 @@
 			const result = await userApi.enableTwoFactor({ twoFactorCodeRequest: { code } });
 			recoveryCodes = result.recoveryCodes;
 			setup = null;
+			active = false;
 			code = '';
 			if (session.me) session.me = { ...session.me, twoFactor: true };
 		}, 'Failed to turn on two-factor authentication.');
@@ -69,34 +72,37 @@
 		run(async () => {
 			await userApi.disableTwoFactor({ twoFactorDisableRequest: { currentPassword: password, code } });
 			password = code = '';
-			turningOff = false;
+			active = false;
 			recoveryCodes = null;
 			if (session.me) session.me = { ...session.me, twoFactor: false };
 			showToast('Two-factor authentication is off.');
 		}, 'Failed to turn off two-factor authentication.');
 	}
 
+	function cancel() {
+		active = false;
+		setup = null;
+		password = code = error = '';
+	}
+
+	/** While codes or the QR code are shown the row stays open, whatever the button did. */
+	const expanded = $derived(active || !!setup || !!recoveryCodes);
+
 	async function copyCodes() {
 		showToast((await copyText((recoveryCodes ?? []).join('\n'))) ? 'Recovery codes copied' : 'Could not copy the codes');
 	}
 </script>
 
-<section>
-	<Label class="mb-1">
-		Two-factor authentication
-		{#if enabled}
-			<span class="ms-1 rounded-md bg-green-500/15 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-300">On</span>
-		{/if}
-	</Label>
-	<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-		{#if enabled}
-			Signing in needs your password and the code of your authenticator app.
-		{:else}
-			Sign in with your password and a code from an authenticator app on your phone (Aegis, Google Authenticator,
-			1Password, Bitwarden, …). Nobody gets in with your password alone.
-		{/if}
-	</p>
-
+<SettingsItem
+	title="Two-factor authentication"
+	status={enabled ? 'On' : 'Off'}
+	tone={enabled ? 'good' : 'neutral'}
+	description={enabled
+		? 'Signing in needs your password and the code of your authenticator app.'
+		: 'Sign in with your password and a code from an authenticator app on your phone (Aegis, Google Authenticator, 1Password, Bitwarden, …). Nobody gets in with your password alone.'}
+	action={enabled ? 'Turn off…' : 'Set up…'}
+	bind:open={() => expanded, (value) => (active = value)}
+>
 	{#if recoveryCodes}
 		<div class="rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
 			<p class="text-sm font-medium text-gray-900 dark:text-white">Two-factor authentication is on. Keep these recovery codes.</p>
@@ -138,47 +144,45 @@
 				<p class="text-sm text-red-500 dark:text-red-400">{error}</p>
 			{/if}
 			<div class="flex justify-end gap-2">
-				<Button size="sm" color="light" onclick={() => ((setup = null), (code = error = ''))}>Cancel</Button>
+				<Button size="sm" color="light" onclick={cancel}>Cancel</Button>
 				<Button type="submit" size="sm" disabled={busy || code.replace(/\s/g, '').length < 6}>
 					{busy ? 'Checking…' : 'Turn on'}
 				</Button>
 			</div>
 		</form>
 	{:else if enabled}
-		{#if turningOff}
-			<form class="flex flex-col gap-2" onsubmit={turnOff} autocomplete="off">
-				<Input type="password" placeholder="Current password" autocomplete="current-password" bind:value={password} required />
-				<Input
-					placeholder="Code of the app or a recovery code"
-					autocomplete="one-time-code"
-					aria-label="Code of the app or a recovery code"
-					bind:value={code}
-					required
-				/>
-				{#if error}
-					<p class="text-sm text-red-500 dark:text-red-400">{error}</p>
-				{/if}
-				<div class="flex justify-end gap-2">
-					<Button size="sm" color="light" onclick={() => ((turningOff = false), (password = code = error = ''))}>Cancel</Button>
-					<Button type="submit" size="sm" color="red" disabled={busy || !password || !code.trim()}>
-						{busy ? 'Turning off…' : 'Turn off'}
-					</Button>
-				</div>
-			</form>
-		{:else}
-			<div class="flex justify-end">
-				<Button size="sm" color="light" onclick={() => (turningOff = true)}>Turn off…</Button>
-			</div>
-		{/if}
-	{:else}
-		<form class="flex flex-col gap-2" onsubmit={start}>
-			<Input type="password" placeholder="Current password" autocomplete="current-password" bind:value={password} required />
+		<form class="flex flex-col gap-2" onsubmit={turnOff} autocomplete="off">
+			<!-- svelte-ignore a11y_autofocus -->
+			<Input type="password" placeholder="Current password" autocomplete="current-password" bind:value={password} required autofocus />
+			<Input
+				placeholder="Code of the app or a recovery code"
+				autocomplete="one-time-code"
+				aria-label="Code of the app or a recovery code"
+				bind:value={code}
+				required
+			/>
 			{#if error}
 				<p class="text-sm text-red-500 dark:text-red-400">{error}</p>
 			{/if}
-			<div class="flex justify-end">
-				<Button type="submit" size="sm" disabled={busy || !password}>{busy ? 'Starting…' : 'Set up…'}</Button>
+			<div class="flex justify-end gap-2">
+				<Button size="sm" color="light" onclick={cancel}>Cancel</Button>
+				<Button type="submit" size="sm" color="red" disabled={busy || !password || !code.trim()}>
+					{busy ? 'Turning off…' : 'Turn off'}
+				</Button>
+			</div>
+		</form>
+	{:else}
+		<form class="flex flex-col gap-2" onsubmit={start}>
+			<p class="text-sm text-gray-700 dark:text-gray-300">Confirm with your password to start:</p>
+			<!-- svelte-ignore a11y_autofocus -->
+			<Input type="password" placeholder="Current password" autocomplete="current-password" bind:value={password} required autofocus />
+			{#if error}
+				<p class="text-sm text-red-500 dark:text-red-400">{error}</p>
+			{/if}
+			<div class="flex justify-end gap-2">
+				<Button size="sm" color="light" onclick={cancel}>Cancel</Button>
+				<Button type="submit" size="sm" disabled={busy || !password}>{busy ? 'Starting…' : 'Continue'}</Button>
 			</div>
 		</form>
 	{/if}
-</section>
+</SettingsItem>

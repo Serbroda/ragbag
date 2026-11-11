@@ -14,7 +14,7 @@ import (
 )
 
 // Personal API tokens let scripts and apps use the API as their user: "Authorization: Bearer rb_…". They are
-// created in the profile (with the password), shown once and stored as a hash. A token reads (READ) or also
+// created in the settings (with the password), shown once and stored as a hash. A token reads (READ) or also
 // changes (WRITE) links and collections of the user's spaces, and nothing else: the account, tokens, spaces'
 // settings, members, invites, public links and who sees a collection stay with a signed-in person
 // (tokenMay), so a token never gets around the password or two-factor authentication. Locked collections stay

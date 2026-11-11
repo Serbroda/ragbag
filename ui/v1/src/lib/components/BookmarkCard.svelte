@@ -2,7 +2,7 @@
 	import type { BookmarkDto } from 'ragbag-frontend-sdk';
 	import type { Snippet } from 'svelte';
 	import { FolderOutline, LinkOutline } from 'flowbite-svelte-icons';
-	import { getDomain, safeUrl, timeAgo } from '../utils/format';
+	import { colorFor, getDomain, safeUrl, timeAgo } from '../utils/format';
 	import { previewImage } from '../utils/links';
 	import { preferences, type LinkView } from '../stores/preferences.svelte';
 	import FavoriteButton from './FavoriteButton.svelte';
@@ -26,6 +26,7 @@
 		selecting = false,
 		onselect,
 		raised = false,
+		imagePlaceholder = false,
 	}: {
 		bookmark: BookmarkDto;
 		/** Defaults to the user's link display preference. */
@@ -49,6 +50,8 @@
 		onselect?: (event: MouseEvent) => void;
 		/** Lifts the card above its neighbours, e.g. while its menu is open. */
 		raised?: boolean;
+		/** Cards view: a link without a preview image gets a calm stand-in, so cards next to ones with an image line up. */
+		imagePlaceholder?: boolean;
 	} = $props();
 
 	// Touch screens have no hover: a long press selects the card (and starts selecting)
@@ -107,6 +110,9 @@
 	const source = $derived(previewImage(bookmark));
 	const image = $derived(view !== 'cards' || source === failedImage ? undefined : source);
 	const hasHeadlines = $derived(!!shareToken || !!bookmark.feedUrl);
+	/** The image whose loading finished; until then its place pulses. */
+	let loadedImage = $state<string | undefined>();
+	const domain = $derived(getDomain(bookmark.url));
 </script>
 
 {#snippet faviconIcon(size: string)}
@@ -301,9 +307,25 @@
 				alt=""
 				loading="lazy"
 				referrerpolicy="no-referrer"
-				class="aspect-[2.4/1] w-full rounded-t-[11px] bg-gray-100 object-cover dark:bg-gray-800"
+				class="aspect-[2.4/1] w-full rounded-t-[11px] bg-gray-100 object-cover dark:bg-gray-800 {loadedImage === image
+					? ''
+					: 'animate-pulse'}"
+				onload={() => (loadedImage = image)}
 				onerror={() => (failedImage = source)}
 			/>
+		{:else if imagePlaceholder && view === 'cards'}
+			<div
+				class="flex aspect-[2.4/1] w-full items-center justify-center rounded-t-[11px] bg-gradient-to-br from-gray-100 to-gray-200 dark:from-gray-800/70 dark:to-gray-850"
+				aria-hidden="true"
+			>
+				{#if favicon}
+					<img src={favicon} alt="" loading="lazy" referrerpolicy="no-referrer" class="h-10 w-10 rounded-lg opacity-80" />
+				{:else}
+					<span class="flex h-10 w-10 items-center justify-center rounded-lg text-lg font-bold text-white/90 {colorFor(domain)}">
+						{domain.replace(/^www\./, '').charAt(0).toUpperCase()}
+					</span>
+				{/if}
+			</div>
 		{/if}
 
 		<div class="flex flex-1 flex-col {view === 'compact' ? 'gap-1.5 p-3' : 'gap-2 p-4'}">

@@ -34,7 +34,7 @@
 			{href}
 			target="_blank"
 			rel="noopener noreferrer"
-			class="line-clamp-1 text-sm font-semibold text-gray-900 after:absolute after:inset-0 after:content-[''] group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400"
+			class="line-clamp-2 text-sm font-semibold leading-snug text-gray-900 after:absolute after:inset-0 after:content-[''] group-hover:text-primary-600 dark:text-white dark:group-hover:text-primary-400"
 			title={bookmark.title || bookmark.url}
 		>
 			{bookmark.title || bookmark.url}

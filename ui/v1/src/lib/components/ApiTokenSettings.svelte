@@ -1,15 +1,16 @@
 <script lang="ts">
 	import { UserApi } from 'ragbag-frontend-sdk';
 	import type { ApiTokenCreatedDto, ApiTokenDto, ApiTokenScope } from 'ragbag-frontend-sdk';
-	import { Button, Input, Label } from 'flowbite-svelte';
+	import { Button, Input } from 'flowbite-svelte';
 	import { apiConfig, errorMessage } from '../api/client';
 	import { p } from '../router';
 	import { session } from '../stores/spaces.svelte';
 	import { showToast } from '../stores/toast.svelte';
 	import { copyText } from '../utils/clipboard';
 	import { timeAgo } from '../utils/format';
+	import SettingsItem from './SettingsItem.svelte';
 
-	/** The profile dialog: closing it forgets everything typed or shown here. */
+	/** False while its settings tab is not shown: forgets everything typed or shown here. */
 	let { open }: { open: boolean } = $props();
 
 	const userApi = new UserApi(apiConfig());
@@ -83,13 +84,10 @@
 	}
 </script>
 
-<section>
-	<Label class="mb-1">API tokens</Label>
-	<p class="mb-3 text-xs text-gray-500 dark:text-gray-400">
-		For scripts, shortcuts and apps that read or save links as you (<code>Authorization: Bearer …</code>). A token
-		works with links and collections only: your account, members and space settings are out of its reach.
-	</p>
-
+<SettingsItem
+	title="API tokens"
+	description="For scripts, shortcuts and apps that read or save links as you (Authorization: Bearer …). A token works with links and collections only: your account, members and space settings are out of its reach."
+>
 	{#if created}
 		<div class="mb-3 rounded-lg border border-amber-500/40 bg-amber-500/10 p-3">
 			<p class="text-sm font-medium text-gray-900 dark:text-white">Copy the token “{created.name}” now, it is not shown again.</p>
@@ -171,4 +169,4 @@
 			<Button size="sm" color="light" onclick={() => (creating = true)}>New token…</Button>
 		</div>
 	{/if}
-</section>
+</SettingsItem>

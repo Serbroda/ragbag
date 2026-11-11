@@ -6,7 +6,7 @@
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
 	import LinkSortSelect from '../components/LinkSortSelect.svelte';
-	import { filterByTags, headlineFields, headlineSettings, sortLinks, type HeadlineSettings } from '../utils/links';
+	import { filterByTags, headlineFields, headlineSettings, previewImage, sortLinks, type HeadlineSettings } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
 	import TagInput from '../components/TagInput.svelte';
 	import PreviewImageField from '../components/PreviewImageField.svelte';
@@ -17,7 +17,7 @@
 	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
 	import ImportCollectionModal from '../components/ImportCollectionModal.svelte';
 	import ShareCollectionModal from '../components/ShareCollectionModal.svelte';
-	import { DotsVerticalOutline, FilterOutline, FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
+	import { DotsVerticalOutline, FilterOutline, FolderOutline, GlobeOutline, LockOutline, PlusOutline } from 'flowbite-svelte-icons';
 	import { p, route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import {
@@ -58,6 +58,8 @@
 	let bookmarks = $state<BookmarkDto[]>([]);
 	/** Tags picked above the links; a link has to have all of them. */
 	let selectedTags = $state<string[]>([]);
+	/** Cards without an image only get a stand-in next to cards that have one. */
+	const someImage = $derived(bookmarks.some((bookmark) => previewImage(bookmark)));
 	const visibleBookmarks = $derived(sortLinks(filterByTags(bookmarks, selectedTags), preferences.linkSort));
 	let loading = $state(true);
 	let error = $state('');
@@ -616,7 +618,7 @@
 	{:else if collection}
 		<!-- Header -->
 		<!-- Stacked on phones so the title keeps the full width -->
-		<div class="mb-6 flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+		<div class="mb-6 flex items-start justify-between gap-3 sm:items-center">
 			<div class="min-w-0">
 				<h1 class="flex flex-wrap items-center gap-x-2 gap-y-1 text-xl font-bold tracking-tight sm:text-2xl">
 					<span class="min-w-0 break-words">{collection.name}</span>
@@ -673,7 +675,9 @@
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
 				{#if canCreateBookmarks}
-					<Button size="sm" onclick={openAddModal} title="Or paste a URL anywhere on this page">+ Add Link</Button>
+					<Button size="sm" onclick={openAddModal} title="Or paste a URL anywhere on this page">
+						<PlusOutline class="me-1.5 h-4 w-4" /> Add<span class="hidden sm:inline">&nbsp;link</span>
+					</Button>
 				{/if}
 				<div class="relative">
 						<Button
@@ -730,7 +734,7 @@
 											openHeaderMenu = false;
 										}}
 									>
-										Edit Collection
+										Edit collection
 									</button>
 								{/if}
 								{#if canImportExport}
@@ -763,7 +767,7 @@
 											openHeaderMenu = false;
 										}}
 									>
-										Delete Collection
+										Delete collection
 									</button>
 								{/if}
 							</div>
@@ -825,7 +829,7 @@
 					{#if canSelect && !selecting}
 						<button
 							type="button"
-							class="rounded-lg bg-gray-100 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+							class="hidden rounded-lg bg-gray-100 px-2.5 py-1.5 text-sm text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700 sm:block"
 							title="Select several links (or long-press a card)"
 							onclick={() => (selectionMode = true)}>Select</button
 						>
@@ -860,6 +864,7 @@
 					{@const origin = collection.query ? bookmark.collectionId : undefined}
 					<BookmarkCard
 						{bookmark}
+						imagePlaceholder={someImage}
 						collectionName={origin ? collectionName?.(origin) : undefined}
 						collectionHref={origin
 							? p('/space/:spaceId/collections/:collectionId', { params: { spaceId, collectionId: origin } })
@@ -949,7 +954,7 @@
 </div>
 
 <!-- Add Bookmark Modal -->
-<Modal title="Add Link" bind:open={showAddModal} size="sm" autoclose={false}>
+<Modal title="Add link" bind:open={showAddModal} size="sm" autoclose={false}>
 	<form
 		onsubmit={(e) => {
 			e.preventDefault();
@@ -980,7 +985,7 @@
 
 <!-- Edit Bookmark Modal -->
 <Modal
-	title="Edit Link"
+	title="Edit link"
 	open={!!editingBookmark}
 	size="sm"
 	autoclose={false}
@@ -1023,7 +1028,7 @@
 </Modal>
 
 <!-- Edit Collection Modal -->
-<Modal title="Edit Collection" bind:open={showEditCollectionModal} size="sm" autoclose={false}>
+<Modal title="Edit collection" bind:open={showEditCollectionModal} size="sm" autoclose={false}>
 	<form
 		onsubmit={(e) => {
 			e.preventDefault();
@@ -1056,7 +1061,7 @@
 			</div>
 		{/if}
 		<div>
-			<Label for="edit-col-parent" class="mb-2">Parent Collection</Label>
+			<Label for="edit-col-parent" class="mb-2">Parent collection</Label>
 			<Select id="edit-col-parent" placeholder="" bind:value={editCollectionParentId}>
 				<option value="">None (top level)</option>
 				{#each allCollectionOptions as opt (opt.id)}
@@ -1077,7 +1082,7 @@
 </Modal>
 
 <!-- Delete Collection Modal -->
-<Modal title="Delete Collection" bind:open={showDeleteCollectionModal} size="sm" autoclose={false}>
+<Modal title="Delete collection" bind:open={showDeleteCollectionModal} size="sm" autoclose={false}>
 	<p class="text-gray-600 dark:text-gray-400">
 		Move <strong>{collection?.name}</strong> with all its links and sub-collections to the trash? You can restore
 		it from there for 30 days.

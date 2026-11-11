@@ -46,7 +46,12 @@
 </script>
 
 {#if chips.length > 0}
-	<div class="flex min-w-0 flex-wrap items-center gap-1.5" role="group" aria-label="Filter by tag">
+	<!-- One scrolling row on phones (the links should start high up), wrapping lines on wider screens -->
+	<div
+		class="-mx-4 flex min-w-0 items-center gap-1.5 overflow-x-auto px-4 [scrollbar-width:none] sm:mx-0 sm:flex-wrap sm:overflow-visible sm:px-0 [&>*]:shrink-0"
+		role="group"
+		aria-label="Filter by tag"
+	>
 		{#each visible as chip (chip.tag.toLowerCase())}
 			<button
 				type="button"

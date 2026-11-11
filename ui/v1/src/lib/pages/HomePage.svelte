@@ -255,7 +255,7 @@
 				{:else}
 					{#if canAddLinks}
 						<Button onclick={() => quickAdd?.show()} title="Or paste a URL anywhere on this page">
-							<PlusOutline class="me-1.5 h-4 w-4" /> Add Link
+							<PlusOutline class="me-1.5 h-4 w-4" /> Add link
 						</Button>
 					{/if}
 					<Button color="alternative" onclick={startEditing}>

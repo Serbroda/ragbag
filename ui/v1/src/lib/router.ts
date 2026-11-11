@@ -51,6 +51,13 @@ export const { p, navigate, isActive, route } = createRouter({
 	'/admin/:tab': {
 		'/': () => import('./pages/AdminPage.svelte'),
 	},
+	// Personal settings: profile, security, appearance, apps & API, account
+	'/settings': {
+		'/': () => import('./pages/SettingsPage.svelte'),
+	},
+	'/settings/:tab': {
+		'/': () => import('./pages/SettingsPage.svelte'),
+	},
 	// Free or Pro (PLANS_ENABLED): usage and limits
 	'/plan': {
 		'/': () => import('./pages/PlanPage.svelte'),

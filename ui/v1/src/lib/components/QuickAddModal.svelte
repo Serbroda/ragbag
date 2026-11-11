@@ -91,7 +91,7 @@
 	}
 </script>
 
-<Modal title="Add Link" bind:open size="sm" autoclose={false}>
+<Modal title="Add link" bind:open size="sm" autoclose={false}>
 	{#if options.length === 0}
 		<p class="text-sm text-gray-600 dark:text-gray-300">
 			This space has no collections yet. Create one in the sidebar first, then add links to it.

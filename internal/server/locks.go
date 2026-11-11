@@ -91,7 +91,7 @@ func (s *Server) Unlock(c echo.Context) error {
 		return err
 	}
 	if state.Hash == nil {
-		return badRequest("Set a PIN in your profile first")
+		return badRequest("Set a PIN in your settings first")
 	}
 	if state.BlockedUntil != nil && time.Now().Before(*state.BlockedUntil) {
 		return tooManyRequests("Too many wrong PINs, try again in a few minutes")
@@ -151,7 +151,7 @@ func (s *Server) LockCollection(c echo.Context, collectionID api.ID) error {
 	}
 	// Without a PIN the collection could never be seen again
 	if state.Hash == nil {
-		return badRequest("Set a PIN in your profile first")
+		return badRequest("Set a PIN in your settings first")
 	}
 	if err := s.store.LockCollection(ctxOf(c), currentUser(c), collectionID); err != nil {
 		return err

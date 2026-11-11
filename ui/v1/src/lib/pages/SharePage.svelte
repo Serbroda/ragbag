@@ -6,7 +6,7 @@
 	import BookmarkCard from '../components/BookmarkCard.svelte';
 	import LinkViewToggle from '../components/LinkViewToggle.svelte';
 	import LinkSortSelect from '../components/LinkSortSelect.svelte';
-	import { filterByTags, filterLinks, sortLinks } from '../utils/links';
+	import { filterByTags, filterLinks, previewImage, sortLinks } from '../utils/links';
 	import TagFilter from '../components/TagFilter.svelte';
 	import Logo from '../components/Logo.svelte';
 	import ReportShareModal from '../components/ReportShareModal.svelte';
@@ -158,7 +158,12 @@
 			{#if bookmarks.length > 0}
 				<div class={linkListClass(preferences.linkView)}>
 					{#each bookmarks as bookmark (bookmark.id)}
-						<BookmarkCard {bookmark} publicView shareToken={bookmark.headlines ? token : undefined} />
+						<BookmarkCard
+							{bookmark}
+							publicView
+							shareToken={bookmark.headlines ? token : undefined}
+							imagePlaceholder={bookmarks.some((b) => previewImage(b))}
+						/>
 					{/each}
 				</div>
 			{:else if filter.trim() || selectedTags.length > 0}
