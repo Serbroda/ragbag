@@ -28,6 +28,7 @@
 		UserCircleOutline,
 		MessageCaptionOutline,
 		UsersOutline,
+		StarOutline,
 	} from 'flowbite-svelte-icons';
 	import { apiConfig, errorMessage, fetchFeatureFlags, logout, logoutEverywhere } from '../api/client';
 	import { navigate, p, route } from '../router';
@@ -44,6 +45,8 @@
 	import { shownName } from '../utils/format';
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import ProfileModal from '../components/ProfileModal.svelte';
+	import KoFiIcon from '../components/KoFiIcon.svelte';
+	import SupportButton from '../components/SupportButton.svelte';
 	import LegalLinks from '../components/LegalLinks.svelte';
 	import { collectionsToTree, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
@@ -108,8 +111,16 @@
 
 	/** Version of the running server, e.g. v1.2.0 or v1.2.0-3-gabc1234 for a build after that release. */
 	let appVersion = $state('');
+	/** Free and Pro (PLANS_ENABLED): the account menu links to the plan page. */
+	let plansEnabled = $state(false);
+	/** SUPPORT_URL: a donation page linked in the account menu. */
+	let supportUrl = $state('');
 	fetchFeatureFlags()
-		.then((flags) => (appVersion = flags['version'] ?? ''))
+		.then((flags) => {
+			appVersion = flags['version'] ?? '';
+			plansEnabled = flags['plans'] === 'true';
+			supportUrl = flags['support_url'] ?? '';
+		})
 		.catch(() => {});
 
 	// An installed app can stay open for days: offer a reload once the server runs another version
@@ -847,6 +858,15 @@
 						>
 							Profile & appearance <UserCircleOutline class="h-4 w-4" />
 						</button>
+						{#if plansEnabled}
+							<button
+								role="menuitem"
+								class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+								onclick={() => (closeMenus(), navigate('/plan'))}
+							>
+								Plan <StarOutline class="h-4 w-4" />
+							</button>
+						{/if}
 						{#if session.me?.instanceAdmin}
 							<button
 								role="menuitem"
@@ -887,6 +907,20 @@
 						>
 							Log out on all devices
 						</button>
+						{#if supportUrl}
+							<div class="my-1 h-px bg-gray-800"></div>
+							<a
+								role="menuitem"
+								href={supportUrl}
+								target="_blank"
+								rel="noopener noreferrer"
+								class="flex w-full items-center justify-between rounded-md bg-orange-500/15 px-2 py-1.5 font-medium text-orange-300 ring-1 ring-inset ring-orange-500/30 hover:bg-orange-500/25 hover:text-orange-200"
+								onclick={closeMenus}
+							>
+								Support Ragbag <KoFiIcon class="h-4 w-4" />
+							</a>
+							<p class="px-2 pb-0.5 pt-1 text-xs text-gray-500">A gift for the server costs; it unlocks nothing.</p>
+						{/if}
 						{#if appVersion}
 							<div class="my-1 h-px bg-gray-800"></div>
 							<p class="truncate px-2 pb-0.5 pt-1 text-xs text-gray-500" title="Version of this ragbag server">
@@ -964,6 +998,9 @@
 				</ol>
 			</nav>
 			<div class="ms-auto flex items-center gap-2">
+				{#if supportUrl}
+					<SupportButton url={supportUrl} />
+				{/if}
 				{#if activeSpaceId}
 					<div class="relative hidden sm:block">
 						<input

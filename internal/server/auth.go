@@ -29,6 +29,12 @@ func (s *Server) FeatureFlags(c echo.Context) error {
 		// Accounts confirm their address and passwords can be reset by email
 		"email":   strconv.FormatBool(s.mailEnabled()),
 		"version": s.version,
+		// Free and Pro (PLANS_ENABLED)
+		"plans": strconv.FormatBool(s.cfg.Plans.Enabled),
+	}
+	// A donation page linked in the app
+	if s.cfg.SupportURL != "" {
+		flags["support_url"] = s.cfg.SupportURL
 	}
 	// legal_imprint, legal_privacy, legal_terms: where the pages are, when there are any
 	for page := range legalTitles {

@@ -91,6 +91,13 @@ export interface DownloadStoredBackupRequest {
     name: string;
 }
 
+export interface GrantProRequest {
+    /**
+     * 
+     */
+    userId: string;
+}
+
 export interface ResolveReportOperationRequest {
     /**
      * 
@@ -111,6 +118,13 @@ export interface RestoreBackupRequest {
      * Only check the backup and report what it holds, without changing anything
      */
     dryRun?: boolean;
+}
+
+export interface RevokeProRequest {
+    /**
+     * 
+     */
+    userId: string;
 }
 
 export interface UnblockUserRequest {
@@ -662,6 +676,59 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for grantPro without sending the request
+     */
+    async grantProRequestOpts(requestParameters: GrantProRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling grantPro().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/users/{userId}/pro`;
+        urlPath = urlPath.replace('{userId}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Make an account Pro (PLANS_ENABLED)
+     */
+    async grantProRaw(requestParameters: GrantProRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminUserDto>> {
+        const requestOptions = await this.grantProRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminUserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Make an account Pro (PLANS_ENABLED)
+     */
+    async grantPro(requestParameters: GrantProRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
+        const response = await this.grantProRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for resolveReport without sending the request
      */
     async resolveReportRequestOpts(requestParameters: ResolveReportOperationRequest): Promise<runtime.RequestOpts> {
@@ -780,6 +847,59 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async restoreBackup(requestParameters: RestoreBackupRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<BackupSummaryDto> {
         const response = await this.restoreBackupRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for revokePro without sending the request
+     */
+    async revokeProRequestOpts(requestParameters: RevokeProRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling revokePro().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/users/{userId}/pro`;
+        urlPath = urlPath.replace('{userId}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Take back Pro granted by an admin
+     */
+    async revokeProRaw(requestParameters: RevokeProRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<AdminUserDto>> {
+        const requestOptions = await this.revokeProRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => AdminUserDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Take back Pro granted by an admin
+     */
+    async revokePro(requestParameters: RevokeProRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
+        const response = await this.revokeProRaw(requestParameters, initOverrides);
         return await response.value();
     }
 

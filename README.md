@@ -192,6 +192,8 @@ Everything is configured with environment variables. For local runs the server a
 | `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | Legal pages elsewhere instead of files in `DATA_DIR/legal` (see *Legal pages*) | – |
 | `PUBLIC_URL`            | Address of the instance for links in emails and chat previews, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
 | `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
+| `PLANS_ENABLED`, `QUOTA_PRO_*` | Free and Pro plans, Pro granted by admins (see *Plans*) | off |
+| `SUPPORT_URL`           | Donation page (Ko-fi & co.) linked in the app, https only               | –                       |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
 | `CORS_ALLOWED_ORIGINS`  | Comma-separated origins of frontends served elsewhere (dev server)   | –                       |
@@ -283,6 +285,27 @@ Unlimited unless set; on a public instance they keep single accounts from fillin
 
 Imports count as well; one that would exceed a quota is refused as a whole (the preview already says so).
 Images uploaded before Ragbag 0.15 count for nobody.
+
+### Plans
+
+Off by default: a self-hosted instance treats everybody the same, with the quotas above or none. A public
+instance can split accounts into **Free** and **Pro** with `PLANS_ENABLED=true`: the `QUOTA_*` variables are then
+the limits of Free, `QUOTA_PRO_*` (same names with `PRO_`, unlimited unless set) those of Pro.
+
+```bash
+PLANS_ENABLED=true
+QUOTA_SPACES_PER_USER=2          # Free: two own spaces (the first of a new account counts)
+QUOTA_UPLOAD_MB_PER_USER=50      # Free: 50 MB of images
+QUOTA_PRO_UPLOAD_MB_PER_USER=1000
+```
+
+Pro are the instance admins and accounts an admin made Pro (*Administration → Accounts → Make Pro*). Joining the spaces of others is free; a space has the Pro limits when one of its owners
+is Pro. Going back to Free keeps everything, only adding beyond the Free limits is refused. Everybody sees their
+plan, usage and limits in the account menu under *Plan*.
+
+Pro is never sold. To let people chip in for the server, set `SUPPORT_URL` to a donation page (e.g.
+`https://ko-fi.com/serbroda`): a Ko-fi button next to the search (each person can close it) and the account
+menu then link it, with or without plans. Donations unlock nothing, and the plan page does not mention them.
 
 ### Moderation
 

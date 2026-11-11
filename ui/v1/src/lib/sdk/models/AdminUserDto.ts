@@ -13,6 +13,21 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { ProSource } from './ProSource';
+import {
+    ProSourceFromJSON,
+    ProSourceFromJSONTyped,
+    ProSourceToJSON,
+    ProSourceToJSONTyped,
+} from './ProSource';
+import type { PlanName } from './PlanName';
+import {
+    PlanNameFromJSON,
+    PlanNameFromJSONTyped,
+    PlanNameToJSON,
+    PlanNameToJSONTyped,
+} from './PlanName';
+
 /**
  * 
  * @export
@@ -59,7 +74,17 @@ export interface AdminUserDto {
      * 
      */
     blockedReason?: string;
+    /**
+     * Only with PLANS_ENABLED
+     */
+    plan?: PlanName;
+    /**
+     * 
+     */
+    proSource?: ProSource;
 }
+
+
 
 /**
  * Check if a given object implements the AdminUserDto interface.
@@ -92,6 +117,8 @@ export function AdminUserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'spaces': json['spaces'] == null ? undefined : json['spaces'],
         'blockedAt': json['blockedAt'] == null ? undefined : (parseDateTime(json['blockedAt'])),
         'blockedReason': json['blockedReason'] == null ? undefined : json['blockedReason'],
+        'plan': json['plan'] == null ? undefined : PlanNameFromJSON(json['plan']),
+        'proSource': json['proSource'] == null ? undefined : ProSourceFromJSON(json['proSource']),
     };
 }
 
@@ -116,6 +143,8 @@ export function AdminUserDtoToJSONTyped(value?: AdminUserDto | null, ignoreDiscr
         'spaces': value['spaces'],
         'blockedAt': value['blockedAt'] == null ? value['blockedAt'] : serializeDateTime(value['blockedAt']),
         'blockedReason': value['blockedReason'],
+        'plan': PlanNameToJSON(value['plan']),
+        'proSource': ProSourceToJSON(value['proSource']),
     };
 }
 

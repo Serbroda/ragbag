@@ -29,6 +29,7 @@ type User struct {
 	DisplayName *string   `db:"display_name"`
 	CreatedAt   time.Time `db:"created_at"`
 	UpdatedAt   time.Time `db:"updated_at"`
+	Plan
 }
 
 // Name is what others see: the display name, else the username.
@@ -45,6 +46,9 @@ const shownName = `COALESCE(u.display_name, u.username)`
 const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, setup_admin, must_change_password,
 	deleted_at, blocked_at, blocked_reason, display_name, created_at, updated_at`
 
+// selectedUserColumns are read with every user: userColumns and the plan.
+const selectedUserColumns = userColumns + `, ` + planColumns
+
 // CreateUser stores a new account; unverified ones wait for their email address to be confirmed.
 func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash string, displayName *string, verified bool) (*User, error) {
 	at := now()
@@ -60,14 +64,14 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 
 func (s *Store) UserByID(ctx context.Context, id string) (*User, error) {
 	var user User
-	return &user, s.get(ctx, &user, `SELECT `+userColumns+` FROM users WHERE id = ?`, id)
+	return &user, s.get(ctx, &user, `SELECT `+selectedUserColumns+` FROM users WHERE id = ?`, id)
 }
 
 // UserByLogin finds a user by username or email, both stored lower-case.
 func (s *Store) UserByLogin(ctx context.Context, login string) (*User, error) {
 	var user User
 	login = strings.ToLower(strings.TrimSpace(login))
-	return &user, s.get(ctx, &user, `SELECT `+userColumns+` FROM users WHERE username = ? OR email = ?`, login, login)
+	return &user, s.get(ctx, &user, `SELECT `+selectedUserColumns+` FROM users WHERE username = ? OR email = ?`, login, login)
 }
 
 func (s *Store) UsernameOrEmailTaken(ctx context.Context, username, email string) (bool, error) {
@@ -110,7 +114,7 @@ func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	err := s.sel(ctx, &users, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
 		       u.setup_admin, u.must_change_password, u.deleted_at, u.blocked_at, u.blocked_reason, u.display_name,
-		       u.created_at, u.updated_at,
+		       u.created_at, u.updated_at, `+userPlanColumns+`,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
 		FROM users u WHERE u.deleted_at IS NULL ORDER BY u.username`)
 	return users, err
@@ -121,7 +125,7 @@ func (s *Store) UsersByIDs(ctx context.Context, ids []string) ([]User, error) {
 		return nil, nil
 	}
 	var users []User
-	err := s.selIn(ctx, &users, `SELECT `+userColumns+` FROM users WHERE id IN (?) ORDER BY username`, ids)
+	err := s.selIn(ctx, &users, `SELECT `+selectedUserColumns+` FROM users WHERE id IN (?) ORDER BY username`, ids)
 	return users, err
 }
 

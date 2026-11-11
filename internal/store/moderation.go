@@ -68,7 +68,7 @@ func (s *Store) AnonymizeUser(ctx context.Context, user *User) error {
 	at := now()
 	_, err := s.exec(ctx, `UPDATE users SET username = ?, email = ?, password_hash = '', pin_hash = NULL,
 		token_version = token_version + 1, start_space_id = NULL, setup_admin = ?, must_change_password = ?, display_name = NULL,
-		blocked_at = NULL, blocked_reason = NULL, deleted_at = ?, updated_at = ? WHERE id = ?`,
+		blocked_at = NULL, blocked_reason = NULL, pro_granted_at = NULL, deleted_at = ?, updated_at = ? WHERE id = ?`,
 		anonymous, user.ID+"@deleted.invalid", false, false, at, at, user.ID)
 	return err
 }
@@ -195,6 +195,8 @@ type InstanceStats struct {
 	PublicLinks      int   `db:"public_links"`
 	ImageBytes       int64 `db:"image_bytes"`
 	OpenReports      int   `db:"open_reports"`
+	// GrantedPro: accounts an admin made Pro
+	GrantedPro int `db:"granted_pro"`
 }
 
 // Stats counts what the admin page shows; deleted accounts are not counted.
@@ -209,5 +211,6 @@ func (s *Store) Stats(ctx context.Context) (*InstanceStats, error) {
 		(SELECT COUNT(*) FROM bookmarks) AS bookmarks,
 		(SELECT COUNT(*) FROM collection_shares WHERE disabled_at IS NULL) AS public_links,
 		(SELECT COALESCE(SUM(LENGTH(data)), 0) FROM images) AS image_bytes,
-		(SELECT COUNT(*) FROM abuse_reports WHERE resolved_at IS NULL) AS open_reports`)
+		(SELECT COUNT(*) FROM abuse_reports WHERE resolved_at IS NULL) AS open_reports,
+		(SELECT COUNT(*) FROM users WHERE deleted_at IS NULL AND pro_granted_at IS NOT NULL) AS granted_pro`)
 }

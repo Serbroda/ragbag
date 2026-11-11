@@ -111,6 +111,8 @@
 	}
 
 	const quota = (value: number, unit = '') => (value > 0 ? `${value.toLocaleString()}${unit}` : 'unlimited');
+	const quotas = (links: number, spaces: number, collections: number, uploadMb: number) =>
+		`${quota(links)} links and ${quota(spaces)} spaces per account, ${quota(collections)} collections per space, ${quota(uploadMb, ' MB')} images per account`;
 </script>
 
 <svelte:head>
@@ -207,7 +209,13 @@
 							['Legal pages (DATA_DIR/legal, *_URL)', legalSummary(s), legalWarning(s)],
 							['Backups (BACKUP_KEEP)', s.backupKeep ? `the newest ${s.backupKeep} kept${s.lastBackupAt ? `, last ${s.lastBackupAt.toLocaleString()}` : ', none yet'}` : 'off', s.backupKeep ? '' : 'Without them, a broken disk or a mistake loses everything'],
 							['Logs (LOG_*)', `${s.logFile || 'stdout'}${s.logFile ? `, deleted after ${s.logMaxAgeDays} days` : ' (kept by journald or docker)'}${s.logAnonymizeIp ? ', IP addresses shortened' : ''}`, ''],
-							['Quotas (QUOTA_*)', `${quota(s.quotaLinksPerUser)} links and ${quota(s.quotaSpacesPerUser)} spaces per account, ${quota(s.quotaCollectionsPerSpace)} collections per space, ${quota(s.quotaUploadMbPerUser, ' MB')} images per account`, ''],
+							[s.plans ? 'Free plan (QUOTA_*)' : 'Quotas (QUOTA_*)', quotas(s.quotaLinksPerUser, s.quotaSpacesPerUser, s.quotaCollectionsPerSpace, s.quotaUploadMbPerUser), ''],
+							...(s.plans && s.proQuotas
+								? [
+										['Pro plan (QUOTA_PRO_*)', `${quotas(s.proQuotas.linksPerUser, s.proQuotas.spacesPerUser, s.proQuotas.collectionsPerSpace, s.proQuotas.uploadMbPerUser)}; ${o.grantedPro ?? 0} account${o.grantedPro === 1 ? '' : 's'} made Pro (plus the admins)`, ''],
+									]
+								: [['Plans (PLANS_ENABLED)', 'off: everybody has the same limits', '']]),
+							['Donations (SUPPORT_URL)', s.supportUrl || 'none', ''],
 						] as [label, value, warning] (label)}
 							<div class="flex flex-col gap-0.5 px-4 py-2.5 sm:flex-row sm:gap-4">
 								<dt class="shrink-0 text-gray-500 sm:w-72">{label}</dt>

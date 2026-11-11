@@ -223,7 +223,7 @@ func (s *Server) adminUserDto(user store.UserWithSpaces) api.AdminUserDto {
 	return api.AdminUserDto{Id: user.ID, Username: user.Username, DisplayName: user.DisplayName, Email: user.Email,
 		AvatarId:      user.AvatarImageID,
 		InstanceAdmin: s.isAdmin(&user.User), CreatedAt: &createdAt, Spaces: &spaces, BlockedAt: user.BlockedAt,
-		BlockedReason: user.BlockedReason}
+		BlockedReason: user.BlockedReason, Plan: s.planName(&user.User), ProSource: s.proSource(&user.User)}
 }
 
 // blockedMessage is what a blocked account is told when signing in.
@@ -501,7 +501,7 @@ func (s *Server) GetAdminOverview(c echo.Context) error {
 	if admins == nil {
 		admins = []string{}
 	}
-	quotas := s.cfg.Quotas
+	quotas, pro := s.cfg.Quotas, quotasDto(s.cfg.Plans.Pro)
 	var lastBackup *time.Time
 	if files, err := s.backupDir().List(); err == nil && len(files) > 0 {
 		lastBackup = &files[0].CreatedAt
@@ -511,6 +511,7 @@ func (s *Server) GetAdminOverview(c echo.Context) error {
 		Users: stats.Users, BlockedUsers: stats.BlockedUsers, UnconfirmedUsers: stats.UnconfirmedUsers,
 		Spaces: stats.Spaces, Collections: stats.Collections, Bookmarks: stats.Bookmarks,
 		PublicLinks: stats.PublicLinks, ImageBytes: stats.ImageBytes, OpenReports: stats.OpenReports,
+		GrantedPro: &stats.GrantedPro,
 		Settings: api.AdminSettingsDto{PublicUrl: s.cfg.PublicURL, RegistrationOpen: s.cfg.RegistrationOpen,
 			Email: s.mailEnabled(), RateLimits: s.cfg.RateLimits, AllowPrivateHosts: s.cfg.AllowPrivateHosts,
 			AdminUsers: admins, QuotaLinksPerUser: quotas.LinksPerUser, QuotaSpacesPerUser: quotas.SpacesPerUser,
@@ -518,6 +519,7 @@ func (s *Server) GetAdminOverview(c echo.Context) error {
 			LegalImprint: ptr(s.legalLink("imprint")), LegalPrivacy: ptr(s.legalLink("privacy")),
 			LegalTerms: ptr(s.legalLink("terms")), BackupKeep: &s.cfg.Backups.Keep,
 			LogAnonymizeIp: &s.cfg.AnonymizeIPs, LogFile: &s.cfg.Log.File, LogMaxAgeDays: &s.cfg.Log.MaxAgeDays,
-			LastBackupAt: lastBackup},
+			LastBackupAt: lastBackup, Plans: &s.cfg.Plans.Enabled, ProQuotas: &pro,
+			SupportUrl: &s.cfg.SupportURL},
 	})
 }

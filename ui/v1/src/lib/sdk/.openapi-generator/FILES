@@ -6,6 +6,7 @@ apis/CollectionApi.ts
 apis/DashboardApi.ts
 apis/ImageApi.ts
 apis/InviteApi.ts
+apis/PlanApi.ts
 apis/ShareApi.ts
 apis/SpaceApi.ts
 apis/UserApi.ts
@@ -57,6 +58,11 @@ models/ModelError.ts
 models/MoveCollectionDto.ts
 models/PasswordResetDto.ts
 models/PasswordResetPreviewDto.ts
+models/PlanDto.ts
+models/PlanName.ts
+models/PlanUsageDto.ts
+models/ProSource.ts
+models/QuotasDto.ts
 models/ReactionDto.ts
 models/RegisterRequest.ts
 models/ReportCategory.ts
