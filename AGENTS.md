@@ -237,7 +237,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   it adds a table or a reference cycle.
 - **Export/import** (`exchange.go`): versioned JSON (`format: ragbag-collection`, `format_version`). Raise the
   version on incompatible changes and convert older files in `parseExchange`. The format is compatible with
-  exports of the former Java version, which is the migration path to this one.
+  exports of the former Java version, which is the migration path to this one. Sent as `text/html` the import
+  takes a browser's bookmarks file instead (`exchange_html.go`, Netscape format read token by token): it is
+  converted to the same `exchangeFile`, so limits, merging, quotas and the preview are shared.
 
 ### Database migrations
 Fresh schema per dialect in `internal/db/migrations/{sqlite,postgres}`; add a new numbered file to both for every

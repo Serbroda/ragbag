@@ -625,6 +625,7 @@ export class CollectionApi extends runtime.BaseAPI {
     }
 
     /**
+     * Takes a Ragbag export (JSON) or, as `text/html`, the bookmarks file browsers and most bookmark services export (\"Netscape bookmark file\"): its folders become sub-collections. 
      * Import an export file into a collection; sub-collections with the same name are merged
      */
     async importCollectionRaw(requestParameters: ImportCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<ImportResultDto>> {
@@ -635,6 +636,7 @@ export class CollectionApi extends runtime.BaseAPI {
     }
 
     /**
+     * Takes a Ragbag export (JSON) or, as `text/html`, the bookmarks file browsers and most bookmark services export (\"Netscape bookmark file\"): its folders become sub-collections. 
      * Import an export file into a collection; sub-collections with the same name are merged
      */
     async importCollection(requestParameters: ImportCollectionRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<ImportResultDto> {

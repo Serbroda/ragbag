@@ -2,6 +2,7 @@ package server
 
 import (
 	"encoding/json"
+	"io"
 	"log/slog"
 	"net/http"
 	"sort"
@@ -152,11 +153,7 @@ func (s *Server) ImportCollection(c echo.Context, collectionID api.ID, params ap
 	if err != nil {
 		return err
 	}
-	var body json.RawMessage
-	if err := bind(c, &body); err != nil {
-		return err
-	}
-	file, err := parseExchange(body)
+	file, err := readImport(c)
 	if err != nil {
 		return err
 	}
@@ -194,12 +191,27 @@ func (s *Server) ImportCollection(c echo.Context, collectionID api.ID, params ap
 		audit(c, slog.LevelInfo, "collection imported", "collection", collectionID, "links", counter.imported,
 			"skipped", counter.skipped, "invalid", counter.invalid)
 	}
-	appVersion := file.AppVersion
 	return c.JSON(http.StatusOK, api.ImportResultDto{
-		Preview: preview, FormatVersion: file.FormatVersion, AppVersion: &appVersion,
+		Preview: preview, FormatVersion: file.FormatVersion, AppVersion: blankToNil(&file.AppVersion),
 		CollectionsCreated: counter.created, CollectionsMerged: counter.merged,
 		BookmarksImported: counter.imported, BookmarksSkipped: counter.skipped, BookmarksInvalid: counter.invalid,
 	})
+}
+
+// readImport takes a Ragbag export (JSON) or, sent as text/html, the bookmarks file of a browser.
+func readImport(c echo.Context) (*exchangeFile, error) {
+	if strings.HasPrefix(c.Request().Header.Get(echo.HeaderContentType), echo.MIMETextHTML) {
+		raw, err := io.ReadAll(c.Request().Body)
+		if err != nil {
+			return nil, badRequest("Malformed request body")
+		}
+		return parseBookmarksHTML(raw)
+	}
+	var body json.RawMessage
+	if err := bind(c, &body); err != nil {
+		return nil, err
+	}
+	return parseExchange(body)
 }
 
 func checkImportLimits(node *exchangeNode, depth int, counter *importCounter) error {

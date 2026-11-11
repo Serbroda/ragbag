@@ -49,7 +49,9 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 **Data**
 - **Save from anywhere**: install Ragbag as an app and share links to it (Android), or use the bookmarklet.
 - **Trash**: deleted links and collections can be restored for 30 days.
-- **Export and import** collections as versioned JSON files, with a preview of what an import will do.
+- **Export and import** collections as versioned JSON files, with a preview of what an import will do. The
+  import also takes the bookmarks file (.html) of Chrome, Firefox, Safari, Edge, Pocket, Raindrop & co.: folders
+  become sub-collections, tags, descriptions and dates are kept.
 
 **Accounts**
 - Users change their password themselves. Without email, **admins create one-time reset links** for people who

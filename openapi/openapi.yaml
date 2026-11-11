@@ -2023,6 +2023,9 @@ paths:
   /v1/collections/{collectionId}/import:
     post:
       summary: Import an export file into a collection; sub-collections with the same name are merged
+      description: |
+        Takes a Ragbag export (JSON) or, as `text/html`, the bookmarks file browsers and most bookmark services
+        export ("Netscape bookmark file"): its folders become sub-collections.
       operationId: importCollection
       tags:
         - Collection
@@ -2046,6 +2049,9 @@ paths:
           application/json:
             schema:
               type: object
+          text/html:
+            schema:
+              type: string
       responses:
         '200':
           description: OK
@@ -3816,7 +3822,7 @@ components:
           type: integer
         appVersion:
           type: string
-          description: Ragbag version that exported the file
+          description: Ragbag version that exported the file, none for the bookmarks file of a browser
         collectionsCreated:
           type: integer
         collectionsMerged:

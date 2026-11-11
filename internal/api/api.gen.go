@@ -899,7 +899,7 @@ type ImageUpload struct {
 
 // ImportResultDto What an import did, or as preview would do
 type ImportResultDto struct {
-	// AppVersion Ragbag version that exported the file
+	// AppVersion Ragbag version that exported the file, none for the bookmarks file of a browser
 	AppVersion        *string `json:"appVersion,omitempty"`
 	BookmarksImported int     `json:"bookmarksImported"`
 
