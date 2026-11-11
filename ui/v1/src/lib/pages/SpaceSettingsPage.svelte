@@ -12,7 +12,7 @@
 	import { getContext } from 'svelte';
 	import { Alert, Button, Input, Label, Modal, Select, Textarea, Toggle } from 'flowbite-svelte';
 	import { apiConfig, appBase, errorMessage, fetchFeatureFlags } from '../api/client';
-	import { navigate, route } from '../router';
+	import { navigate, p, route } from '../router';
 	import RoleBadge from '../components/RoleBadge.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import { shownName } from '../utils/format';
@@ -37,6 +37,16 @@
 	const rank = (role: SpaceMemberRoleEnum) => ROLES.indexOf(role);
 
 	const spaceId = $derived(route.params.spaceId ?? '');
+
+	/** One topic at a time instead of one long page; `?tab=` so other pages can link to e.g. the members. */
+	const TABS = [
+		{ value: 'general', label: 'General' },
+		{ value: 'members', label: 'Members' },
+		{ value: 'joining', label: 'Joining' },
+		{ value: 'danger', label: 'Danger zone' },
+	] as const;
+	type Tab = (typeof TABS)[number]['value'];
+	const tab = $derived<Tab>(TABS.find((t) => t.value === route.search.tab)?.value ?? 'general');
 
 	let space = $state<SpaceDto | null>(null);
 	let members = $state<SpaceMemberDto[]>([]);
@@ -310,6 +320,24 @@
 	{:else if loadError}
 		<Alert color="red">{loadError}</Alert>
 	{:else if space}
+		<nav class="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-gray-800" aria-label="Space settings">
+			{#each TABS.filter((t) => t.value !== 'joining' || canManageMembers) as item (item.value)}
+				<a
+					href={p('/space/:spaceId/settings', { params: { spaceId }, search: item.value === 'general' ? {} : { tab: item.value } })}
+					aria-current={tab === item.value ? 'page' : undefined}
+					class="-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium {tab === item.value
+						? item.value === 'danger'
+							? 'border-red-500 text-red-600 dark:text-red-400'
+							: 'border-primary-500 text-gray-900 dark:text-white'
+						: 'border-transparent text-gray-500 hover:text-gray-700 dark:hover:text-gray-300'}"
+				>
+					{item.label}
+					{#if item.value === 'members'}<span class="ms-1 text-xs text-gray-500">{members.length}</span>{/if}
+				</a>
+			{/each}
+		</nav>
+
+		{#if tab === 'general'}
 		<!-- General -->
 		<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 			<h2 class="mb-4 text-lg font-semibold text-gray-900 dark:text-white">General</h2>
@@ -379,6 +407,9 @@
 			</form>
 		</section>
 
+		{/if}
+
+		{#if tab === 'members'}
 		<!-- Members -->
 		<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 			<div class="mb-4 flex items-center justify-between">
@@ -422,8 +453,10 @@
 			</ul>
 		</section>
 
+		{/if}
+
 		<!-- Discovery -->
-		{#if canManageMembers}
+		{#if tab === 'joining' && canManageMembers}
 			<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 				<h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Discovery</h2>
 				<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
@@ -466,7 +499,7 @@
 		{/if}
 
 		<!-- Invites -->
-		{#if canManageMembers}
+		{#if tab === 'joining' && canManageMembers}
 			<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
 				<h2 class="mb-1 text-lg font-semibold text-gray-900 dark:text-white">Invite links</h2>
 				<p class="mb-4 text-sm text-gray-500 dark:text-gray-400">
@@ -562,6 +595,7 @@
 			</section>
 		{/if}
 
+		{#if tab === 'danger'}
 		<!-- Danger zone -->
 		<section class="rounded-xl border border-red-500/30 bg-white p-6 dark:bg-gray-900">
 			<h2 class="mb-4 text-lg font-semibold text-red-600 dark:text-red-500">Danger zone</h2>
@@ -596,6 +630,7 @@
 				{/if}
 			</div>
 		</section>
+		{/if}
 	{/if}
 </div>
 

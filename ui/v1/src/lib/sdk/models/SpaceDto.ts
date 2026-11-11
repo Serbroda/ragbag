@@ -78,6 +78,10 @@ export interface SpaceDto {
      */
     newCount?: number;
     /**
+     * How many people are in the space; set for its members
+     */
+    memberCount?: number;
+    /**
      * Markdown shown to members when they first open the space
      */
     welcomeMessage?: string;
@@ -121,6 +125,7 @@ export function SpaceDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): 
         'discoverable': json['discoverable'] == null ? undefined : json['discoverable'],
         'joinRole': json['joinRole'] == null ? undefined : JoinRoleEnumFromJSON(json['joinRole']),
         'newCount': json['newCount'] == null ? undefined : json['newCount'],
+        'memberCount': json['memberCount'] == null ? undefined : json['memberCount'],
         'welcomeMessage': json['welcomeMessage'] == null ? undefined : json['welcomeMessage'],
         'welcomeHtml': json['welcomeHtml'] == null ? undefined : json['welcomeHtml'],
         'welcomed': json['welcomed'] == null ? undefined : json['welcomed'],
@@ -147,6 +152,7 @@ export function SpaceDtoToJSONTyped(value?: SpaceDto | null, ignoreDiscriminator
         'discoverable': value['discoverable'],
         'joinRole': JoinRoleEnumToJSON(value['joinRole']),
         'newCount': value['newCount'],
+        'memberCount': value['memberCount'],
         'welcomeMessage': value['welcomeMessage'],
         'welcomeHtml': value['welcomeHtml'],
         'welcomed': value['welcomed'],

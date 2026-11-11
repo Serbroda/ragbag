@@ -251,6 +251,8 @@
 
 	/** The collection tree of the sidebar, e.g. for sub-collections and move targets on the collection page. */
 	setContext('collection-tree', () => menuTree);
+	// Alone in a space, who added a link goes without saying
+	setContext('solo-space', () => activeSpace?.memberCount === 1);
 
 	// Visibility is inherited: below a private collection only its members see anything
 	setContext('private-ancestor', (collectionId: string) =>

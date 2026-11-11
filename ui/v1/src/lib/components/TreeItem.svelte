@@ -156,10 +156,22 @@
 			>
 				{node.label}
 			</a>
+			{#if node.mark}
+				{@const Mark = node.mark.icon}
+				<span class="shrink-0 text-gray-400 dark:text-gray-500" title={node.mark.title}>
+					<Mark class="h-3.5 w-3.5" />
+				</span>
+			{/if}
 			{#if newCount > 0}
 				<span
 					class="me-1 shrink-0 rounded-full bg-primary-500 px-1.5 text-[11px] font-bold leading-4 text-white"
 					title="{newCount} new link{newCount === 1 ? '' : 's'}">{newCount}</span
+				>
+			{:else if node.bookmarkCount}
+				<!-- Makes room for the actions on hover -->
+				<span
+					class="shrink-0 px-1 text-[11px] tabular-nums text-gray-400 group-hover:hidden group-focus-within:hidden dark:text-gray-500"
+					title="{node.bookmarkCount} link{node.bookmarkCount === 1 ? '' : 's'}">{node.bookmarkCount}</span
 				>
 			{/if}
 		{:else}

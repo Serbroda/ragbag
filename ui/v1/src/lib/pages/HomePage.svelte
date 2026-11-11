@@ -231,7 +231,7 @@
 						type="button"
 						class="hover:text-gray-700 hover:underline dark:hover:text-gray-200"
 						title="Show members in space settings"
-						onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId } })}
+						onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId }, search: { tab: 'members' } })}
 					>
 						{memberCount} member{memberCount === 1 ? '' : 's'}
 					</button>

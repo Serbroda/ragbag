@@ -21,6 +21,8 @@ export interface TreeNode {
 	/** Search of a smart collection, which shows its results and holds neither links nor sub-collections. */
 	query?: string;
 	icon?: Component<{ class?: string }>;
+	/** A small sign next to the name for what is special about it: locked, private or shared publicly. */
+	mark?: { icon: Component<{ class?: string }>; title: string };
 	children?: TreeNode[];
 }
 
@@ -29,16 +31,17 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 	return {
 		id: collection.id,
 		label: collection.name,
-		// Locked ones only show up unlocked, private ones only for selected members, shared ones for anybody with the link
-		icon: collection.locked
-			? EyeSlashOutline
+		// What it is: a folder of links, or a search
+		icon: collection.query ? FilterOutline : FolderOutline,
+		// What is special: locked ones only show up unlocked, private ones only for selected members, shared ones
+		// for anybody with the link
+		mark: collection.locked
+			? { icon: EyeSlashOutline, title: 'Locked for you' }
 			: collection.restricted
-				? LockOutline
-				: collection.query
-					? FilterOutline
-					: collection.shared
-						? GlobeOutline
-						: FolderOutline,
+				? { icon: LockOutline, title: 'Private: only selected members see it' }
+				: collection.shared
+					? { icon: GlobeOutline, title: 'Shared publicly' }
+					: undefined,
 		restricted: collection.restricted,
 		query: collection.query,
 		bookmarkCount: collection.bookmarkCount,

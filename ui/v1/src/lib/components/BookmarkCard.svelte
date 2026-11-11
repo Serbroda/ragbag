@@ -1,6 +1,6 @@
 <script lang="ts">
 	import type { BookmarkDto } from 'ragbag-frontend-sdk';
-	import type { Snippet } from 'svelte';
+	import { getContext, type Snippet } from 'svelte';
 	import { FolderOutline, LinkOutline } from 'flowbite-svelte-icons';
 	import { colorFor, getDomain, safeUrl, timeAgo } from '../utils/format';
 	import { previewImage } from '../utils/links';
@@ -94,6 +94,9 @@
 	}
 
 	const spaceId = $derived(route.params.spaceId);
+	const soloSpace = getContext<(() => boolean) | undefined>('solo-space');
+	/** Who added the link: not through public links, and not where the user is the only member. */
+	const author = $derived(publicView || soloSpace?.() ? undefined : bookmark.createdBy);
 
 	const view = $derived(viewOverride ?? preferences.linkView);
 
@@ -160,9 +163,9 @@
 			<span class="font-medium">{collectionName}</span> ·
 		{/if}
 	{/if}
-	{#if bookmark.createdBy && !publicView}{bookmark.createdBy}{/if}
+	{#if author}{author}{/if}
 	{#if bookmark.createdAt}
-		{#if bookmark.createdBy && !publicView}·{/if}
+		{#if author}·{/if}
 		<time datetime={bookmark.createdAt.toISOString()} title={bookmark.createdAt.toLocaleString()}>
 			{timeAgo(bookmark.createdAt)}
 		</time>
@@ -257,7 +260,7 @@
 			</p>
 			<p class="truncate text-xs text-gray-500">
 				{getDomain(bookmark.url)}
-				{#if collectionName || bookmark.createdBy || bookmark.createdAt}·{/if}
+				{#if collectionName || author || bookmark.createdAt}·{/if}
 				{@render meta()}
 			</p>
 		</div>

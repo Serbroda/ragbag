@@ -42,6 +42,10 @@ func TestMembersAreListedSortedByRole(t *testing.T) {
 	f := newSpaceFixture(t)
 	f.req("GET", "/api/v1/spaces/%s/members", f.space).as(f.viewer).expect(200).
 		has("#", 4).has("0.username", f.owner.Username).has("0.role", "OWNER").has("3.role", "VIEWER")
+	// Everybody in the space knows how many they are, in the space and in the list of their spaces
+	f.req("GET", "/api/v1/spaces/%s", f.space).as(f.viewer).expect(200).has("memberCount", 4)
+	f.req("GET", "/api/v1/spaces").as(f.viewer).expect(200).has(fmt.Sprintf(`#(id==%q).memberCount`, f.space), 4)
+	f.req("GET", "/api/v1/spaces").as(f.register()).expect(200).has("0.memberCount", 1)
 	f.req("GET", "/api/v1/spaces/%s/members", f.space).as(f.register()).expect(403)
 	f.req("GET", "/api/v1/spaces/%s", "00000000-0000-0000-0000-000000000000").as(f.owner).expect(404)
 }

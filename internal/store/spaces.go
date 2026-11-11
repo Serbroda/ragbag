@@ -30,7 +30,13 @@ type SpaceWithRole struct {
 	Role string `db:"role"`
 	// WelcomedAt is when the member saw the welcome, nil before
 	WelcomedAt *time.Time `db:"welcomed_at"`
+	// Members is how many people are in the space
+	Members int `db:"members"`
 }
+
+// memberSpaceColumns are read for SpaceWithRole (s: the space, m: the membership).
+const memberSpaceColumns = spaceColumns + `, m.role, m.welcomed_at,
+	(SELECT COUNT(*) FROM space_members a WHERE a.space_id = s.id) AS members`
 
 func (s *Store) CreateSpace(ctx context.Context, name string, description *string, createdBy string) (*Space, error) {
 	at := now()
@@ -106,13 +112,13 @@ func (s *Store) DeleteSpace(ctx context.Context, id string) error {
 
 func (s *Store) SpaceForMember(ctx context.Context, spaceID, userID string) (*SpaceWithRole, error) {
 	var space SpaceWithRole
-	return &space, s.get(ctx, &space, `SELECT `+spaceColumns+`, m.role, m.welcomed_at FROM spaces s
+	return &space, s.get(ctx, &space, `SELECT `+memberSpaceColumns+` FROM spaces s
 		JOIN space_members m ON m.space_id = s.id WHERE s.id = ? AND m.user_id = ?`, spaceID, userID)
 }
 
 func (s *Store) SpacesForUser(ctx context.Context, userID string) ([]SpaceWithRole, error) {
 	var spaces []SpaceWithRole
-	err := s.sel(ctx, &spaces, `SELECT `+spaceColumns+`, m.role, m.welcomed_at FROM spaces s
+	err := s.sel(ctx, &spaces, `SELECT `+memberSpaceColumns+` FROM spaces s
 		JOIN space_members m ON m.space_id = s.id WHERE m.user_id = ?`, userID)
 	return spaces, err
 }
