@@ -43,6 +43,7 @@ func (s *Store) AnonymizeUser(ctx context.Context, user *User) error {
 		`DELETE FROM collection_locks WHERE user_id = ?`,
 		`DELETE FROM space_bars WHERE user_id = ?`,
 		`DELETE FROM password_resets WHERE user_id = ?`,
+		`DELETE FROM api_tokens WHERE user_id = ?`,
 		`DELETE FROM email_verifications WHERE user_id = ?`,
 		`DELETE FROM dashboard_sections WHERE user_id = ?`,
 		`DELETE FROM bookmark_favorites WHERE user_id = ?`,

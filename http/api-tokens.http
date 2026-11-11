@@ -1,0 +1,277 @@
+### Manual tests of the personal API tokens (IntelliJ / GoLand HTTP client).
+###
+### Pick the environment "local" (top right), put your username and password into
+### http-client.private.env.json (not committed) and run the requests from top to bottom: each one remembers
+### what the next ones need (token, space, collection, link). Or paste a token from the profile dialog into
+### "token" there and start at "Who am I?".
+###
+### With PLANS_ENABLED the account has to be Pro (admins are): Free accounts get 403 "API tokens are part of Pro".
+
+### 1. Sign in (accounts with two-factor authentication: add "code": "123456")
+POST {{baseUrl}}/auth/login
+Content-Type: application/json
+
+{
+  "username": "{{username}}",
+  "password": "{{password}}"
+}
+
+> {%
+    client.test("signed in", () => client.assert(response.status === 200, "status " + response.status));
+    client.global.set("session", response.body.access_token);
+%}
+
+### 2a. Create a "read & write" token (shown only in this response)
+POST {{baseUrl}}/v1/users/me/tokens
+Authorization: Bearer {{session}}
+Content-Type: application/json
+
+{
+  "name": "HTTP client (write)",
+  "scope": "WRITE",
+  "currentPassword": "{{password}}"
+}
+
+> {%
+    client.test("token starts with rb_", () => client.assert(response.body.token.startsWith("rb_")));
+    client.global.set("token", response.body.token);
+    client.global.set("tokenId", response.body.id);
+%}
+
+### 2b. Create a "read only" token that expires after 30 days
+POST {{baseUrl}}/v1/users/me/tokens
+Authorization: Bearer {{session}}
+Content-Type: application/json
+
+{
+  "name": "HTTP client (read)",
+  "scope": "READ",
+  "expiresInDays": 30,
+  "currentPassword": "{{password}}"
+}
+
+> {%
+    client.global.set("readToken", response.body.token);
+    client.global.set("readTokenId", response.body.id);
+%}
+
+### 2c. List the tokens (only with the session: name, scope, last used, never the token itself)
+GET {{baseUrl}}/v1/users/me/tokens
+Authorization: Bearer {{session}}
+
+### ---------------------------------------------------------------------------------------------------------
+### Reading: spaces → collections → links
+### ---------------------------------------------------------------------------------------------------------
+
+### Who am I?
+GET {{baseUrl}}/v1/users/me
+Authorization: Bearer {{token}}
+
+### My spaces (remembers the first one)
+GET {{baseUrl}}/v1/spaces
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("has a space", () => client.assert(response.body.length > 0));
+    client.global.set("spaceId", response.body[0].id);
+%}
+
+### The collection tree of the space (remembers the first collection that can hold links)
+GET {{baseUrl}}/v1/spaces/{{spaceId}}/collections
+Authorization: Bearer {{token}}
+
+> {%
+    const first = response.body.find((collection) => !collection.query);
+    client.test("has a collection", () => client.assert(!!first, "create a collection first (see below)"));
+    if (first) client.global.set("collectionId", first.id);
+%}
+
+### The links of the collection
+GET {{baseUrl}}/v1/collections/{{collectionId}}/bookmarks
+Authorization: Bearer {{token}}
+
+### Search the space: every word has to match, #tag matches a tag exactly
+GET {{baseUrl}}/v1/spaces/{{spaceId}}/bookmarks/search?q=example
+Authorization: Bearer {{token}}
+
+### The newest links of the space
+GET {{baseUrl}}/v1/spaces/{{spaceId}}/bookmarks?limit=10
+Authorization: Bearer {{token}}
+
+### The tags of the space
+GET {{baseUrl}}/v1/spaces/{{spaceId}}/tags
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------------------------------------------------
+### Writing (needs the "read & write" token)
+### ---------------------------------------------------------------------------------------------------------
+
+### Create a collection
+POST {{baseUrl}}/v1/spaces/{{spaceId}}/collections
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "From the HTTP client"
+}
+
+> {%
+    client.global.set("collectionId", response.body.id);
+%}
+
+### Save a link (title, description and preview come from the page)
+POST {{baseUrl}}/v1/collections/{{collectionId}}/bookmarks
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://go.dev",
+  "tags": ["http-client", "later"]
+}
+
+> {%
+    client.test("saved", () => client.assert(response.status === 200, "status " + response.status));
+    client.global.set("bookmarkId", response.body.id);
+%}
+
+### Change the link
+PUT {{baseUrl}}/v1/bookmarks/{{bookmarkId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "url": "https://go.dev",
+  "title": "Go (changed by the HTTP client)",
+  "tags": ["http-client"]
+}
+
+### Create a smart collection showing every link with the tag
+POST {{baseUrl}}/v1/spaces/{{spaceId}}/collections
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Tagged http-client",
+  "query": "#http-client"
+}
+
+> {%
+    client.global.set("smartId", response.body.id);
+%}
+
+### … and what it finds
+GET {{baseUrl}}/v1/collections/{{smartId}}/bookmarks
+Authorization: Bearer {{token}}
+
+### Preview the import of a browser's bookmarks file (nothing is changed with preview=true)
+POST {{baseUrl}}/v1/collections/{{collectionId}}/import?preview=true
+Authorization: Bearer {{token}}
+Content-Type: text/html
+
+<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<DL><p>
+    <DT><H3>Imported folder</H3>
+    <DL><p>
+        <DT><A HREF="https://example.org/imported" ADD_DATE="1700000000" TAGS="imported">Imported link</A>
+    </DL><p>
+</DL><p>
+
+### Delete the link (it goes to the trash)
+DELETE {{baseUrl}}/v1/bookmarks/{{bookmarkId}}
+Authorization: Bearer {{token}}
+
+### Delete the collections again (trash)
+DELETE {{baseUrl}}/v1/collections/{{smartId}}
+Authorization: Bearer {{token}}
+
+###
+DELETE {{baseUrl}}/v1/collections/{{collectionId}}
+Authorization: Bearer {{token}}
+
+### ---------------------------------------------------------------------------------------------------------
+### What tokens must not do: every request here has to answer 403
+### ---------------------------------------------------------------------------------------------------------
+
+### A "read only" token changes nothing
+POST {{baseUrl}}/v1/spaces/{{spaceId}}/collections
+Authorization: Bearer {{readToken}}
+Content-Type: application/json
+
+{
+  "name": "Must not exist"
+}
+
+> {%
+    client.test("403", () => client.assert(response.status === 403, "status " + response.status));
+%}
+
+### No token manages tokens
+GET {{baseUrl}}/v1/users/me/tokens
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("403", () => client.assert(response.status === 403, "status " + response.status));
+%}
+
+### … or changes the password
+POST {{baseUrl}}/auth/password
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "currentPassword": "{{password}}",
+  "newPassword": "must-not-be-set"
+}
+
+> {%
+    client.test("403", () => client.assert(response.status === 403, "status " + response.status));
+%}
+
+### … or renames a space
+PUT {{baseUrl}}/v1/spaces/{{spaceId}}
+Authorization: Bearer {{token}}
+Content-Type: application/json
+
+{
+  "name": "Must not be renamed"
+}
+
+> {%
+    client.test("403", () => client.assert(response.status === 403, "status " + response.status));
+%}
+
+### … or sees invites
+GET {{baseUrl}}/v1/spaces/{{spaceId}}/invites
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("403", () => client.assert(response.status === 403, "status " + response.status));
+%}
+
+### … or reaches the admin area
+GET {{baseUrl}}/v1/admin/users
+Authorization: Bearer {{token}}
+
+> {%
+    client.test("403", () => client.assert(response.status === 403, "status " + response.status));
+%}
+
+### ---------------------------------------------------------------------------------------------------------
+### Revoking
+### ---------------------------------------------------------------------------------------------------------
+
+### Revoke the "read only" token (with the session)
+DELETE {{baseUrl}}/v1/users/me/tokens/{{readTokenId}}
+Authorization: Bearer {{session}}
+
+### … it answers 401 from now on
+GET {{baseUrl}}/v1/spaces
+Authorization: Bearer {{readToken}}
+
+> {%
+    client.test("401", () => client.assert(response.status === 401, "status " + response.status));
+%}
+
+### Revoke the "read & write" token as well
+DELETE {{baseUrl}}/v1/users/me/tokens/{{tokenId}}
+Authorization: Bearer {{session}}

@@ -53,6 +53,12 @@ export interface UserDto {
      */
     twoFactor?: boolean;
     /**
+     * May create and use personal API tokens: everybody, with plans only Pro (unless
+     * PLANS_FREE_API_TOKENS); only set for the current user
+     * 
+     */
+    apiTokens?: boolean;
+    /**
      * Opened on start instead of the last visited space; unset when the user leaves it
      */
     startSpaceId?: string;
@@ -94,6 +100,7 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'instanceAdmin': json['instanceAdmin'] == null ? undefined : json['instanceAdmin'],
         'hasPin': json['hasPin'] == null ? undefined : json['hasPin'],
         'twoFactor': json['twoFactor'] == null ? undefined : json['twoFactor'],
+        'apiTokens': json['apiTokens'] == null ? undefined : json['apiTokens'],
         'startSpaceId': json['startSpaceId'] == null ? undefined : json['startSpaceId'],
         'mustChangePassword': json['mustChangePassword'] == null ? undefined : json['mustChangePassword'],
         'openReports': json['openReports'] == null ? undefined : json['openReports'],
@@ -119,6 +126,7 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'instanceAdmin': value['instanceAdmin'],
         'hasPin': value['hasPin'],
         'twoFactor': value['twoFactor'],
+        'apiTokens': value['apiTokens'],
         'startSpaceId': value['startSpaceId'],
         'mustChangePassword': value['mustChangePassword'],
         'openReports': value['openReports'],

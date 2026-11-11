@@ -112,6 +112,13 @@
 						</div>
 					{/each}
 					<div class="grid grid-cols-3 border-t border-gray-100 px-4 py-2 dark:border-gray-800">
+						<span class="text-gray-500 dark:text-gray-400">API tokens for scripts and apps</span>
+						<span>
+							{#if plan.freeApiTokens}<CheckOutline class="h-4 w-4" />{:else}<span class="text-gray-400" aria-label="Not included">–</span>{/if}
+						</span>
+						<span><CheckOutline class="h-4 w-4" /></span>
+					</div>
+					<div class="grid grid-cols-3 border-t border-gray-100 px-4 py-2 dark:border-gray-800">
 						<span class="text-gray-500 dark:text-gray-400">Joining spaces of others</span>
 						<span><CheckOutline class="h-4 w-4" /></span>
 						<span><CheckOutline class="h-4 w-4" /></span>

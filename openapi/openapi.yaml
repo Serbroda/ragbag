@@ -928,6 +928,71 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /v1/users/me/tokens:
+    get:
+      summary: The own personal API tokens (without the tokens themselves, which are only shown when created)
+      operationId: getApiTokens
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                type: array
+                items:
+                  $ref: '#/components/schemas/ApiTokenDto'
+    post:
+      summary: >
+        Create a personal API token (needs the account password). Scripts and apps send it as
+        "Authorization: Bearer rb_…" to read (READ) or also change (WRITE) links and collections; the account,
+        spaces' settings, members, invites and public links are out of reach for tokens.
+      operationId: createApiToken
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CreateApiTokenRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ApiTokenCreatedDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/users/me/tokens/{tokenId}:
+    delete:
+      summary: Revoke a personal API token
+      operationId: deleteApiToken
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: tokenId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/users/me/two-factor/setup:
     post:
       summary: >
@@ -3085,11 +3150,15 @@ components:
           $ref: '#/components/schemas/QuotasDto'
         pro:
           $ref: '#/components/schemas/QuotasDto'
+        freeApiTokens:
+          type: boolean
+          description: Free accounts may use personal API tokens too (PLANS_FREE_API_TOKENS); otherwise only Pro
       required:
         - plan
         - usage
         - free
         - pro
+        - freeApiTokens
 
     PasswordResetDto:
       type: object
@@ -3579,6 +3648,11 @@ components:
         twoFactor:
           type: boolean
           description: Signs in with the code of an authenticator app as well; only set for the current user
+        apiTokens:
+          type: boolean
+          description: |
+            May create and use personal API tokens: everybody, with plans only Pro (unless
+            PLANS_FREE_API_TOKENS); only set for the current user
         startSpaceId:
           $ref: '#/components/schemas/ID'
           description: Opened on start instead of the last visited space; unset when the user leaves it
@@ -3605,6 +3679,79 @@ components:
           $ref: '#/components/schemas/ID'
           nullable: true
           description: A space the user is a member of, or null for the last visited one
+
+    ApiTokenScope:
+      type: string
+      description: READ only reads, WRITE also adds, changes and deletes links and collections
+      enum:
+        - READ
+        - WRITE
+
+    ApiTokenDto:
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ApiTokenScope'
+        createdAt:
+          type: string
+          format: date-time
+        lastUsedAt:
+          type: string
+          format: date-time
+          description: Accurate to about a minute; missing while never used
+        expiresAt:
+          type: string
+          format: date-time
+          description: Missing for tokens that never expire
+      required:
+        - id
+        - name
+        - scope
+        - createdAt
+
+    CreateApiTokenRequest:
+      properties:
+        name:
+          type: string
+          description: What the token is for, 1 to 50 characters
+        scope:
+          $ref: '#/components/schemas/ApiTokenScope'
+        expiresInDays:
+          type: integer
+          description: Left out, the token never expires
+        currentPassword:
+          type: string
+      required:
+        - name
+        - scope
+        - currentPassword
+
+    ApiTokenCreatedDto:
+      description: A new token; `token` is shown only now, the server keeps a hash
+      properties:
+        id:
+          $ref: '#/components/schemas/ID'
+        name:
+          type: string
+        scope:
+          $ref: '#/components/schemas/ApiTokenScope'
+        createdAt:
+          type: string
+          format: date-time
+        expiresAt:
+          type: string
+          format: date-time
+        token:
+          type: string
+      required:
+        - id
+        - name
+        - scope
+        - createdAt
+        - token
 
     TwoFactorSetupRequest:
       properties:

@@ -52,6 +52,24 @@ func (e AdminOverviewDtoDatabase) Valid() bool {
 	}
 }
 
+// Defines values for ApiTokenScope.
+const (
+	ApiTokenScopeREAD  ApiTokenScope = "READ"
+	ApiTokenScopeWRITE ApiTokenScope = "WRITE"
+)
+
+// Valid indicates whether the value is a known member of the ApiTokenScope enum.
+func (e ApiTokenScope) Valid() bool {
+	switch e {
+	case ApiTokenScopeREAD:
+		return true
+	case ApiTokenScopeWRITE:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for CollectionVisibilityDto.
 const (
 	INTERNAL CollectionVisibilityDto = "INTERNAL"
@@ -321,43 +339,43 @@ func (e SpaceMemberRoleEnum) Valid() bool {
 
 // Defines values for SpacePermissionEnum.
 const (
-	CREATEBOOKMARKS   SpacePermissionEnum = "CREATE_BOOKMARKS"
-	CREATECOLLECTIONS SpacePermissionEnum = "CREATE_COLLECTIONS"
-	DELETEBOOKMARKS   SpacePermissionEnum = "DELETE_BOOKMARKS"
-	DELETECOLLECTIONS SpacePermissionEnum = "DELETE_COLLECTIONS"
-	DELETESPACE       SpacePermissionEnum = "DELETE_SPACE"
-	EDITBOOKMARKS     SpacePermissionEnum = "EDIT_BOOKMARKS"
-	EDITCOLLECTIONS   SpacePermissionEnum = "EDIT_COLLECTIONS"
-	EDITSPACE         SpacePermissionEnum = "EDIT_SPACE"
-	IMPORTEXPORT      SpacePermissionEnum = "IMPORT_EXPORT"
-	MANAGEMEMBERS     SpacePermissionEnum = "MANAGE_MEMBERS"
-	READ              SpacePermissionEnum = "READ"
+	SpacePermissionEnumCREATEBOOKMARKS   SpacePermissionEnum = "CREATE_BOOKMARKS"
+	SpacePermissionEnumCREATECOLLECTIONS SpacePermissionEnum = "CREATE_COLLECTIONS"
+	SpacePermissionEnumDELETEBOOKMARKS   SpacePermissionEnum = "DELETE_BOOKMARKS"
+	SpacePermissionEnumDELETECOLLECTIONS SpacePermissionEnum = "DELETE_COLLECTIONS"
+	SpacePermissionEnumDELETESPACE       SpacePermissionEnum = "DELETE_SPACE"
+	SpacePermissionEnumEDITBOOKMARKS     SpacePermissionEnum = "EDIT_BOOKMARKS"
+	SpacePermissionEnumEDITCOLLECTIONS   SpacePermissionEnum = "EDIT_COLLECTIONS"
+	SpacePermissionEnumEDITSPACE         SpacePermissionEnum = "EDIT_SPACE"
+	SpacePermissionEnumIMPORTEXPORT      SpacePermissionEnum = "IMPORT_EXPORT"
+	SpacePermissionEnumMANAGEMEMBERS     SpacePermissionEnum = "MANAGE_MEMBERS"
+	SpacePermissionEnumREAD              SpacePermissionEnum = "READ"
 )
 
 // Valid indicates whether the value is a known member of the SpacePermissionEnum enum.
 func (e SpacePermissionEnum) Valid() bool {
 	switch e {
-	case CREATEBOOKMARKS:
+	case SpacePermissionEnumCREATEBOOKMARKS:
 		return true
-	case CREATECOLLECTIONS:
+	case SpacePermissionEnumCREATECOLLECTIONS:
 		return true
-	case DELETEBOOKMARKS:
+	case SpacePermissionEnumDELETEBOOKMARKS:
 		return true
-	case DELETECOLLECTIONS:
+	case SpacePermissionEnumDELETECOLLECTIONS:
 		return true
-	case DELETESPACE:
+	case SpacePermissionEnumDELETESPACE:
 		return true
-	case EDITBOOKMARKS:
+	case SpacePermissionEnumEDITBOOKMARKS:
 		return true
-	case EDITCOLLECTIONS:
+	case SpacePermissionEnumEDITCOLLECTIONS:
 		return true
-	case EDITSPACE:
+	case SpacePermissionEnumEDITSPACE:
 		return true
-	case IMPORTEXPORT:
+	case SpacePermissionEnumIMPORTEXPORT:
 		return true
-	case MANAGEMEMBERS:
+	case SpacePermissionEnumMANAGEMEMBERS:
 		return true
-	case READ:
+	case SpacePermissionEnumREAD:
 		return true
 	default:
 		return false
@@ -531,6 +549,41 @@ type AdminUserDto struct {
 	TwoFactor *bool  `json:"twoFactor,omitempty"`
 	Username  string `json:"username"`
 }
+
+// ApiTokenCreatedDto A new token; `token` is shown only now, the server keeps a hash
+type ApiTokenCreatedDto struct {
+	CreatedAt time.Time  `json:"createdAt"`
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+
+	// Id UUID
+	Id   ID     `json:"id"`
+	Name string `json:"name"`
+
+	// Scope READ only reads, WRITE also adds, changes and deletes links and collections
+	Scope ApiTokenScope `json:"scope"`
+	Token string        `json:"token"`
+}
+
+// ApiTokenDto defines model for ApiTokenDto.
+type ApiTokenDto struct {
+	CreatedAt time.Time `json:"createdAt"`
+
+	// ExpiresAt Missing for tokens that never expire
+	ExpiresAt *time.Time `json:"expiresAt,omitempty"`
+
+	// Id UUID
+	Id ID `json:"id"`
+
+	// LastUsedAt Accurate to about a minute; missing while never used
+	LastUsedAt *time.Time `json:"lastUsedAt,omitempty"`
+	Name       string     `json:"name"`
+
+	// Scope READ only reads, WRITE also adds, changes and deletes links and collections
+	Scope ApiTokenScope `json:"scope"`
+}
+
+// ApiTokenScope READ only reads, WRITE also adds, changes and deletes links and collections
+type ApiTokenScope string
 
 // BackupFileDto defines model for BackupFileDto.
 type BackupFileDto struct {
@@ -737,6 +790,20 @@ type CompleteSetupRequest struct {
 	CurrentPassword string `json:"currentPassword"`
 	Email           string `json:"email"`
 	NewPassword     string `json:"newPassword"`
+}
+
+// CreateApiTokenRequest defines model for CreateApiTokenRequest.
+type CreateApiTokenRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+
+	// ExpiresInDays Left out, the token never expires
+	ExpiresInDays *int `json:"expiresInDays,omitempty"`
+
+	// Name What the token is for, 1 to 50 characters
+	Name string `json:"name"`
+
+	// Scope READ only reads, WRITE also adds, changes and deletes links and collections
+	Scope ApiTokenScope `json:"scope"`
 }
 
 // CreateBookmarkDto defines model for CreateBookmarkDto.
@@ -1035,7 +1102,10 @@ type PasswordResetPreviewDto struct {
 type PlanDto struct {
 	// Free Limits, 0 is unlimited
 	Free QuotasDto `json:"free"`
-	Plan PlanName  `json:"plan"`
+
+	// FreeApiTokens Free accounts may use personal API tokens too (PLANS_FREE_API_TOKENS); otherwise only Pro
+	FreeApiTokens bool     `json:"freeApiTokens"`
+	Plan          PlanName `json:"plan"`
 
 	// Pro Limits, 0 is unlimited
 	Pro QuotasDto `json:"pro"`
@@ -1433,6 +1503,10 @@ type UpdateSpaceMemberDto struct {
 
 // UserDto defines model for UserDto.
 type UserDto struct {
+	// ApiTokens May create and use personal API tokens: everybody, with plans only Pro (unless
+	// PLANS_FREE_API_TOKENS); only set for the current user
+	ApiTokens *bool `json:"apiTokens,omitempty"`
+
 	// AvatarId UUID
 	AvatarId *ID `json:"avatarId,omitempty"`
 
@@ -1629,6 +1703,9 @@ type UpdateSpaceBarJSONRequestBody = SpaceBarDto
 
 // SetStartSpaceJSONRequestBody defines body for SetStartSpace for application/json ContentType.
 type SetStartSpaceJSONRequestBody = StartSpaceDto
+
+// CreateApiTokenJSONRequestBody defines body for CreateApiToken for application/json ContentType.
+type CreateApiTokenJSONRequestBody = CreateApiTokenRequest
 
 // DisableTwoFactorJSONRequestBody defines body for DisableTwoFactor for application/json ContentType.
 type DisableTwoFactorJSONRequestBody = TwoFactorDisableRequest
@@ -1968,6 +2045,15 @@ type ServerInterface interface {
 	// SetStartSpace The space to open on start; null opens the last visited one
 	// (PUT /v1/users/me/start-space)
 	SetStartSpace(ctx echo.Context) error
+	// GetApiTokens The own personal API tokens (without the tokens themselves, which are only shown when created)
+	// (GET /v1/users/me/tokens)
+	GetApiTokens(ctx echo.Context) error
+	// CreateApiToken Create a personal API token (needs the account password). Scripts and apps send it as "Authorization: Bearer rb_…" to read (READ) or also change (WRITE) links and collections; the account, spaces' settings, members, invites and public links are out of reach for tokens.
+	// (POST /v1/users/me/tokens)
+	CreateApiToken(ctx echo.Context) error
+	// DeleteApiToken Revoke a personal API token
+	// (DELETE /v1/users/me/tokens/{tokenId})
+	DeleteApiToken(ctx echo.Context, tokenId ID) error
 	// DisableTwoFactor Turn two-factor authentication off (needs the password and a code of the app or a recovery code)
 	// (POST /v1/users/me/two-factor/disable)
 	DisableTwoFactor(ctx echo.Context) error
@@ -3604,6 +3690,40 @@ func (w *ServerInterfaceWrapper) SetStartSpace(ctx echo.Context) error {
 	return err
 }
 
+// GetApiTokens converts echo context to params.
+func (w *ServerInterfaceWrapper) GetApiTokens(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetApiTokens(ctx)
+	return err
+}
+
+// CreateApiToken converts echo context to params.
+func (w *ServerInterfaceWrapper) CreateApiToken(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.CreateApiToken(ctx)
+	return err
+}
+
+// DeleteApiToken converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteApiToken(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "tokenId" -------------
+	var tokenId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "tokenId", ctx.Param("tokenId"), &tokenId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter tokenId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteApiToken(ctx, tokenId)
+	return err
+}
+
 // DisableTwoFactor converts echo context to params.
 func (w *ServerInterfaceWrapper) DisableTwoFactor(ctx echo.Context) error {
 	var err error
@@ -3734,6 +3854,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/display-name", wrapper.SetDisplayName, options.OperationMiddlewares["setDisplayName"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)
+	router.GET(options.BaseURL+"/v1/users/me/tokens", wrapper.GetApiTokens, options.OperationMiddlewares["getApiTokens"]...)
+	router.POST(options.BaseURL+"/v1/users/me/tokens", wrapper.CreateApiToken, options.OperationMiddlewares["createApiToken"]...)
+	router.DELETE(options.BaseURL+"/v1/users/me/tokens/:tokenId", wrapper.DeleteApiToken, options.OperationMiddlewares["deleteApiToken"]...)
 	router.POST(options.BaseURL+"/v1/users/me/two-factor/setup", wrapper.SetupTwoFactor, options.OperationMiddlewares["setupTwoFactor"]...)
 	router.POST(options.BaseURL+"/v1/users/me/two-factor/enable", wrapper.EnableTwoFactor, options.OperationMiddlewares["enableTwoFactor"]...)
 	router.POST(options.BaseURL+"/v1/users/me/two-factor/disable", wrapper.DisableTwoFactor, options.OperationMiddlewares["disableTwoFactor"]...)

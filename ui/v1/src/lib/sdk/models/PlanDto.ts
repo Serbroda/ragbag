@@ -68,6 +68,10 @@ export interface PlanDto {
      * 
      */
     pro: QuotasDto;
+    /**
+     * Free accounts may use personal API tokens too (PLANS_FREE_API_TOKENS); otherwise only Pro
+     */
+    freeApiTokens: boolean;
 }
 
 
@@ -80,6 +84,7 @@ export function instanceOfPlanDto(value: object): value is PlanDto {
     if (!('usage' in value) || value['usage'] === undefined) return false;
     if (!('free' in value) || value['free'] === undefined) return false;
     if (!('pro' in value) || value['pro'] === undefined) return false;
+    if (!('freeApiTokens' in value) || value['freeApiTokens'] === undefined) return false;
     return true;
 }
 
@@ -98,6 +103,7 @@ export function PlanDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): P
         'usage': PlanUsageDtoFromJSON(json['usage']),
         'free': QuotasDtoFromJSON(json['free']),
         'pro': QuotasDtoFromJSON(json['pro']),
+        'freeApiTokens': json['freeApiTokens'],
     };
 }
 
@@ -117,6 +123,7 @@ export function PlanDtoToJSONTyped(value?: PlanDto | null, ignoreDiscriminator: 
         'usage': PlanUsageDtoToJSON(value['usage']),
         'free': QuotasDtoToJSON(value['free']),
         'pro': QuotasDtoToJSON(value['pro']),
+        'freeApiTokens': value['freeApiTokens'],
     };
 }
 

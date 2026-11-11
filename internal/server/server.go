@@ -129,7 +129,8 @@ func isPublic(requestPath string) bool {
 	return false
 }
 
-// authenticate accepts valid access tokens whose token version was not revoked meanwhile.
+// authenticate accepts valid access tokens whose token version was not revoked meanwhile, and personal API
+// tokens (tokens.go) for what those may do.
 func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 	return func(c echo.Context) error {
 		if c.Request().Method == http.MethodOptions || isPublic(c.Request().URL.Path) {
@@ -139,6 +140,12 @@ func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 		token, ok := strings.CutPrefix(header, "Bearer ")
 		if !ok || token == "" {
 			return unauthorized("Authentication required")
+		}
+		if strings.HasPrefix(token, apiTokenPrefix) {
+			if err := s.authenticateToken(c, token); err != nil {
+				return err
+			}
+			return next(c)
 		}
 		claims, err := s.tokens.Parse(token, auth.TypeAccess)
 		if err != nil {

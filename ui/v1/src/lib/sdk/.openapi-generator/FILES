@@ -16,6 +16,9 @@ models/AbuseReportDto.ts
 models/AdminOverviewDto.ts
 models/AdminSettingsDto.ts
 models/AdminUserDto.ts
+models/ApiTokenCreatedDto.ts
+models/ApiTokenDto.ts
+models/ApiTokenScope.ts
 models/BackupFileDto.ts
 models/BackupSummaryDto.ts
 models/BackupsDto.ts
@@ -30,6 +33,7 @@ models/CollectionNewsDto.ts
 models/CollectionShareDto.ts
 models/CollectionVisibilityDto.ts
 models/CompleteSetupRequest.ts
+models/CreateApiTokenRequest.ts
 models/CreateBookmarkDto.ts
 models/CreateCollectionDto.ts
 models/CreateInviteRequest.ts

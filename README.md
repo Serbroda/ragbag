@@ -62,6 +62,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - **Two-factor authentication** with any authenticator app (TOTP), turned on and off by each user in their
   profile; ten recovery codes for a lost phone. Password reset links never get around it. Who lost app and codes
   is helped by an admin (*Reset 2FA* in the accounts list), an admin by `ragbag reset-2fa <username>` on the server.
+- **API tokens** for scripts, shortcuts and apps, read only or read & write, created and revoked in the profile
+  (see [API](#api)).
 - Registration can be switched off once everybody has an account.
 - Users **delete their account** themselves; admins **block or delete accounts** and decide on **reports of public
   links** (see *Moderation*).
@@ -200,7 +202,7 @@ Everything is configured with environment variables. For local runs the server a
 | `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | Legal pages elsewhere instead of files in `DATA_DIR/legal` (see *Legal pages*) | – |
 | `PUBLIC_URL`            | Address of the instance for links in emails and chat previews, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
 | `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
-| `PLANS_ENABLED`, `QUOTA_PRO_*` | Free and Pro plans, Pro granted by admins (see *Plans*) | off |
+| `PLANS_ENABLED`, `QUOTA_PRO_*`, `PLANS_FREE_API_TOKENS` | Free and Pro plans, Pro granted by admins (see *Plans*) | off |
 | `SUPPORT_URL`           | Donation page (Ko-fi & co.) linked in the app, https only               | –                       |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
@@ -216,6 +218,33 @@ Everything is configured with environment variables. For local runs the server a
 | `BACKUP_KEEP`           | The server backs itself up and keeps the newest that many; `0` is off (see *Backups*) | `0` (templates: `7`) |
 | `BACKUP_INTERVAL_HOURS` | Hours between those backups                                          | `24`                    |
 | `BACKUP_DIR`            | Where they go                                                        | `DATA_DIR/backups`      |
+
+### API
+
+Everything the app does goes through the REST API under `/api/v1`, described in
+[`openapi/openapi.yaml`](openapi/openapi.yaml). Scripts and apps use it with a **personal API token** from the
+profile (*API tokens*), sent as `Authorization: Bearer rb_…`:
+
+```bash
+TOKEN=rb_…; URL=https://ragbag.example.org/api/v1
+curl -H "Authorization: Bearer $TOKEN" $URL/spaces                         # your spaces
+curl -H "Authorization: Bearer $TOKEN" $URL/spaces/<space>/collections     # the collection tree
+curl -H "Authorization: Bearer $TOKEN" $URL/collections/<collection>/bookmarks
+curl -H "Authorization: Bearer $TOKEN" "$URL/spaces/<space>/bookmarks/search?q=%23recipe"
+# Save a link (title, description and preview are loaded from the page); needs a "read & write" token
+curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: application/json" \
+  -d '{"url":"https://example.org","tags":["later"]}' $URL/collections/<collection>/bookmarks
+# Import a browser's bookmarks file
+curl -H "Authorization: Bearer $TOKEN" -H "Content-Type: text/html" \
+  --data-binary @bookmarks.html "$URL/collections/<collection>/import?preview=true"
+```
+
+A token acts as you, with your role in each space, but only on links and collections: the account (password,
+two-factor authentication, tokens), spaces' settings, members, invites, public links and who sees a collection
+are out of its reach, and collections you locked stay hidden. *Read only* tokens answer 403 to every change.
+Only a hash is stored; tokens survive a password change and end when revoked, expired or the account is blocked.
+With [plans](#plans), API tokens are part of Pro (`PLANS_FREE_API_TOKENS=true` gives them to everybody): Free
+accounts cannot create any, and the tokens of an account that is Free again answer 403 until it is Pro again.
 
 ### Reverse proxy
 
@@ -309,7 +338,8 @@ QUOTA_PRO_UPLOAD_MB_PER_USER=1000
 
 Pro are the instance admins and accounts an admin made Pro (*Administration → Accounts → Make Pro*). Joining the spaces of others is free; a space has the Pro limits when one of its owners
 is Pro. Going back to Free keeps everything, only adding beyond the Free limits is refused. Everybody sees their
-plan, usage and limits in the account menu under *Plan*.
+plan, usage and limits in the account menu under *Plan*. [API tokens](#api) are part of Pro as well, unless
+`PLANS_FREE_API_TOKENS=true`.
 
 Pro is never sold. To let people chip in for the server, set `SUPPORT_URL` to a donation page (e.g.
 `https://ko-fi.com/serbroda`): a Ko-fi button next to the search (each person can close it) and the account
