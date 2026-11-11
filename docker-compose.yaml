@@ -71,6 +71,14 @@ services:
       QUOTA_SPACES_PER_USER: ${QUOTA_SPACES_PER_USER:-}
       QUOTA_COLLECTIONS_PER_SPACE: ${QUOTA_COLLECTIONS_PER_SPACE:-}
       QUOTA_UPLOAD_MB_PER_USER: ${QUOTA_UPLOAD_MB_PER_USER:-}
+      # Plans (off: everybody gets the quotas above): Free gets QUOTA_*, Pro QUOTA_PRO_* (empty: unlimited)
+      PLANS_ENABLED: ${PLANS_ENABLED:-false}
+      QUOTA_PRO_LINKS_PER_USER: ${QUOTA_PRO_LINKS_PER_USER:-}
+      QUOTA_PRO_SPACES_PER_USER: ${QUOTA_PRO_SPACES_PER_USER:-}
+      QUOTA_PRO_COLLECTIONS_PER_SPACE: ${QUOTA_PRO_COLLECTIONS_PER_SPACE:-}
+      QUOTA_PRO_UPLOAD_MB_PER_USER: ${QUOTA_PRO_UPLOAD_MB_PER_USER:-}
+      # A donation page linked next to the search, e.g. https://ko-fi.com/<name> (unlocks nothing)
+      SUPPORT_URL: ${SUPPORT_URL:-}
       # Backups into /data/backups: the newest BACKUP_KEEP are kept, 0 is off
       BACKUP_KEEP: ${BACKUP_KEEP:-7}
       BACKUP_INTERVAL_HOURS: ${BACKUP_INTERVAL_HOURS:-24}
