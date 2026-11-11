@@ -59,6 +59,9 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 **Accounts**
 - Users change their password themselves. Without email, **admins create one-time reset links** for people who
   forgot theirs.
+- **Two-factor authentication** with any authenticator app (TOTP), turned on and off by each user in their
+  profile; ten recovery codes for a lost phone. Password reset links never get around it. Who lost app and codes
+  is helped by an admin (*Reset 2FA* in the accounts list), an admin by `ragbag reset-2fa <username>` on the server.
 - Registration can be switched off once everybody has an account.
 - Users **delete their account** themselves; admins **block or delete accounts** and decide on **reports of public
   links** (see *Moderation*).
@@ -186,7 +189,7 @@ Everything is configured with environment variables. For local runs the server a
 
 | Variable                | Description                                                          | Default                 |
 |-------------------------|----------------------------------------------------------------------|-------------------------|
-| `JWT_SECRET`            | Signs the login tokens, at least 32 characters. **Required**         | –                       |
+| `JWT_SECRET`            | Signs the login tokens and encrypts two-factor secrets, at least 32 characters; with another one, accounts with two-factor authentication need a recovery code. **Required** | –                       |
 | `DATABASE_URL`          | `sqlite:<file>` or `postgres://user:password@host:5432/db?sslmode=disable` | `sqlite:data/ragbag.db` (Docker: `/data/ragbag.db`) |
 | `RAGBAG_ADDR`           | HTTP address                                                         | `:8080`                 |
 | `ADMIN_USERS`           | Comma-separated usernames that may manage all users and download backups; the first start creates the first of them | – (the account created on the first start) |
@@ -428,6 +431,8 @@ E.g. from SQLite in the homelab to PostgreSQL on a VPS:
    warns when nobody would be.
 4. Sign in with your old account. Sessions do not move along (the new instance has its own `JWT_SECRET`), share
    links and bookmarklets keep working. Set `ADMIN_USERS` (and `PUBLIC_URL` for emails) like before.
+   Accounts with two-factor authentication: take the old `JWT_SECRET` along, their authenticator apps only keep
+   working with it (otherwise they sign in with a recovery code and set it up again).
 
 Instead of step 3, `ragbag restore ragbag-backup.json.gz` restores into the empty database at `DATABASE_URL`
 (`-dry-run` only checks the file). A backup only ever goes into an instance without data: no spaces and no accounts

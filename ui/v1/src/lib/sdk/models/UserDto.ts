@@ -49,6 +49,10 @@ export interface UserDto {
      */
     hasPin?: boolean;
     /**
+     * Signs in with the code of an authenticator app as well; only set for the current user
+     */
+    twoFactor?: boolean;
+    /**
      * Opened on start instead of the last visited space; unset when the user leaves it
      */
     startSpaceId?: string;
@@ -89,6 +93,7 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
         'instanceAdmin': json['instanceAdmin'] == null ? undefined : json['instanceAdmin'],
         'hasPin': json['hasPin'] == null ? undefined : json['hasPin'],
+        'twoFactor': json['twoFactor'] == null ? undefined : json['twoFactor'],
         'startSpaceId': json['startSpaceId'] == null ? undefined : json['startSpaceId'],
         'mustChangePassword': json['mustChangePassword'] == null ? undefined : json['mustChangePassword'],
         'openReports': json['openReports'] == null ? undefined : json['openReports'],
@@ -113,6 +118,7 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'avatarId': value['avatarId'],
         'instanceAdmin': value['instanceAdmin'],
         'hasPin': value['hasPin'],
+        'twoFactor': value['twoFactor'],
         'startSpaceId': value['startSpaceId'],
         'mustChangePassword': value['mustChangePassword'],
         'openReports': value['openReports'],

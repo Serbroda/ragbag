@@ -543,6 +543,30 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/admin/users/{userId}/two-factor:
+    delete:
+      summary: Turn off the two-factor authentication of an account that lost its app and recovery codes
+      operationId: resetTwoFactor
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/admin/reports:
     get:
       summary: Reports of public links, open ones first
@@ -898,6 +922,80 @@ paths:
           application/json:
             schema:
               $ref: '#/components/schemas/SetPinDto'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+
+  /v1/users/me/two-factor/setup:
+    post:
+      summary: >
+        Start setting up two-factor authentication (needs the account password): returns the secret for the
+        authenticator app. The login only asks for codes once the first one was confirmed.
+      operationId: setupTwoFactor
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorSetupRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorSetupDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/users/me/two-factor/enable:
+    post:
+      summary: Turn two-factor authentication on with the first code of the app; returns the recovery codes
+      operationId: enableTwoFactor
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorCodeRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TwoFactorRecoveryDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
+  /v1/users/me/two-factor/disable:
+    post:
+      summary: Turn two-factor authentication off (needs the password and a code of the app or a recovery code)
+      operationId: disableTwoFactor
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TwoFactorDisableRequest'
       responses:
         '204':
           $ref: '#/components/responses/NoContent'
@@ -2883,6 +2981,12 @@ components:
           type: string
         password:
           type: string
+        code:
+          type: string
+          description: |
+            For accounts with two-factor authentication: the code of the authenticator app or a recovery
+            code. Without it (or with a wrong one) the login answers 401 with the header
+            `X-Ragbag-Two-Factor: required` once the password was right.
       required:
         - username
         - password
@@ -3033,6 +3137,9 @@ components:
           description: Only with PLANS_ENABLED
         proSource:
           $ref: '#/components/schemas/ProSource'
+        twoFactor:
+          type: boolean
+          description: Signs in with the code of an authenticator app as well
       required:
         - id
         - username
@@ -3469,6 +3576,9 @@ components:
         hasPin:
           type: boolean
           description: Has a PIN to unlock locked collections
+        twoFactor:
+          type: boolean
+          description: Signs in with the code of an authenticator app as well; only set for the current user
         startSpaceId:
           $ref: '#/components/schemas/ID'
           description: Opened on start instead of the last visited space; unset when the user leaves it
@@ -3495,6 +3605,55 @@ components:
           $ref: '#/components/schemas/ID'
           nullable: true
           description: A space the user is a member of, or null for the last visited one
+
+    TwoFactorSetupRequest:
+      properties:
+        currentPassword:
+          type: string
+      required:
+        - currentPassword
+
+    TwoFactorSetupDto:
+      description: What the authenticator app needs; shown once, the server keeps the secret encrypted
+      properties:
+        secret:
+          type: string
+          description: Base32, to type in where the QR code cannot be scanned
+        uri:
+          type: string
+          description: otpauth:// address for the QR code
+      required:
+        - secret
+        - uri
+
+    TwoFactorCodeRequest:
+      properties:
+        code:
+          type: string
+          description: The 6 digits the authenticator app shows
+      required:
+        - code
+
+    TwoFactorRecoveryDto:
+      properties:
+        recoveryCodes:
+          type: array
+          description: Each replaces a code of the app once; only their hashes are stored, so they are shown just now
+          items:
+            type: string
+      required:
+        - recoveryCodes
+
+    TwoFactorDisableRequest:
+      properties:
+        currentPassword:
+          type: string
+        code:
+          type: string
+          description: A code of the authenticator app or a recovery code
+      required:
+        - currentPassword
+        - code
 
     SetPinDto:
       properties:

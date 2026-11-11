@@ -107,6 +107,8 @@ func (s *Store) SetAvatar(ctx context.Context, userID string, imageID *string) e
 type UserWithSpaces struct {
 	User
 	Spaces int `db:"spaces"`
+	// TwoFactorAt: since when the account signs in with a second factor
+	TwoFactorAt *time.Time `db:"totp_enabled_at"`
 }
 
 func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
@@ -114,7 +116,7 @@ func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	err := s.sel(ctx, &users, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
 		       u.setup_admin, u.must_change_password, u.deleted_at, u.blocked_at, u.blocked_reason, u.display_name,
-		       u.created_at, u.updated_at, `+userPlanColumns+`,
+		       u.created_at, u.updated_at, u.totp_enabled_at, `+userPlanColumns+`,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
 		FROM users u WHERE u.deleted_at IS NULL ORDER BY u.username`)
 	return users, err

@@ -39,6 +39,11 @@ func (s *Server) Me(c echo.Context) error {
 func (s *Server) meView(c echo.Context, user *store.User, hasPin bool) error {
 	dto := s.userDto(user)
 	dto.HasPin = &hasPin
+	twoFactor, err := s.store.TwoFactorState(ctxOf(c), user.ID)
+	if err != nil {
+		return err
+	}
+	dto.TwoFactor = ptr(twoFactor.EnabledAt != nil)
 	start, err := s.store.StartSpace(ctxOf(c), user.ID)
 	if err != nil {
 		return err

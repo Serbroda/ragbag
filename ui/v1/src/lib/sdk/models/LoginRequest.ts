@@ -27,6 +27,13 @@ export interface LoginRequest {
      * 
      */
     password: string;
+    /**
+     * For accounts with two-factor authentication: the code of the authenticator app or a recovery
+     * code. Without it (or with a wrong one) the login answers 401 with the header
+     * `X-Ragbag-Two-Factor: required` once the password was right.
+     * 
+     */
+    code?: string;
 }
 
 /**
@@ -50,6 +57,7 @@ export function LoginRequestFromJSONTyped(json: any, ignoreDiscriminator: boolea
         
         'username': json['username'],
         'password': json['password'],
+        'code': json['code'] == null ? undefined : json['code'],
     };
 }
 
@@ -66,6 +74,7 @@ export function LoginRequestToJSONTyped(value?: LoginRequest | null, ignoreDiscr
         
         'username': value['username'],
         'password': value['password'],
+        'code': value['code'],
     };
 }
 

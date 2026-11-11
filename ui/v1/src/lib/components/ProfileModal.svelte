@@ -8,6 +8,7 @@
 	import { LINK_VIEWS, preferences, setLinkView } from '../stores/preferences.svelte';
 	import { lockState } from '../stores/lock.svelte';
 	import ImagePicker from './ImagePicker.svelte';
+	import TwoFactorSettings from './TwoFactorSettings.svelte';
 	import { shownName } from '../utils/format';
 
 	let { open = $bindable(false) }: { open?: boolean } = $props();
@@ -210,6 +211,8 @@
 					</div>
 				</form>
 			</section>
+
+			<TwoFactorSettings {open} />
 
 			<section>
 				<Label class="mb-1">{session.me.hasPin ? 'Change PIN' : 'PIN for locked collections'}</Label>

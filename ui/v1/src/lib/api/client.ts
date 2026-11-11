@@ -130,11 +130,17 @@ export async function getLegalPage(page: string): Promise<LegalPageDto> {
 /** The password of the last login, kept in memory only: the setup page needs the initial one once more. */
 let loginPassword: string | null = null;
 
-export async function login(username: string, password: string): Promise<void> {
+/** Accounts with two-factor authentication also need the code of their app: see needsTwoFactorCode(). */
+export async function login(username: string, password: string, code?: string): Promise<void> {
 	const api = new AuthenticationApi(anonConfig());
-	const response = await api.login({ loginRequest: { username, password } });
+	const response = await api.login({ loginRequest: { username, password, code: code || undefined } });
 	setAccessToken(response.accessToken);
 	loginPassword = password;
+}
+
+/** A failed login whose password was right: the code of the authenticator app is missing or wrong. */
+export function needsTwoFactorCode(err: unknown): boolean {
+	return err instanceof ResponseError && err.response.headers.get('X-Ragbag-Two-Factor') === 'required';
 }
 
 export function takeLoginPassword(): string | null {

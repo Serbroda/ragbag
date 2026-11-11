@@ -525,8 +525,11 @@ type AdminUserDto struct {
 	ProSource *ProSource `json:"proSource,omitempty"`
 
 	// Spaces Number of spaces the user is a member of
-	Spaces   *int   `json:"spaces,omitempty"`
-	Username string `json:"username"`
+	Spaces *int `json:"spaces,omitempty"`
+
+	// TwoFactor Signs in with the code of an authenticator app as well
+	TwoFactor *bool  `json:"twoFactor,omitempty"`
+	Username  string `json:"username"`
 }
 
 // BackupFileDto defines model for BackupFileDto.
@@ -989,8 +992,12 @@ type LegalPageDto struct {
 
 // LoginRequest defines model for LoginRequest.
 type LoginRequest struct {
-	Password string `json:"password"`
-	Username string `json:"username"`
+	// Code For accounts with two-factor authentication: the code of the authenticator app or a recovery
+	// code. Without it (or with a wrong one) the login answers 401 with the header
+	// `X-Ragbag-Two-Factor: required` once the password was right.
+	Code     *string `json:"code,omitempty"`
+	Password string  `json:"password"`
+	Username string  `json:"username"`
 }
 
 // LoginResponse defines model for LoginResponse.
@@ -1306,6 +1313,39 @@ type TrashedCollectionDto struct {
 	ParentName *string `json:"parentName,omitempty"`
 }
 
+// TwoFactorCodeRequest defines model for TwoFactorCodeRequest.
+type TwoFactorCodeRequest struct {
+	// Code The 6 digits the authenticator app shows
+	Code string `json:"code"`
+}
+
+// TwoFactorDisableRequest defines model for TwoFactorDisableRequest.
+type TwoFactorDisableRequest struct {
+	// Code A code of the authenticator app or a recovery code
+	Code            string `json:"code"`
+	CurrentPassword string `json:"currentPassword"`
+}
+
+// TwoFactorRecoveryDto defines model for TwoFactorRecoveryDto.
+type TwoFactorRecoveryDto struct {
+	// RecoveryCodes Each replaces a code of the app once; only their hashes are stored, so they are shown just now
+	RecoveryCodes []string `json:"recoveryCodes"`
+}
+
+// TwoFactorSetupDto What the authenticator app needs; shown once, the server keeps the secret encrypted
+type TwoFactorSetupDto struct {
+	// Secret Base32, to type in where the QR code cannot be scanned
+	Secret string `json:"secret"`
+
+	// Uri otpauth:// address for the QR code
+	Uri string `json:"uri"`
+}
+
+// TwoFactorSetupRequest defines model for TwoFactorSetupRequest.
+type TwoFactorSetupRequest struct {
+	CurrentPassword string `json:"currentPassword"`
+}
+
 // UnlockDto defines model for UnlockDto.
 type UnlockDto struct {
 	ExpiresAt time.Time `json:"expiresAt"`
@@ -1416,8 +1456,11 @@ type UserDto struct {
 	OpenReports *int `json:"openReports,omitempty"`
 
 	// StartSpaceId Opened on start instead of the last visited space; unset when the user leaves it
-	StartSpaceId *ID    `json:"startSpaceId,omitempty"`
-	Username     string `json:"username"`
+	StartSpaceId *ID `json:"startSpaceId,omitempty"`
+
+	// TwoFactor Signs in with the code of an authenticator app as well; only set for the current user
+	TwoFactor *bool  `json:"twoFactor,omitempty"`
+	Username  string `json:"username"`
 }
 
 // BadRequest defines model for BadRequest.
@@ -1587,6 +1630,15 @@ type UpdateSpaceBarJSONRequestBody = SpaceBarDto
 // SetStartSpaceJSONRequestBody defines body for SetStartSpace for application/json ContentType.
 type SetStartSpaceJSONRequestBody = StartSpaceDto
 
+// DisableTwoFactorJSONRequestBody defines body for DisableTwoFactor for application/json ContentType.
+type DisableTwoFactorJSONRequestBody = TwoFactorDisableRequest
+
+// EnableTwoFactorJSONRequestBody defines body for EnableTwoFactor for application/json ContentType.
+type EnableTwoFactorJSONRequestBody = TwoFactorCodeRequest
+
+// SetupTwoFactorJSONRequestBody defines body for SetupTwoFactor for application/json ContentType.
+type SetupTwoFactorJSONRequestBody = TwoFactorSetupRequest
+
 // UnlockJSONRequestBody defines body for Unlock for application/json ContentType.
 type UnlockJSONRequestBody = UnlockRequest
 
@@ -1685,6 +1737,9 @@ type ServerInterface interface {
 	// GrantPro Make an account Pro (PLANS_ENABLED)
 	// (PUT /v1/admin/users/{userId}/pro)
 	GrantPro(ctx echo.Context, userId ID) error
+	// ResetTwoFactor Turn off the two-factor authentication of an account that lost its app and recovery codes
+	// (DELETE /v1/admin/users/{userId}/two-factor)
+	ResetTwoFactor(ctx echo.Context, userId ID) error
 	// DeleteBookmark Delete a bookmark
 	// (DELETE /v1/bookmarks/{bookmarkId})
 	DeleteBookmark(ctx echo.Context, bookmarkId ID) error
@@ -1913,6 +1968,15 @@ type ServerInterface interface {
 	// SetStartSpace The space to open on start; null opens the last visited one
 	// (PUT /v1/users/me/start-space)
 	SetStartSpace(ctx echo.Context) error
+	// DisableTwoFactor Turn two-factor authentication off (needs the password and a code of the app or a recovery code)
+	// (POST /v1/users/me/two-factor/disable)
+	DisableTwoFactor(ctx echo.Context) error
+	// EnableTwoFactor Turn two-factor authentication on with the first code of the app; returns the recovery codes
+	// (POST /v1/users/me/two-factor/enable)
+	EnableTwoFactor(ctx echo.Context) error
+	// SetupTwoFactor Start setting up two-factor authentication (needs the account password): returns the secret for the authenticator app. The login only asks for codes once the first one was confirmed.
+	// (POST /v1/users/me/two-factor/setup)
+	SetupTwoFactor(ctx echo.Context) error
 	// Unlock Unlock the user's locked collections with the PIN. The token goes into the X-Ragbag-Unlock header of later requests and expires after a few minutes unless renewed.
 	// (POST /v1/users/me/unlock)
 	Unlock(ctx echo.Context) error
@@ -2316,6 +2380,22 @@ func (w *ServerInterfaceWrapper) GrantPro(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GrantPro(ctx, userId)
+	return err
+}
+
+// ResetTwoFactor converts echo context to params.
+func (w *ServerInterfaceWrapper) ResetTwoFactor(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ResetTwoFactor(ctx, userId)
 	return err
 }
 
@@ -3524,6 +3604,33 @@ func (w *ServerInterfaceWrapper) SetStartSpace(ctx echo.Context) error {
 	return err
 }
 
+// DisableTwoFactor converts echo context to params.
+func (w *ServerInterfaceWrapper) DisableTwoFactor(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DisableTwoFactor(ctx)
+	return err
+}
+
+// EnableTwoFactor converts echo context to params.
+func (w *ServerInterfaceWrapper) EnableTwoFactor(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.EnableTwoFactor(ctx)
+	return err
+}
+
+// SetupTwoFactor converts echo context to params.
+func (w *ServerInterfaceWrapper) SetupTwoFactor(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetupTwoFactor(ctx)
+	return err
+}
+
 // Unlock converts echo context to params.
 func (w *ServerInterfaceWrapper) Unlock(ctx echo.Context) error {
 	var err error
@@ -3611,6 +3718,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/admin/users/:userId/block", wrapper.BlockUser, options.OperationMiddlewares["blockUser"]...)
 	router.DELETE(options.BaseURL+"/v1/admin/users/:userId/pro", wrapper.RevokePro, options.OperationMiddlewares["revokePro"]...)
 	router.PUT(options.BaseURL+"/v1/admin/users/:userId/pro", wrapper.GrantPro, options.OperationMiddlewares["grantPro"]...)
+	router.DELETE(options.BaseURL+"/v1/admin/users/:userId/two-factor", wrapper.ResetTwoFactor, options.OperationMiddlewares["resetTwoFactor"]...)
 	router.GET(options.BaseURL+"/v1/admin/reports", wrapper.GetReports, options.OperationMiddlewares["getReports"]...)
 	router.POST(options.BaseURL+"/v1/admin/reports/:reportId/resolve", wrapper.ResolveReport, options.OperationMiddlewares["resolveReport"]...)
 	router.GET(options.BaseURL+"/v1/admin/overview", wrapper.GetAdminOverview, options.OperationMiddlewares["getAdminOverview"]...)
@@ -3626,6 +3734,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/display-name", wrapper.SetDisplayName, options.OperationMiddlewares["setDisplayName"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)
+	router.POST(options.BaseURL+"/v1/users/me/two-factor/setup", wrapper.SetupTwoFactor, options.OperationMiddlewares["setupTwoFactor"]...)
+	router.POST(options.BaseURL+"/v1/users/me/two-factor/enable", wrapper.EnableTwoFactor, options.OperationMiddlewares["enableTwoFactor"]...)
+	router.POST(options.BaseURL+"/v1/users/me/two-factor/disable", wrapper.DisableTwoFactor, options.OperationMiddlewares["disableTwoFactor"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock", wrapper.Unlock, options.OperationMiddlewares["unlock"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock/renew", wrapper.RenewUnlock, options.OperationMiddlewares["renewUnlock"]...)
 	router.GET(options.BaseURL+"/v1/users/me/space-bar", wrapper.GetSpaceBar, options.OperationMiddlewares["getSpaceBar"]...)

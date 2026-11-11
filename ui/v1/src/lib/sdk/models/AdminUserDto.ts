@@ -82,6 +82,10 @@ export interface AdminUserDto {
      * 
      */
     proSource?: ProSource;
+    /**
+     * Signs in with the code of an authenticator app as well
+     */
+    twoFactor?: boolean;
 }
 
 
@@ -119,6 +123,7 @@ export function AdminUserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolea
         'blockedReason': json['blockedReason'] == null ? undefined : json['blockedReason'],
         'plan': json['plan'] == null ? undefined : PlanNameFromJSON(json['plan']),
         'proSource': json['proSource'] == null ? undefined : ProSourceFromJSON(json['proSource']),
+        'twoFactor': json['twoFactor'] == null ? undefined : json['twoFactor'],
     };
 }
 
@@ -145,6 +150,7 @@ export function AdminUserDtoToJSONTyped(value?: AdminUserDto | null, ignoreDiscr
         'blockedReason': value['blockedReason'],
         'plan': PlanNameToJSON(value['plan']),
         'proSource': ProSourceToJSON(value['proSource']),
+        'twoFactor': value['twoFactor'],
     };
 }
 

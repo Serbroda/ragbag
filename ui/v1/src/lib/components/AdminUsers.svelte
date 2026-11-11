@@ -49,6 +49,20 @@
 		}
 	}
 
+	/** For somebody who lost their authenticator app and recovery codes: they sign in with the password alone again. */
+	async function resetTwoFactor(user: AdminUserDto) {
+		busyUserId = user.id;
+		error = '';
+		try {
+			await api.resetTwoFactor({ userId: user.id });
+			users = users.map((u) => (u.id === user.id ? { ...u, twoFactor: false } : u));
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to reset the two-factor authentication.');
+		} finally {
+			busyUserId = null;
+		}
+	}
+
 	async function createLink(user: AdminUserDto) {
 		busyUserId = user.id;
 		error = '';
@@ -166,6 +180,12 @@
 									>Pro</span
 								>
 							{/if}
+							{#if user.twoFactor}
+								<span
+									class="ms-1 rounded-md bg-green-500/15 px-1.5 py-0.5 text-xs font-medium text-green-700 dark:text-green-300"
+									title="Signs in with an authenticator app as well">2FA</span
+								>
+							{/if}
 							{#if user.blockedAt}
 								<span
 									class="ms-1 rounded-md bg-red-500/15 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-300"
@@ -182,6 +202,17 @@
 						<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => createLink(user)}>
 							Reset link
 						</Button>
+						{#if user.twoFactor}
+							<Button
+								size="xs"
+								color="light"
+								disabled={busyUserId === user.id}
+								title="Lost app and recovery codes: the account signs in with its password alone again"
+								onclick={() => resetTwoFactor(user)}
+							>
+								Reset 2FA
+							</Button>
+						{/if}
 						{#if user.plan === 'FREE'}
 							<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => setPro(user, true)}>
 								Make Pro

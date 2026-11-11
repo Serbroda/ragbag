@@ -98,6 +98,13 @@ export interface GrantProRequest {
     userId: string;
 }
 
+export interface ResetTwoFactorRequest {
+    /**
+     * 
+     */
+    userId: string;
+}
+
 export interface ResolveReportOperationRequest {
     /**
      * 
@@ -726,6 +733,58 @@ export class AdminApi extends runtime.BaseAPI {
     async grantPro(requestParameters: GrantProRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
         const response = await this.grantProRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for resetTwoFactor without sending the request
+     */
+    async resetTwoFactorRequestOpts(requestParameters: ResetTwoFactorRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['userId'] == null) {
+            throw new runtime.RequiredError(
+                'userId',
+                'Required parameter "userId" was null or undefined when calling resetTwoFactor().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/users/{userId}/two-factor`;
+        urlPath = urlPath.replace('{userId}', encodeURIComponent(String(requestParameters['userId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Turn off the two-factor authentication of an account that lost its app and recovery codes
+     */
+    async resetTwoFactorRaw(requestParameters: ResetTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.resetTwoFactorRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Turn off the two-factor authentication of an account that lost its app and recovery codes
+     */
+    async resetTwoFactor(requestParameters: ResetTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.resetTwoFactorRaw(requestParameters, initOverrides);
     }
 
     /**
