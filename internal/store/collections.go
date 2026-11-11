@@ -12,6 +12,8 @@ type Collection struct {
 	Name        string  `db:"name"`
 	Description *string `db:"description"`
 	Restricted  bool    `db:"restricted"`
+	// Query makes it a smart collection: it has no links of its own and shows what this search finds in the space
+	Query *string `db:"query"`
 	// Position orders collections below the same parent
 	Position  int    `db:"position"`
 	CreatedBy string `db:"created_by"`
@@ -22,8 +24,8 @@ type Collection struct {
 	UpdatedAt time.Time  `db:"updated_at"`
 }
 
-const collectionColumns = `id, space_id, parent_id, name, description, restricted, position, created_by, created_at,
-	updated_at, deleted_at, deleted_by`
+const collectionColumns = `id, space_id, parent_id, name, description, restricted, query, position, created_by,
+	created_at, updated_at, deleted_at, deleted_by`
 
 // CreateCollection appends the collection after its future siblings.
 func (s *Store) CreateCollection(ctx context.Context, c *Collection, memberIDs []string) error {
@@ -34,9 +36,9 @@ func (s *Store) CreateCollection(ctx context.Context, c *Collection, memberIDs [
 		return err
 	}
 	c.Position = position
-	if _, err := s.exec(ctx, `INSERT INTO collections (id, space_id, parent_id, name, description, restricted, position,
-		created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
-		c.ID, c.SpaceID, c.ParentID, c.Name, c.Description, c.Restricted, c.Position, c.CreatedBy, at, at); err != nil {
+	if _, err := s.exec(ctx, `INSERT INTO collections (id, space_id, parent_id, name, description, restricted, query,
+		position, created_by, created_at, updated_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		c.ID, c.SpaceID, c.ParentID, c.Name, c.Description, c.Restricted, c.Query, c.Position, c.CreatedBy, at, at); err != nil {
 		return err
 	}
 	return s.addCollectionMembers(ctx, c.ID, memberIDs)
@@ -54,9 +56,9 @@ func (s *Store) CollectionsBySpace(ctx context.Context, spaceID string) ([]Colle
 	return collections, err
 }
 
-func (s *Store) UpdateCollection(ctx context.Context, id, name string, description *string) error {
-	_, err := s.exec(ctx, `UPDATE collections SET name = ?, description = ?, updated_at = ? WHERE id = ?`,
-		name, description, now(), id)
+func (s *Store) UpdateCollection(ctx context.Context, id, name string, description, query *string) error {
+	_, err := s.exec(ctx, `UPDATE collections SET name = ?, description = ?, query = ?, updated_at = ? WHERE id = ?`,
+		name, description, query, now(), id)
 	return err
 }
 

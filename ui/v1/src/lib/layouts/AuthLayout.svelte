@@ -48,7 +48,7 @@
 	import KoFiIcon from '../components/KoFiIcon.svelte';
 	import SupportButton from '../components/SupportButton.svelte';
 	import LegalLinks from '../components/LegalLinks.svelte';
-	import { collectionsToTree, flattenTree, pathToNode, type TreeNode } from '../components/tree';
+	import { collectionsToTree, flattenTargets, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
 	import type { SpaceMemberDto } from 'ragbag-frontend-sdk';
 	import {
@@ -545,6 +545,9 @@
 	let createError = $state('');
 	let creating = $state(false);
 	let newCollectionPrivate = $state(false);
+	/** A smart collection shows the results of a search instead of holding links. */
+	let newCollectionSmart = $state(false);
+	let newCollectionQuery = $state('');
 	let newCollectionMembers = $state(new Set<string>());
 	let spaceMembers = $state<SpaceMemberDto[]>([]);
 
@@ -554,14 +557,17 @@
 		}
 	}
 
-	const parentOptions = $derived(flattenTree(menuTree));
+	const parentOptions = $derived(flattenTargets(menuTree));
 
 	function openAddModal(parentId = activeCollectionId) {
 		if (!canCreateCollections) return;
 		closeMenus();
 		newCollectionName = '';
-		// Default to the collection the user is currently looking at
-		newCollectionParentId = parentId ?? '';
+		newCollectionSmart = false;
+		newCollectionQuery = '';
+		// Default to the collection the user is currently looking at (a smart one takes nothing: next to it)
+		const parent = parentId ? pathToNode(menuTree, parentId).reverse().find((node) => !node.query) : undefined;
+		newCollectionParentId = parent?.id ?? '';
 		createError = '';
 		creating = false;
 		newCollectionPrivate = false;
@@ -584,6 +590,7 @@
 					parentId: newCollectionParentId || undefined,
 					restricted: newCollectionPrivate,
 					memberIds: newCollectionPrivate ? [...newCollectionMembers] : undefined,
+					query: newCollectionSmart ? newCollectionQuery.trim() : undefined,
 				},
 			});
 			showAddModal = false;
@@ -1105,6 +1112,28 @@
 			</Select>
 		</div>
 		<div>
+			<Toggle bind:checked={newCollectionSmart}>Smart collection</Toggle>
+			<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+				Shows every link of the space that matches a search, wherever it is saved. It holds no links itself.
+			</p>
+		</div>
+		{#if newCollectionSmart}
+			<div>
+				<Label for="col-query" class="mb-2">Search</Label>
+				<Input
+					id="col-query"
+					type="text"
+					bind:value={newCollectionQuery}
+					required
+					maxlength={200}
+					placeholder="e.g. #recipe vegan"
+				/>
+				<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+					Links have to match every word; <code>#tag</code> matches a tag exactly, <code>"two words"</code> a phrase.
+				</p>
+			</div>
+		{/if}
+		<div>
 			<Toggle bind:checked={newCollectionPrivate} onchange={togglePrivate}>Private collection</Toggle>
 			<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
 				Only you and the members you pick can see it, not even space admins. Great for gift ideas.
@@ -1122,7 +1151,9 @@
 		{/if}
 		<div class="flex justify-end gap-2">
 			<Button color="light" onclick={() => (showAddModal = false)}>Cancel</Button>
-			<Button type="submit" disabled={creating || !newCollectionName.trim()}>{creating ? 'Creating...' : 'Create'}</Button>
+			<Button type="submit" disabled={creating || !newCollectionName.trim() || (newCollectionSmart && !newCollectionQuery.trim())}>
+				{creating ? 'Creating...' : 'Create'}
+			</Button>
 		</div>
 	</form>
 </Modal>
@@ -1173,7 +1204,7 @@
 		onclick={(e) => e.stopPropagation()}
 	>
 		<p class="truncate px-2 pb-1 pt-0.5 text-xs font-semibold text-gray-400">{node.label}</p>
-		{#if canCreateCollections}
+		{#if canCreateCollections && !node.query}
 			<button
 				role="menuitem"
 				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
@@ -1198,13 +1229,15 @@
 		>
 			Who can see this <LockOutline class="h-4 w-4" />
 		</button>
-		<button
-			role="menuitem"
-			class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
-			onclick={() => runCollectionAction(node, 'share')}
-		>
-			Share publicly <GlobeOutline class="h-4 w-4" />
-		</button>
+		{#if !node.query}
+			<button
+				role="menuitem"
+				class="flex w-full items-center justify-between rounded-md px-2 py-1.5 hover:bg-primary-500 hover:text-white"
+				onclick={() => runCollectionAction(node, 'share')}
+			>
+				Share publicly <GlobeOutline class="h-4 w-4" />
+			</button>
+		{/if}
 		{#if node.locked}
 			<button
 				role="menuitem"

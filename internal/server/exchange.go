@@ -39,9 +39,11 @@ type exchangeFile struct {
 }
 
 type exchangeNode struct {
-	Name        string         `json:"name"`
-	Description *string        `json:"description"`
-	Private     bool           `json:"private"`
+	Name        string  `json:"name"`
+	Description *string `json:"description"`
+	Private     bool    `json:"private"`
+	// Query of a smart collection, which has neither links nor sub-collections
+	Query       *string        `json:"query,omitempty"`
 	Links       []exchangeLink `json:"links"`
 	Collections []exchangeNode `json:"collections"`
 }
@@ -95,7 +97,7 @@ func (s *Server) exportNode(c echo.Context, collection *store.Collection, childr
 		return nil, err
 	}
 	node := &exchangeNode{Name: collection.Name, Description: collection.Description, Private: collection.Restricted,
-		Links: []exchangeLink{}, Collections: []exchangeNode{}}
+		Query: collection.Query, Links: []exchangeLink{}, Collections: []exchangeNode{}}
 	// Oldest first: the import creates links in file order, so the newest one stays the newest
 	for i := len(bookmarks) - 1; i >= 0; i-- {
 		b := bookmarks[i]
@@ -151,6 +153,9 @@ type importCounter struct {
 func (s *Server) ImportCollection(c echo.Context, collectionID api.ID, params api.ImportCollectionParams) error {
 	target, _, err := s.requireCollection(ctxOf(c), s.store, collectionID, currentUser(c), PermImportExport)
 	if err != nil {
+		return err
+	}
+	if err := holdsLinks(target); err != nil {
 		return err
 	}
 	file, err := readImport(c)
@@ -308,7 +313,12 @@ func (s *Server) importNode(c echo.Context, tx *store.Store, target *store.Colle
 		if child != nil {
 			counter.merged++
 		} else {
-			child = &store.Collection{SpaceID: target.SpaceID, ParentID: &target.ID, Name: name,
+			// A search that is not valid here imports as an ordinary, empty collection
+			query, err := smartQuery(childNode.Query)
+			if err != nil {
+				query = nil
+			}
+			child = &store.Collection{SpaceID: target.SpaceID, ParentID: &target.ID, Name: name, Query: query,
 				Description: blankToNil(childNode.Description), CreatedBy: currentUser(c), Restricted: childNode.Private}
 			var members []string
 			if child.Restricted {
@@ -319,6 +329,10 @@ func (s *Server) importNode(c echo.Context, tx *store.Store, target *store.Colle
 			}
 			collections = append(collections, *child)
 			counter.created++
+		}
+		// Smart collections, also existing ones of the same name, take nothing
+		if child.Query != nil {
+			continue
 		}
 		if err := s.importNode(c, tx, child, childNode, hidden, counter); err != nil {
 			return err

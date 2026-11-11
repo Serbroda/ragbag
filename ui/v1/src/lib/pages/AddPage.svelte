@@ -6,7 +6,7 @@
 	import { navigate, route } from '../router';
 	import CenteredScreen from '../components/CenteredScreen.svelte';
 	import LinkFormFields from '../components/LinkFormFields.svelte';
-	import { collectionsToTree, flattenTree } from '../components/tree';
+	import { collectionsToTree, flattenTargets } from '../components/tree';
 	import { lastSpaceId, loadMe, loadSpaces, rememberSpace, session } from '../stores/spaces.svelte';
 
 	/**
@@ -34,7 +34,7 @@
 	let saved = $state<{ spaceId: string; collectionId: string; name: string } | null>(null);
 	let form = $state<LinkFormFields | null>(null);
 
-	const options = $derived(flattenTree(collectionsToTree(collections, spaceId)));
+	const options = $derived(flattenTargets(collectionsToTree(collections, spaceId)));
 	const storageKey = (space: string) => `quick-add:${space}`;
 
 	Promise.all([loadSpaces(), loadMe()])
@@ -58,7 +58,7 @@
 				} catch {
 					// Unavailable storage: the first collection
 				}
-				const flat = flattenTree(collectionsToTree(loaded, space));
+				const flat = flattenTargets(collectionsToTree(loaded, space));
 				collectionId = flat.some((o) => o.id === remembered) ? remembered! : (flat[0]?.id ?? '');
 				// Load title, description and tags of a shared link right away (once a collection is known)
 				if (sharedUrl && !sharedTitle && collectionId) setTimeout(() => form?.fetchMetadata(), 0);

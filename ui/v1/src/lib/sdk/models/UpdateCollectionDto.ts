@@ -27,6 +27,10 @@ export interface UpdateCollectionDto {
      * Omitted keeps the description, an empty string removes it
      */
     description?: string;
+    /**
+     * New search of a smart collection; omitted keeps it, other collections answer 400
+     */
+    query?: string;
 }
 
 /**
@@ -49,6 +53,7 @@ export function UpdateCollectionDtoFromJSONTyped(json: any, ignoreDiscriminator:
         
         'name': json['name'],
         'description': json['description'] == null ? undefined : json['description'],
+        'query': json['query'] == null ? undefined : json['query'],
     };
 }
 
@@ -65,6 +70,7 @@ export function UpdateCollectionDtoToJSONTyped(value?: UpdateCollectionDto | nul
         
         'name': value['name'],
         'description': value['description'],
+        'query': value['query'],
     };
 }
 

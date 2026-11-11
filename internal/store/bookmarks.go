@@ -146,23 +146,49 @@ func (s *Store) RecentBookmarks(ctx context.Context, spaceID string, hidden []st
 	return bookmarks, s.loadTags(ctx, bookmarks)
 }
 
-// SearchBookmarks matches title, URL, description and tags case-insensitively. A single "#tag" only matches
-// links with exactly that tag.
+// maxSearchTerms keeps a search to a query the database answers quickly; further words are ignored.
+const maxSearchTerms = 8
+
+// SearchTerms splits a search into the terms a link has to match all of: words, "quoted phrases" and #tags.
+func SearchTerms(query string) []string {
+	var terms []string
+	for rest := strings.TrimSpace(query); rest != "" && len(terms) < maxSearchTerms; rest = strings.TrimSpace(rest) {
+		var term string
+		if end := strings.Index(rest[1:], `"`); rest[0] == '"' && end >= 0 {
+			term, rest = strings.TrimSpace(rest[1:end+1]), rest[end+2:]
+		} else if end := strings.IndexAny(rest, " \t\n"); end >= 0 {
+			term, rest = rest[:end], rest[end:]
+		} else {
+			term, rest = rest, ""
+		}
+		if term != "" {
+			terms = append(terms, term)
+		}
+	}
+	return terms
+}
+
+// SearchBookmarks finds the links matching every term of the query (SearchTerms): a "#tag" only matches links
+// with exactly that tag, everything else title, URL, description or tags, case-insensitively.
 func (s *Store) SearchBookmarks(ctx context.Context, spaceID, query string, hidden []string) ([]Bookmark, error) {
-	var sqlQuery string
-	var args []any
-	if tag, ok := strings.CutPrefix(query, "#"); ok && tag != "" && !strings.ContainsAny(tag, " \t") {
-		sqlQuery, args = bookmarkSelect+` WHERE c.space_id = ? AND EXISTS (
-			SELECT 1 FROM bookmark_tags t WHERE t.bookmark_id = b.id AND LOWER(t.tag) = ?)`,
-			[]any{spaceID, strings.ToLower(tag)}
-	} else {
+	terms := SearchTerms(query)
+	if len(terms) == 0 {
+		return []Bookmark{}, nil
+	}
+	sqlQuery, args := bookmarkSelect+` WHERE c.space_id = ?`, []any{spaceID}
+	for _, term := range terms {
+		if tag, ok := strings.CutPrefix(term, "#"); ok && !strings.Contains(tag, " ") {
+			sqlQuery += ` AND EXISTS (SELECT 1 FROM bookmark_tags t WHERE t.bookmark_id = b.id AND LOWER(t.tag) = ?)`
+			args = append(args, strings.ToLower(tag))
+			continue
+		}
 		// Treat LIKE wildcards in user input literally
-		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(query))
+		escaped := strings.NewReplacer(`\`, `\\`, `%`, `\%`, `_`, `\_`).Replace(strings.ToLower(term))
 		pattern := "%" + escaped + "%"
-		sqlQuery, args = bookmarkSelect+` WHERE c.space_id = ? AND (
+		sqlQuery += ` AND (
 		LOWER(b.title) LIKE ? ESCAPE '\' OR LOWER(b.url) LIKE ? ESCAPE '\' OR LOWER(b.description) LIKE ? ESCAPE '\'
-		OR EXISTS (SELECT 1 FROM bookmark_tags t WHERE t.bookmark_id = b.id AND LOWER(t.tag) LIKE ? ESCAPE '\'))`,
-			[]any{spaceID, pattern, pattern, pattern, pattern}
+		OR EXISTS (SELECT 1 FROM bookmark_tags t WHERE t.bookmark_id = b.id AND LOWER(t.tag) LIKE ? ESCAPE '\'))`
+		args = append(args, pattern, pattern, pattern, pattern)
 	}
 	sqlQuery, args = excludeCollections(sqlQuery, args, hidden)
 	var bookmarks []Bookmark

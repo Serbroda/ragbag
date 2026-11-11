@@ -17,12 +17,12 @@
 	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
 	import ImportCollectionModal from '../components/ImportCollectionModal.svelte';
 	import ShareCollectionModal from '../components/ShareCollectionModal.svelte';
-	import { DotsVerticalOutline, FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
-	import { route, navigate } from '../router';
+	import { DotsVerticalOutline, FilterOutline, FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
+	import { p, route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
 	import {
 		collectionsToTree,
-		flattenTree,
+		flattenTargets,
 		findNode,
 		collectSubtreeIds,
 		type TreeNode,
@@ -41,19 +41,20 @@
 	const hasSpacePermission = getContext<((permission: SpacePermission) => boolean) | null>(
 		'has-space-permission',
 	);
-	const canCreateBookmarks = $derived(hasSpacePermission?.('CREATE_BOOKMARKS') ?? false);
+	let collection = $state<CollectionDto | null>(null);
+	// A smart collection shows the results of its search and takes no links itself
+	const canCreateBookmarks = $derived((hasSpacePermission?.('CREATE_BOOKMARKS') ?? false) && !collection?.query);
 	const canEditBookmarks = $derived(hasSpacePermission?.('EDIT_BOOKMARKS') ?? false);
 	const canDeleteBookmarks = $derived(hasSpacePermission?.('DELETE_BOOKMARKS') ?? false);
 	const canEditCollections = $derived(hasSpacePermission?.('EDIT_COLLECTIONS') ?? false);
 	const canDeleteCollections = $derived(hasSpacePermission?.('DELETE_COLLECTIONS') ?? false);
-	const canImportExport = $derived(hasSpacePermission?.('IMPORT_EXPORT') ?? false);
+	const canImportExport = $derived((hasSpacePermission?.('IMPORT_EXPORT') ?? false) && !collection?.query);
 	const privateAncestor = getContext<((collectionId: string) => string | undefined) | undefined>('private-ancestor');
 	const collectionTree = getContext<(() => TreeNode[]) | undefined>('collection-tree');
 	type LockAction = (collectionId: string, label: string) => Promise<void>;
 	const lockForMe = getContext<LockAction | undefined>('lock-collection');
 	const unlockForMe = getContext<LockAction | undefined>('unlock-collection');
 
-	let collection = $state<CollectionDto | null>(null);
 	let bookmarks = $state<BookmarkDto[]>([]);
 	/** Tags picked above the links; a link has to have all of them. */
 	let selectedTags = $state<string[]>([]);
@@ -95,6 +96,7 @@
 	let showEditCollectionModal = $state(false);
 	let editCollectionName = $state('');
 	let editCollectionDescription = $state('');
+	let editCollectionQuery = $state('');
 	let editCollectionParentId = $state('');
 	let editCollectionError = $state('');
 	let editCollectionSaving = $state(false);
@@ -146,7 +148,8 @@
 	const subcollections = $derived(findNode(tree, collectionId)?.children ?? []);
 	const lockedForMe = $derived(findNode(tree, collectionId)?.locked ?? false);
 	/** Every other collection of the space, for "Move to…". */
-	const moveTargets = $derived(flattenTree(tree).filter((option) => option.id !== collectionId));
+	const moveTargets = $derived(flattenTargets(tree).filter((option) => option.id !== collectionId));
+	const collectionName = getContext<((collectionId: string) => string | undefined) | undefined>('collection-name');
 
 	// Dialogs requested from the sidebar's context menu
 	$effect(() => {
@@ -487,6 +490,7 @@
 		if (!collection) return;
 		editCollectionName = collection.name;
 		editCollectionDescription = collection.description ?? '';
+		editCollectionQuery = collection.query ?? '';
 		editCollectionParentId = collection.parentId ?? '';
 		editCollectionError = '';
 		editCollectionSaving = false;
@@ -495,7 +499,7 @@
 		try {
 			const allCollections = await collectionApi.getCollections({ spaceId });
 			const tree = collectionsToTree(allCollections, spaceId);
-			const flat = flattenTree(tree);
+			const flat = flattenTargets(tree);
 			// Exclude current collection and its descendants from the parent options
 			const currentNode = findNode(tree, collectionId);
 			const excludeIds = currentNode ? collectSubtreeIds(currentNode) : new Set([collectionId]);
@@ -517,10 +521,11 @@
 
 		try {
 			const description = editCollectionDescription.trim();
-			if (name !== collection.name || description !== (collection.description ?? '')) {
+			const query = collection.query ? editCollectionQuery.trim() : undefined;
+			if (name !== collection.name || description !== (collection.description ?? '') || query !== collection.query) {
 				await collectionApi.updateCollection({
 					collectionId,
-					updateCollectionDto: { name, description },
+					updateCollectionDto: { name, description, query },
 				});
 			}
 
@@ -627,6 +632,13 @@
 							<LockOutline class="h-3.5 w-3.5 shrink-0" />
 							<span class="truncate">{collection.restricted ? 'Private' : `Private via ${privateVia}`}</span>
 						</button>
+					{:else if collection.query}
+						<span
+							class="inline-flex shrink-0 items-center gap-1 rounded-md bg-violet-500/15 px-2 py-0.5 text-xs font-medium text-violet-700 ring-1 ring-inset ring-violet-500/30 dark:text-violet-300"
+							title="Shows the results of a search; the links stay where they are saved"
+						>
+							<FilterOutline class="h-3.5 w-3.5 shrink-0" /> Smart
+						</span>
 					{:else if collection.shared}
 						<button
 							type="button"
@@ -640,6 +652,23 @@
 				</h1>
 				{#if collection.description}
 					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">{collection.description}</p>
+				{/if}
+				{#if collection.query}
+					<p class="mt-1 text-sm text-gray-500 dark:text-gray-400">
+						Every link of this space matching
+						{#if canEditCollections}
+							<button
+								type="button"
+								class="rounded bg-gray-100 px-1.5 py-0.5 font-mono text-xs text-gray-700 hover:bg-gray-200 dark:bg-gray-800 dark:text-gray-200 dark:hover:bg-gray-700"
+								title="Change the search"
+								onclick={openEditCollectionModal}>{collection.query}</button
+							>
+						{:else}
+							<code class="rounded bg-gray-100 px-1.5 py-0.5 text-xs text-gray-700 dark:bg-gray-800 dark:text-gray-200"
+								>{collection.query}</code
+							>
+						{/if}
+					</p>
 				{/if}
 			</div>
 			<div class="flex shrink-0 items-center gap-2">
@@ -672,15 +701,17 @@
 								>
 									Who can see this…
 								</button>
-								<button
-									class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
-									onclick={() => {
-										showShareModal = true;
-										openHeaderMenu = false;
-									}}
-								>
-									Share publicly…
-								</button>
+								{#if !collection.query}
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											showShareModal = true;
+											openHeaderMenu = false;
+										}}
+									>
+										Share publicly…
+									</button>
+								{/if}
 								<button
 									class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
 									title="Hide it from your view until you unlock with your PIN; nobody else is affected"
@@ -720,7 +751,7 @@
 											openHeaderMenu = false;
 										}}
 									>
-										Import JSON…
+										Import…
 									</button>
 								{/if}
 								{#if canDeleteCollections}
@@ -748,7 +779,7 @@
 		{#if subcollections.length > 0}
 			<div class="mb-6 grid grid-cols-[repeat(auto-fill,minmax(12rem,1fr))] gap-2">
 				{#each subcollections as sub (sub.id)}
-					{@const Icon = sub.restricted ? LockOutline : FolderOutline}
+					{@const Icon = sub.restricted ? LockOutline : sub.query ? FilterOutline : FolderOutline}
 					{@const childCount = sub.children?.length ?? 0}
 					<!-- svelte-ignore a11y_no_static_element_interactions -->
 					<a
@@ -757,7 +788,7 @@
 							? 'border-primary-500 bg-primary-500/10'
 							: 'border-gray-200 hover:border-gray-300 hover:bg-gray-50 dark:border-gray-800 dark:hover:border-gray-700 dark:hover:bg-gray-800/60'}"
 						ondragover={(e) => {
-							if (!bookmarkDrag.current) return;
+							if (!bookmarkDrag.current || sub.query) return;
 							e.preventDefault();
 							dropTargetId = sub.id!;
 						}}
@@ -773,7 +804,7 @@
 							<span class="block truncate text-sm font-medium">{sub.label}</span>
 							<span class="block truncate text-xs text-gray-500">
 								{[
-									`${sub.bookmarkCount ?? 0} link${sub.bookmarkCount === 1 ? '' : 's'}`,
+									sub.query ? sub.query : `${sub.bookmarkCount ?? 0} link${sub.bookmarkCount === 1 ? '' : 's'}`,
 									childCount > 0 ? `${childCount} collection${childCount === 1 ? '' : 's'}` : '',
 								]
 									.filter(Boolean)
@@ -811,7 +842,9 @@
 				<div
 					class="flex flex-col items-center justify-center rounded-lg border-2 border-dashed border-gray-300 px-4 py-12 text-center dark:border-gray-600"
 				>
-					<p class="mb-2 text-gray-500 dark:text-gray-400">No links yet</p>
+					<p class="mb-2 text-gray-500 dark:text-gray-400">
+						{collection.query ? 'No link of this space matches the search yet' : 'No links yet'}
+					</p>
 					{#if canCreateBookmarks}
 						<Button size="sm" color="light" onclick={openAddModal}>Add your first link</Button>
 						<p class="mt-3 text-xs text-gray-400 dark:text-gray-500">Tip: paste a URL anywhere on this page</p>
@@ -824,8 +857,13 @@
 			{/if}
 			<div class={linkListClass(preferences.linkView)}>
 				{#each visibleBookmarks as bookmark (bookmark.id)}
+					{@const origin = collection.query ? bookmark.collectionId : undefined}
 					<BookmarkCard
 						{bookmark}
+						collectionName={origin ? collectionName?.(origin) : undefined}
+						collectionHref={origin
+							? p('/space/:spaceId/collections/:collectionId', { params: { spaceId, collectionId: origin } })
+							: undefined}
 						ondragstart={canEditBookmarks ? (e) => startBookmarkDrag(bookmark, e) : undefined}
 						ondragend={endBookmarkDrag}
 						selectable={canSelect}
@@ -1008,6 +1046,15 @@
 				bind:value={editCollectionDescription}
 			/>
 		</div>
+		{#if collection?.query}
+			<div>
+				<Label for="edit-col-query" class="mb-2">Search</Label>
+				<Input id="edit-col-query" type="text" bind:value={editCollectionQuery} required maxlength={200} />
+				<p class="mt-1 text-xs text-gray-500 dark:text-gray-400">
+					Links have to match every word; <code>#tag</code> matches a tag exactly, <code>"two words"</code> a phrase.
+				</p>
+			</div>
+		{/if}
 		<div>
 			<Label for="edit-col-parent" class="mb-2">Parent Collection</Label>
 			<Select id="edit-col-parent" placeholder="" bind:value={editCollectionParentId}>

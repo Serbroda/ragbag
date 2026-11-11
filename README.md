@@ -36,7 +36,10 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
   their own preview; set your **own preview image** (upload or address) or hide it.
 - Select several links (long press on phones) to move, tag or delete them at once; copy a link from its menu.
 - Sort links (newest, oldest, name, domain) and narrow them down with tag chips.
-- Full-text search over titles, addresses, descriptions and tags; `#tag` finds exactly that tag.
+- Full-text search over titles, addresses, descriptions and tags: links have to match every word, `#tag` finds
+  exactly that tag, `"two words"` a phrase.
+- **Smart collections** show every link of the space matching a search (e.g. `#recipe vegan`), wherever it is
+  saved, and for every member only what that member may see.
 - Three ways to show links – cards with preview images, compact cards or a dense list – chosen per user and device.
 - **Headlines**: cards of news sites, patch notes or blogs can show the latest headlines of their RSS/Atom feed
   (found on the page), optionally only those containing certain words. Loaded when shown, at most once an hour.
