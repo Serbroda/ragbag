@@ -290,7 +290,7 @@ change, never edit an applied one. Times are stored in UTC, truncated to microse
   stand-in only next to cards that have one (`imagePlaceholder`). Cards name who added a link only in spaces
   with several members (`SpaceDto.memberCount`, context `solo-space`). In the sidebar a collection keeps its
   icon (folder, or filter for smart ones); locked, private and shared show as a small mark next to the name
-  (`TreeNode.mark`), followed by the number of links. Space settings are tabs as well (`?tab=members`)
+  (`TreeNode.mark`); link counts are deliberately not shown there. Space settings are tabs as well (`?tab=members`)
 - Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
 - `api/client.ts` — auth handling, `errorMessage()` to surface problem detail texts
 - `sdk/` — generated, do not edit (see API-first)
