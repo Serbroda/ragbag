@@ -226,6 +226,15 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   `JWT_SECRET` only recovery codes work. Reset links sign nobody in, so they never bypass it; admins reset it
   (`DELETE /admin/users/{id}/two-factor`), `ragbag reset-2fa <username>` is the way back in for an admin. The QR
   code is drawn in the browser (`QrCode.svelte`, `qrcode-generator` loaded on demand).
+- **Discord webhook** (`webhooks.go`, `spaces.discord_webhook_url`, `DiscordWebhookSettings.svelte`): one per
+  space, set by members with `EDIT_SPACE` (`/spaces/{id}/webhook`, `…/test`); `CreateBookmark` calls
+  `announceLink`, which posts an embed in the background. Never posted: links in or below private collections
+  (`privateInPath`) and imports (they do not go through `CreateBookmark`). Only `https://discord.com/api/webhooks/…`
+  addresses are accepted and redirects are not followed, so it is no way to make the server call other hosts.
+  The address is a secret: not in `SpaceDto`, not for API tokens (`tokenNever`), never logged (not even errors
+  of the HTTP client). Text of users is escaped and `allowed_mentions` is empty. A 404/401 from Discord sets
+  `discord_webhook_failed_at`, which stops posting until a new address or a working test. Tests use
+  `UseWebhookSender` with a fake
 - **API tokens** (`tokens.go`, `api_tokens`, `ApiTokenSettings.svelte`): personal tokens `rb_…` (SHA-256 hash
   stored, shown once, created with the password at `/users/me/tokens`, at most 20, optional expiry) are accepted
   by `authenticate` like access tokens, but only for what `tokenMay` allows: scope READ = GET, WRITE = everything,
@@ -291,6 +300,8 @@ change, never edit an applied one. Times are stored in UTC, truncated to microse
   with several members (`SpaceDto.memberCount`, context `solo-space`). In the sidebar a collection keeps its
   icon (folder, or filter for smart ones); locked, private and shared show as a small mark next to the name
   (`TreeNode.mark`); link counts are deliberately not shown there. Space settings are tabs as well (`?tab=members`)
+- Unknown addresses end at `NotFoundPage.svelte` (the `*notfound` route; signed-out visitors at the login). `p()`
+  with an empty `search: {}` builds a broken link ("…undefined"): leave `search` out instead
 - Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
 - `api/client.ts` — auth handling, `errorMessage()` to surface problem detail texts
 - `sdk/` — generated, do not edit (see API-first)

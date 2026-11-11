@@ -18,6 +18,7 @@
 	import { shownName } from '../utils/format';
 	import ImagePicker, { type ImageChange } from '../components/ImagePicker.svelte';
 	import { copyText } from '../utils/clipboard';
+	import DiscordWebhookSettings from '../components/DiscordWebhookSettings.svelte';
 
 	const spaceApi = new SpaceApi(apiConfig());
 	const inviteApi = new InviteApi(apiConfig());
@@ -43,10 +44,18 @@
 		{ value: 'general', label: 'General' },
 		{ value: 'members', label: 'Members' },
 		{ value: 'joining', label: 'Joining' },
+		{ value: 'integrations', label: 'Integrations' },
 		{ value: 'danger', label: 'Danger zone' },
 	] as const;
 	type Tab = (typeof TABS)[number]['value'];
 	const tab = $derived<Tab>(TABS.find((t) => t.value === route.search.tab)?.value ?? 'general');
+
+	/** The first tab has no `?tab=` (the router cannot build a link from an empty search). */
+	function tabHref(value: Tab): string {
+		return value === 'general'
+			? p('/space/:spaceId/settings', { params: { spaceId } })
+			: p('/space/:spaceId/settings', { params: { spaceId }, search: { tab: value } });
+	}
 
 	let space = $state<SpaceDto | null>(null);
 	let members = $state<SpaceMemberDto[]>([]);
@@ -321,9 +330,9 @@
 		<Alert color="red">{loadError}</Alert>
 	{:else if space}
 		<nav class="flex gap-1 overflow-x-auto border-b border-gray-200 dark:border-gray-800" aria-label="Space settings">
-			{#each TABS.filter((t) => t.value !== 'joining' || canManageMembers) as item (item.value)}
+			{#each TABS.filter((t) => (t.value !== 'joining' || canManageMembers) && (t.value !== 'integrations' || canEditSpace)) as item (item.value)}
 				<a
-					href={p('/space/:spaceId/settings', { params: { spaceId }, search: item.value === 'general' ? {} : { tab: item.value } })}
+					href={tabHref(item.value)}
 					aria-current={tab === item.value ? 'page' : undefined}
 					class="-mb-px shrink-0 border-b-2 px-3 py-2 text-sm font-medium {tab === item.value
 						? item.value === 'danger'
@@ -592,6 +601,12 @@
 						{/each}
 					</ul>
 				{/if}
+			</section>
+		{/if}
+
+		{#if tab === 'integrations' && canEditSpace}
+			<section class="rounded-xl border border-gray-200 bg-white p-6 dark:border-gray-800 dark:bg-gray-900">
+				<DiscordWebhookSettings {spaceId} />
 			</section>
 		{/if}
 

@@ -1209,6 +1209,12 @@ type SetReactionDto struct {
 	Reacted bool `json:"reacted"`
 }
 
+// SetSpaceWebhookRequest defines model for SetSpaceWebhookRequest.
+type SetSpaceWebhookRequest struct {
+	// Url https://discord.com/api/webhooks/…, from the channel settings in Discord (Integrations → Webhooks)
+	Url string `json:"url"`
+}
+
 // SharedBookmarkDto defines model for SharedBookmarkDto.
 type SharedBookmarkDto struct {
 	CreatedAt *time.Time `json:"createdAt,omitempty"`
@@ -1327,6 +1333,15 @@ type SpaceMemberRoleEnum string
 
 // SpacePermissionEnum defines model for SpacePermissionEnum.
 type SpacePermissionEnum string
+
+// SpaceWebhookDto defines model for SpaceWebhookDto.
+type SpaceWebhookDto struct {
+	// FailedAt Discord said the webhook no longer exists; nothing is posted until a new one is set or a test works
+	FailedAt *time.Time `json:"failedAt,omitempty"`
+
+	// Url The address of the Discord webhook; missing without one
+	Url *string `json:"url,omitempty"`
+}
 
 // StartSpaceDto defines model for StartSpaceDto.
 type StartSpaceDto struct {
@@ -1689,6 +1704,9 @@ type PurgeTrashJSONRequestBody = TrashSelectionDto
 // RestoreFromTrashJSONRequestBody defines body for RestoreFromTrash for application/json ContentType.
 type RestoreFromTrashJSONRequestBody = TrashSelectionDto
 
+// SetSpaceWebhookJSONRequestBody defines body for SetSpaceWebhook for application/json ContentType.
+type SetSpaceWebhookJSONRequestBody = SetSpaceWebhookRequest
+
 // SetAvatarMultipartRequestBody defines body for SetAvatar for multipart/form-data ContentType.
 type SetAvatarMultipartRequestBody = ImageUpload
 
@@ -2015,6 +2033,18 @@ type ServerInterface interface {
 	// RestoreFromTrash Restore deleted links and collections
 	// (POST /v1/spaces/{spaceId}/trash/restore)
 	RestoreFromTrash(ctx echo.Context, spaceId ID) error
+	// DeleteSpaceWebhook Remove the Discord webhook of the space
+	// (DELETE /v1/spaces/{spaceId}/webhook)
+	DeleteSpaceWebhook(ctx echo.Context, spaceId ID) error
+	// GetSpaceWebhook The Discord webhook new links of the space are posted to (needs EDIT_SPACE, the address is a secret)
+	// (GET /v1/spaces/{spaceId}/webhook)
+	GetSpaceWebhook(ctx echo.Context, spaceId ID) error
+	// SetSpaceWebhook Set the Discord webhook of the space: links saved from now on are posted to its channel, except those in private collections and imported ones
+	// (PUT /v1/spaces/{spaceId}/webhook)
+	SetSpaceWebhook(ctx echo.Context, spaceId ID) error
+	// TestSpaceWebhook Post a test message to the Discord webhook of the space; 400 with the reason if Discord refuses it
+	// (POST /v1/spaces/{spaceId}/webhook/test)
+	TestSpaceWebhook(ctx echo.Context, spaceId ID) error
 	// MarkSpaceWelcomed Mark the welcome of the space as seen by the current user
 	// (POST /v1/spaces/{spaceId}/welcomed)
 	MarkSpaceWelcomed(ctx echo.Context, spaceId ID) error
@@ -3587,6 +3617,70 @@ func (w *ServerInterfaceWrapper) RestoreFromTrash(ctx echo.Context) error {
 	return err
 }
 
+// DeleteSpaceWebhook converts echo context to params.
+func (w *ServerInterfaceWrapper) DeleteSpaceWebhook(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DeleteSpaceWebhook(ctx, spaceId)
+	return err
+}
+
+// GetSpaceWebhook converts echo context to params.
+func (w *ServerInterfaceWrapper) GetSpaceWebhook(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetSpaceWebhook(ctx, spaceId)
+	return err
+}
+
+// SetSpaceWebhook converts echo context to params.
+func (w *ServerInterfaceWrapper) SetSpaceWebhook(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SetSpaceWebhook(ctx, spaceId)
+	return err
+}
+
+// TestSpaceWebhook converts echo context to params.
+func (w *ServerInterfaceWrapper) TestSpaceWebhook(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "spaceId" -------------
+	var spaceId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "spaceId", ctx.Param("spaceId"), &spaceId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter spaceId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.TestSpaceWebhook(ctx, spaceId)
+	return err
+}
+
 // MarkSpaceWelcomed converts echo context to params.
 func (w *ServerInterfaceWrapper) MarkSpaceWelcomed(ctx echo.Context) error {
 	var err error
@@ -3886,6 +3980,10 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/members", wrapper.GetSpaceMembers, options.OperationMiddlewares["getSpaceMembers"]...)
 	router.DELETE(options.BaseURL+"/v1/spaces/:spaceId/members/:userId", wrapper.RemoveSpaceMember, options.OperationMiddlewares["removeSpaceMember"]...)
 	router.PUT(options.BaseURL+"/v1/spaces/:spaceId/members/:userId", wrapper.UpdateSpaceMember, options.OperationMiddlewares["updateSpaceMember"]...)
+	router.DELETE(options.BaseURL+"/v1/spaces/:spaceId/webhook", wrapper.DeleteSpaceWebhook, options.OperationMiddlewares["deleteSpaceWebhook"]...)
+	router.GET(options.BaseURL+"/v1/spaces/:spaceId/webhook", wrapper.GetSpaceWebhook, options.OperationMiddlewares["getSpaceWebhook"]...)
+	router.PUT(options.BaseURL+"/v1/spaces/:spaceId/webhook", wrapper.SetSpaceWebhook, options.OperationMiddlewares["setSpaceWebhook"]...)
+	router.POST(options.BaseURL+"/v1/spaces/:spaceId/webhook/test", wrapper.TestSpaceWebhook, options.OperationMiddlewares["testSpaceWebhook"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/invites", wrapper.GetSpaceInvites, options.OperationMiddlewares["getSpaceInvites"]...)
 	router.GET(options.BaseURL+"/v1/spaces/:spaceId/collections", wrapper.GetCollections, options.OperationMiddlewares["getCollections"]...)
 	router.POST(options.BaseURL+"/v1/spaces/:spaceId/collections", wrapper.CreateCollection, options.OperationMiddlewares["createCollection"]...)

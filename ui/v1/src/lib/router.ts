@@ -94,6 +94,9 @@ export const { p, navigate, isActive, route } = createRouter({
 		'/': () => import('./pages/VerifyEmailPage.svelte'),
 		meta: { public: true },
 	},
+	// Everything else: an address that leads nowhere (a typo, an old link). Signed-out visitors land on the login
+	// like for any page that is not public
+	'*notfound': () => import('./pages/NotFoundPage.svelte'),
 	hooks: {
 		beforeLoad({ meta }) {
 			if (!meta.public && !isAuthenticated()) {
