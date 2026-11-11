@@ -17,6 +17,7 @@
 	import CollectionAccessModal from '../components/CollectionAccessModal.svelte';
 	import ImportCollectionModal from '../components/ImportCollectionModal.svelte';
 	import ShareCollectionModal from '../components/ShareCollectionModal.svelte';
+	import { ResponseError } from 'ragbag-frontend-sdk';
 	import { DotsVerticalOutline, FilterOutline, FolderOutline, GlobeOutline, LockOutline, PlusOutline } from 'flowbite-svelte-icons';
 	import { p, route, navigate } from '../router';
 	import { Button, Input, Alert, Modal, Label, Select, Textarea } from 'flowbite-svelte';
@@ -63,6 +64,8 @@
 	const visibleBookmarks = $derived(sortLinks(filterByTags(bookmarks, selectedTags), preferences.linkSort));
 	let loading = $state(true);
 	let error = $state('');
+	/** The collection does not exist (anymore), or not for this user. */
+	let missing = $state(false);
 	/** Errors of individual actions; unlike `error` they don't replace the page. */
 	let actionError = $state('');
 	let modalError = $state('');
@@ -181,6 +184,7 @@
 		loadedId = id;
 		loading = true;
 		error = '';
+		missing = false;
 		try {
 			const [col, bm] = await Promise.all([
 				collectionApi.getCollection({ collectionId: id }),
@@ -190,7 +194,9 @@
 			bookmarks = bm;
 			// The links keep their "New" badge until the page is left; the counters go away right now
 			if (bm.some((b) => b.isNew)) markSeen(id);
-		} catch {
+		} catch (err) {
+			// Deleted, private or locked ones answer the same 404 as an address that never existed
+			missing = err instanceof ResponseError && err.response.status === 404;
 			error = 'Failed to load collection.';
 		} finally {
 			loading = false;
@@ -613,6 +619,14 @@
 <div>
 	{#if loading}
 		<p class="text-gray-500 dark:text-gray-400">Loading...</p>
+	{:else if missing}
+		<div class="mx-auto mt-16 max-w-md text-center">
+			<p class="text-lg font-semibold">This collection does not exist</p>
+			<p class="mt-2 text-sm text-gray-500 dark:text-gray-400">
+				It may have been deleted or moved to the trash, or it is private or locked and not visible for you right now.
+			</p>
+			<Button class="mt-6" color="light" href={p('/space/:spaceId', { params: { spaceId } })}>Back to the dashboard</Button>
+		</div>
 	{:else if error}
 		<Alert color="red" class="mb-4">{error}</Alert>
 	{:else if collection}
