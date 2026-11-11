@@ -40,6 +40,8 @@ type Server struct {
 	feeds  *feedCache
 	admins map[string]bool
 	limits *limits
+	// webhookSender posts new links to the Discord channels of spaces
+	webhookSender WebhookSender
 	// mailer sends confirmation and reset links, nil without SMTP_HOST
 	mailer mail.Sender
 	// mails paces them per account, also without rate limits: nobody fills somebody else's inbox
@@ -56,15 +58,16 @@ func New(cfg config.Config, st *store.Store, version string) (*Server, error) {
 		admins[strings.ToLower(name)] = true
 	}
 	srv := &Server{
-		cfg:     cfg,
-		store:   st,
-		tokens:  auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
-		secrets: auth.NewSecretBox(cfg.JWTSecret, "two-factor"),
-		fetch:   fetch.NewClient(cfg.AllowPrivateHosts),
-		feeds:   newFeedCache(),
-		admins:  admins,
-		mails:   newLimiter(20*time.Minute, 3),
-		version: version,
+		cfg:           cfg,
+		store:         st,
+		tokens:        auth.NewTokens(cfg.JWTSecret, cfg.JWTIssuer, cfg.AccessTokenTTL, cfg.RefreshTokenTTL),
+		secrets:       auth.NewSecretBox(cfg.JWTSecret, "two-factor"),
+		webhookSender: postJSON,
+		fetch:         fetch.NewClient(cfg.AllowPrivateHosts),
+		feeds:         newFeedCache(),
+		admins:        admins,
+		mails:         newLimiter(20*time.Minute, 3),
+		version:       version,
 	}
 	if cfg.RateLimits {
 		srv.limits = newLimits()

@@ -274,6 +274,7 @@ func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
 	if err := s.store.CreateBookmark(ctxOf(c), bookmark); err != nil {
 		return err
 	}
+	s.announceLink(c, bookmark.ID)
 	return s.respondBookmark(c, bookmark.ID)
 }
 

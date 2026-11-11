@@ -1665,6 +1665,104 @@ paths:
         '409':
           $ref: '#/components/responses/Conflict'
 
+  /v1/spaces/{spaceId}/webhook:
+    get:
+      summary: The Discord webhook new links of the space are posted to (needs EDIT_SPACE, the address is a secret)
+      operationId: getSpaceWebhook
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceWebhookDto'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    put:
+      summary: >
+        Set the Discord webhook of the space: links saved from now on are posted to its channel, except those in
+        private collections and imported ones
+      operationId: setSpaceWebhook
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetSpaceWebhookRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SpaceWebhookDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    delete:
+      summary: Remove the Discord webhook of the space
+      operationId: deleteSpaceWebhook
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/spaces/{spaceId}/webhook/test:
+    post:
+      summary: Post a test message to the Discord webhook of the space; 400 with the reason if Discord refuses it
+      operationId: testSpaceWebhook
+      tags:
+        - Space
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: spaceId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
   /v1/spaces/{spaceId}/invites:
     get:
       summary: List the open invites of a space
@@ -3679,6 +3777,24 @@ components:
           $ref: '#/components/schemas/ID'
           nullable: true
           description: A space the user is a member of, or null for the last visited one
+
+    SpaceWebhookDto:
+      properties:
+        url:
+          type: string
+          description: The address of the Discord webhook; missing without one
+        failedAt:
+          type: string
+          format: date-time
+          description: Discord said the webhook no longer exists; nothing is posted until a new one is set or a test works
+
+    SetSpaceWebhookRequest:
+      properties:
+        url:
+          type: string
+          description: https://discord.com/api/webhooks/…, from the channel settings in Discord (Integrations → Webhooks)
+      required:
+        - url
 
     ApiTokenScope:
       type: string

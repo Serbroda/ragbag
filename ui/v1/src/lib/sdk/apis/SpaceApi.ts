@@ -29,6 +29,11 @@ import {
     DiscoverableSpaceDtoToJSON,
 } from '../models/DiscoverableSpaceDto';
 import {
+    type SetSpaceWebhookRequest,
+    SetSpaceWebhookRequestFromJSON,
+    SetSpaceWebhookRequestToJSON,
+} from '../models/SetSpaceWebhookRequest';
+import {
     type SpaceDto,
     SpaceDtoFromJSON,
     SpaceDtoToJSON,
@@ -38,6 +43,11 @@ import {
     SpaceMemberDtoFromJSON,
     SpaceMemberDtoToJSON,
 } from '../models/SpaceMemberDto';
+import {
+    type SpaceWebhookDto,
+    SpaceWebhookDtoFromJSON,
+    SpaceWebhookDtoToJSON,
+} from '../models/SpaceWebhookDto';
 import {
     type TagCountDto,
     TagCountDtoFromJSON,
@@ -78,6 +88,13 @@ export interface DeleteSpaceRequest {
     spaceId: string;
 }
 
+export interface DeleteSpaceWebhookRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
 export interface DiscoverSpacesRequest {
     /**
      * Filters by name and description
@@ -107,6 +124,13 @@ export interface GetSpaceNewsRequest {
 }
 
 export interface GetSpaceTagsRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+}
+
+export interface GetSpaceWebhookRequest {
     /**
      * 
      */
@@ -201,6 +225,24 @@ export interface SetSpaceIconRequest {
      * 
      */
     url?: string;
+}
+
+export interface SetSpaceWebhookOperationRequest {
+    /**
+     * 
+     */
+    spaceId: string;
+    /**
+     * 
+     */
+    setSpaceWebhookRequest: SetSpaceWebhookRequest;
+}
+
+export interface TestSpaceWebhookRequest {
+    /**
+     * 
+     */
+    spaceId: string;
 }
 
 export interface UpdateSpaceRequest {
@@ -339,6 +381,58 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async deleteSpace(requestParameters: DeleteSpaceRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.deleteSpaceRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for deleteSpaceWebhook without sending the request
+     */
+    async deleteSpaceWebhookRequestOpts(requestParameters: DeleteSpaceWebhookRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling deleteSpaceWebhook().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/webhook`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Remove the Discord webhook of the space
+     */
+    async deleteSpaceWebhookRaw(requestParameters: DeleteSpaceWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.deleteSpaceWebhookRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Remove the Discord webhook of the space
+     */
+    async deleteSpaceWebhook(requestParameters: DeleteSpaceWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.deleteSpaceWebhookRaw(requestParameters, initOverrides);
     }
 
     /**
@@ -601,6 +695,59 @@ export class SpaceApi extends runtime.BaseAPI {
      */
     async getSpaceTags(requestParameters: GetSpaceTagsRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<Array<TagCountDto>> {
         const response = await this.getSpaceTagsRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for getSpaceWebhook without sending the request
+     */
+    async getSpaceWebhookRequestOpts(requestParameters: GetSpaceWebhookRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling getSpaceWebhook().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/webhook`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * The Discord webhook new links of the space are posted to (needs EDIT_SPACE, the address is a secret)
+     */
+    async getSpaceWebhookRaw(requestParameters: GetSpaceWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpaceWebhookDto>> {
+        const requestOptions = await this.getSpaceWebhookRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpaceWebhookDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The Discord webhook new links of the space are posted to (needs EDIT_SPACE, the address is a secret)
+     */
+    async getSpaceWebhook(requestParameters: GetSpaceWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceWebhookDto> {
+        const response = await this.getSpaceWebhookRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -1226,6 +1373,121 @@ export class SpaceApi extends runtime.BaseAPI {
     async setSpaceIcon(requestParameters: SetSpaceIconRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceDto> {
         const response = await this.setSpaceIconRaw(requestParameters, initOverrides);
         return await response.value();
+    }
+
+    /**
+     * Creates request options for setSpaceWebhook without sending the request
+     */
+    async setSpaceWebhookRequestOpts(requestParameters: SetSpaceWebhookOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling setSpaceWebhook().'
+            );
+        }
+
+        if (requestParameters['setSpaceWebhookRequest'] == null) {
+            throw new runtime.RequiredError(
+                'setSpaceWebhookRequest',
+                'Required parameter "setSpaceWebhookRequest" was null or undefined when calling setSpaceWebhook().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/webhook`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'PUT',
+            headers: headerParameters,
+            query: queryParameters,
+            body: SetSpaceWebhookRequestToJSON(requestParameters['setSpaceWebhookRequest']),
+        };
+    }
+
+    /**
+     * Set the Discord webhook of the space: links saved from now on are posted to its channel, except those in private collections and imported ones 
+     */
+    async setSpaceWebhookRaw(requestParameters: SetSpaceWebhookOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<SpaceWebhookDto>> {
+        const requestOptions = await this.setSpaceWebhookRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => SpaceWebhookDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Set the Discord webhook of the space: links saved from now on are posted to its channel, except those in private collections and imported ones 
+     */
+    async setSpaceWebhook(requestParameters: SetSpaceWebhookOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<SpaceWebhookDto> {
+        const response = await this.setSpaceWebhookRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for testSpaceWebhook without sending the request
+     */
+    async testSpaceWebhookRequestOpts(requestParameters: TestSpaceWebhookRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['spaceId'] == null) {
+            throw new runtime.RequiredError(
+                'spaceId',
+                'Required parameter "spaceId" was null or undefined when calling testSpaceWebhook().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/spaces/{spaceId}/webhook/test`;
+        urlPath = urlPath.replace('{spaceId}', encodeURIComponent(String(requestParameters['spaceId'])));
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Post a test message to the Discord webhook of the space; 400 with the reason if Discord refuses it
+     */
+    async testSpaceWebhookRaw(requestParameters: TestSpaceWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.testSpaceWebhookRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Post a test message to the Discord webhook of the space; 400 with the reason if Discord refuses it
+     */
+    async testSpaceWebhook(requestParameters: TestSpaceWebhookRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.testSpaceWebhookRaw(requestParameters, initOverrides);
     }
 
     /**

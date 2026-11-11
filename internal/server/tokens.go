@@ -33,8 +33,8 @@ const (
 	tokenTouchInterval = time.Minute
 )
 
-// tokenNever: what no token may see or do, whatever its scope. Invites are links that let others join.
-var tokenNever = []string{"spaces/discover", "spaces/*/invites"}
+// tokenNever: what no token may see or do (invites and the webhook address are secrets that let others in), whatever its scope. Invites are links that let others join.
+var tokenNever = []string{"spaces/discover", "spaces/*/invites", "spaces/*/webhook", "spaces/*/webhook/test"}
 
 // tokenNoWrite: changes that manage a space or decide who sees what, left to signed-in people.
 var tokenNoWrite = []string{

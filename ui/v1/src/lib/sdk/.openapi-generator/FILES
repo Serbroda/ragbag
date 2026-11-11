@@ -75,6 +75,7 @@ models/ResetPasswordRequest.ts
 models/ResolveReportRequest.ts
 models/SetPinDto.ts
 models/SetReactionDto.ts
+models/SetSpaceWebhookRequest.ts
 models/SharedBookmarkDto.ts
 models/SharedCollectionDto.ts
 models/SharedCollectionRefDto.ts
@@ -84,6 +85,7 @@ models/SpaceDto.ts
 models/SpaceMemberDto.ts
 models/SpaceMemberRoleEnum.ts
 models/SpacePermissionEnum.ts
+models/SpaceWebhookDto.ts
 models/StartSpaceDto.ts
 models/TagCountDto.ts
 models/TrashDto.ts
