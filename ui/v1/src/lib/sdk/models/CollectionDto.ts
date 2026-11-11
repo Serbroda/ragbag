@@ -59,6 +59,12 @@ export interface CollectionDto {
      * Locked by the current user (only listed while unlocked); sub-collections inherit it
      */
     locked?: boolean;
+    /**
+     * Set for smart collections: they hold neither links nor sub-collections, listing their bookmarks
+     * returns what this search finds in the whole space (like the search, for the current user)
+     * 
+     */
+    query?: string;
 }
 
 /**
@@ -90,6 +96,7 @@ export function CollectionDtoFromJSONTyped(json: any, ignoreDiscriminator: boole
         'newCount': json['newCount'] == null ? undefined : json['newCount'],
         'shared': json['shared'] == null ? undefined : json['shared'],
         'locked': json['locked'] == null ? undefined : json['locked'],
+        'query': json['query'] == null ? undefined : json['query'],
     };
 }
 
@@ -114,6 +121,7 @@ export function CollectionDtoToJSONTyped(value?: CollectionDto | null, ignoreDis
         'newCount': value['newCount'],
         'shared': value['shared'],
         'locked': value['locked'],
+        'query': value['query'],
     };
 }
 

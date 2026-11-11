@@ -28,7 +28,7 @@ export interface ImportResultDto {
      */
     formatVersion: number;
     /**
-     * Ragbag version that exported the file
+     * Ragbag version that exported the file, none for the bookmarks file of a browser
      */
     appVersion?: string;
     /**

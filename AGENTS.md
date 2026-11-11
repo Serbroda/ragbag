@@ -124,7 +124,14 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   new parent and optionally `beforeId` (a collection below that parent), otherwise the collection goes to the end.
   In the sidebar the upper/lower quarter of a row drops in front of/behind it, the middle into it.
 - **Links** move between collections of the same space only (`collectionId` in the update, needs
-  `CREATE_BOOKMARKS` on the target). A search for a single `#tag` matches that tag exactly.
+  `CREATE_BOOKMARKS` on the target). A search matches every term (`store.SearchTerms`: words, `"phrases"`, at
+  most 8); a `#tag` term matches that tag exactly.
+- **Smart collections** (`smart.go`, `collections.query`, set when creating, only the search changes later): no
+  links of their own, `GET /collections/{id}/bookmarks` answers with the search over the whole space instead
+  (so `hiddenCollections` applies per member). Everything that would put something into one answers 400
+  (`holdsLinks`: creating or moving links and collections, imports); they cannot be shared and are left out of
+  public links of a collection above them. Exports carry the `query`. Private, locked, trash and order work
+  like for any collection. In the frontend pick targets with `flattenTargets()`, never `flattenTree()`.
 - **New links** (`activity.go`) are links *others* added after the user last looked at the collection
   (`collection_visits`, before the first visit the time they joined the space). They feed `newCount` in the space
   list and the collection tree, `isNew` when listing a collection and `GET /spaces/{id}/news` (the bell in the header); hidden collections
@@ -237,7 +244,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   it adds a table or a reference cycle.
 - **Export/import** (`exchange.go`): versioned JSON (`format: ragbag-collection`, `format_version`). Raise the
   version on incompatible changes and convert older files in `parseExchange`. The format is compatible with
-  exports of the former Java version, which is the migration path to this one.
+  exports of the former Java version, which is the migration path to this one. Sent as `text/html` the import
+  takes a browser's bookmarks file instead (`exchange_html.go`, Netscape format read token by token): it is
+  converted to the same `exchangeFile`, so limits, merging, quotas and the preview are shared.
 
 ### Database migrations
 Fresh schema per dialect in `internal/db/migrations/{sqlite,postgres}`; add a new numbered file to both for every

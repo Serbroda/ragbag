@@ -72,6 +72,9 @@ func (s *Server) ShareCollection(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return err
 	}
+	if collection.Query != nil {
+		return badRequest("Smart collections cannot be shared publicly")
+	}
 	_, byID, err := s.spaceCollections(c, collection.SpaceID)
 	if err != nil {
 		return err
@@ -139,7 +142,8 @@ func (s *Server) sharedCollection(c echo.Context, token string, collectionID *st
 	}
 	path := []*store.Collection{}
 	for current := target; ; {
-		if current.Restricted || current.DeletedAt != nil {
+		// Smart collections show links from all over the space, so they are never part of a public link
+		if current.Restricted || current.DeletedAt != nil || current.Query != nil {
 			return nil, notFound(shareNotFound)
 		}
 		path = append([]*store.Collection{current}, path...)
@@ -163,7 +167,7 @@ func (s *Server) sharedCollection(c echo.Context, token string, collectionID *st
 	publicChildren := map[string][]*store.Collection{}
 	for i := range collections {
 		collection := &collections[i]
-		if collection.ParentID != nil && !collection.Restricted && collection.DeletedAt == nil {
+		if collection.ParentID != nil && !collection.Restricted && collection.DeletedAt == nil && collection.Query == nil {
 			publicChildren[*collection.ParentID] = append(publicChildren[*collection.ParentID], collection)
 		}
 	}

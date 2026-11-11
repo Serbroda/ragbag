@@ -38,13 +38,15 @@
 	function zoneAt(e: DragEvent): DropZone {
 		const rect = (e.currentTarget as HTMLElement).getBoundingClientRect();
 		const y = (e.clientY - rect.top) / rect.height;
+		// Nothing goes into a smart collection
+		if (node.query) return y < 0.5 ? 'before' : 'after';
 		return y < 0.25 ? 'before' : y > 0.75 ? 'after' : 'into';
 	}
 	const openMenu = getContext<((node: TreeNode, x: number, y: number) => void) | undefined>('collection-menu');
 
 	/** A link dragged from a collection page can be dropped on any other collection. */
 	const acceptsBookmark = $derived(
-		!!node.id && !!bookmarkDrag.current && bookmarkDrag.current.collectionId !== node.id,
+		!!node.id && !node.query && !!bookmarkDrag.current && bookmarkDrag.current.collectionId !== node.id,
 	);
 	let expandTimer: ReturnType<typeof setTimeout> | undefined;
 

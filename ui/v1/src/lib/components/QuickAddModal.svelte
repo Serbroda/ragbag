@@ -6,7 +6,7 @@
 	import { navigate } from '../router';
 	import { showToast } from '../stores/toast.svelte';
 	import LinkFormFields from './LinkFormFields.svelte';
-	import { flattenTree, type TreeNode } from './tree';
+	import { flattenTargets, type TreeNode } from './tree';
 
 	/**
 	 * Adding a link without opening a collection first (from the dashboard): the collection is picked in the
@@ -20,7 +20,7 @@
 
 	const collectionTree = getContext<(() => TreeNode[]) | undefined>('collection-tree');
 	const reloadSidebar = getContext<(() => void) | undefined>('reload-collections');
-	const options = $derived(flattenTree(collectionTree?.() ?? []));
+	const options = $derived(flattenTargets(collectionTree?.() ?? []));
 
 	let collectionId = $state('');
 	let url = $state('');

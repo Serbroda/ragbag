@@ -2023,6 +2023,9 @@ paths:
   /v1/collections/{collectionId}/import:
     post:
       summary: Import an export file into a collection; sub-collections with the same name are merged
+      description: |
+        Takes a Ragbag export (JSON) or, as `text/html`, the bookmarks file browsers and most bookmark services
+        export ("Netscape bookmark file"): its folders become sub-collections.
       operationId: importCollection
       tags:
         - Collection
@@ -2046,6 +2049,9 @@ paths:
           application/json:
             schema:
               type: object
+          text/html:
+            schema:
+              type: string
       responses:
         '200':
           description: OK
@@ -3730,6 +3736,11 @@ components:
         locked:
           type: boolean
           description: Locked by the current user (only listed while unlocked); sub-collections inherit it
+        query:
+          type: string
+          description: |
+            Set for smart collections: they hold neither links nor sub-collections, listing their bookmarks
+            returns what this search finds in the whole space (like the search, for the current user)
       required:
         - id
         - name
@@ -3760,6 +3771,9 @@ components:
           description: Further space members who may see a private collection
           items:
             $ref: '#/components/schemas/ID'
+        query:
+          type: string
+          description: Creates a smart collection showing the results of this search (at most 200 characters)
       required:
         - name
 
@@ -3816,7 +3830,7 @@ components:
           type: integer
         appVersion:
           type: string
-          description: Ragbag version that exported the file
+          description: Ragbag version that exported the file, none for the bookmarks file of a browser
         collectionsCreated:
           type: integer
         collectionsMerged:
@@ -3856,6 +3870,9 @@ components:
         description:
           type: string
           description: Omitted keeps the description, an empty string removes it
+        query:
+          type: string
+          description: New search of a smart collection; omitted keeps it, other collections answer 400
       required:
         - name
 

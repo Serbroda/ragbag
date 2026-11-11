@@ -687,6 +687,10 @@ type CollectionDto struct {
 	// ParentId UUID
 	ParentId *ID `json:"parentId,omitempty"`
 
+	// Query Set for smart collections: they hold neither links nor sub-collections, listing their bookmarks
+	// returns what this search finds in the whole space (like the search, for the current user)
+	Query *string `json:"query,omitempty"`
+
 	// Restricted Only the members listed in the collection's access can see it (and everything inside)
 	Restricted *bool `json:"restricted,omitempty"`
 
@@ -752,6 +756,9 @@ type CreateCollectionDto struct {
 
 	// ParentId UUID
 	ParentId *ID `json:"parentId,omitempty"`
+
+	// Query Creates a smart collection showing the results of this search (at most 200 characters)
+	Query *string `json:"query,omitempty"`
 
 	// Restricted Create the collection as private; the creator always has access
 	Restricted *bool `json:"restricted,omitempty"`
@@ -899,7 +906,7 @@ type ImageUpload struct {
 
 // ImportResultDto What an import did, or as preview would do
 type ImportResultDto struct {
-	// AppVersion Ragbag version that exported the file
+	// AppVersion Ragbag version that exported the file, none for the bookmarks file of a browser
 	AppVersion        *string `json:"appVersion,omitempty"`
 	BookmarksImported int     `json:"bookmarksImported"`
 
@@ -1344,6 +1351,9 @@ type UpdateCollectionDto struct {
 	// Description Omitted keeps the description, an empty string removes it
 	Description *string `json:"description,omitempty"`
 	Name        string  `json:"name"`
+
+	// Query New search of a smart collection; omitted keeps it, other collections answer 400
+	Query *string `json:"query,omitempty"`
 }
 
 // UpdateDashboardDto defines model for UpdateDashboardDto.

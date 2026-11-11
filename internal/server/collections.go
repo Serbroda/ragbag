@@ -17,7 +17,8 @@ const maxDescriptionLength = 500
 
 func collectionDto(c *store.Collection) api.CollectionDto {
 	restricted := c.Restricted
-	return api.CollectionDto{Id: c.ID, Name: c.Name, Description: c.Description, ParentId: c.ParentID, Restricted: &restricted}
+	return api.CollectionDto{Id: c.ID, Name: c.Name, Description: c.Description, ParentId: c.ParentID,
+		Restricted: &restricted, Query: c.Query}
 }
 
 // GetCollections returns the tree of all collections the user can see.
@@ -111,7 +112,11 @@ func (s *Server) CreateCollection(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
-	collection := &store.Collection{SpaceID: spaceID, Name: name, CreatedBy: currentUser(c)}
+	query, err := smartQuery(req.Query)
+	if err != nil {
+		return err
+	}
+	collection := &store.Collection{SpaceID: spaceID, Name: name, Query: query, CreatedBy: currentUser(c)}
 	err = s.store.InTx(ctxOf(c), func(tx *store.Store) error {
 		if err := s.checkCollectionQuota(ctxOf(c), tx, spaceID, 1); err != nil {
 			return err
@@ -123,6 +128,9 @@ func (s *Server) CreateCollection(c echo.Context, spaceID api.ID) error {
 			}
 			if parent.SpaceID != spaceID {
 				return badRequest("Parent collection belongs to a different space")
+			}
+			if err := holdsLinks(parent); err != nil {
+				return err
 			}
 			collection.ParentID = &parent.ID
 		}
@@ -186,7 +194,21 @@ func (s *Server) UpdateCollection(c echo.Context, collectionID api.ID) error {
 		}
 		collection.Description = nilIfEmpty(description)
 	}
-	if err := s.store.UpdateCollection(ctxOf(c), collectionID, name, collection.Description); err != nil {
+	// Only the search of a smart collection changes; a collection with links never becomes one
+	if req.Query != nil {
+		if collection.Query == nil {
+			return badRequest("Only smart collections have a search")
+		}
+		query, err := smartQuery(req.Query)
+		if err != nil {
+			return err
+		}
+		if query == nil {
+			return badRequest("The search of a smart collection must not be empty")
+		}
+		collection.Query = query
+	}
+	if err := s.store.UpdateCollection(ctxOf(c), collectionID, name, collection.Description, collection.Query); err != nil {
 		return err
 	}
 	collection.Name = name
@@ -214,6 +236,9 @@ func (s *Server) MoveCollection(c echo.Context, collectionID api.ID) error {
 			}
 			if parent.SpaceID != collection.SpaceID {
 				return badRequest("Parent collection belongs to a different space")
+			}
+			if err := holdsLinks(parent); err != nil {
+				return err
 			}
 			for ancestor := parent; ; {
 				if ancestor.ID == collectionID {

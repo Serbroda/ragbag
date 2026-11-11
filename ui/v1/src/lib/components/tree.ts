@@ -1,6 +1,6 @@
 import type { Component } from 'svelte';
 import type { CollectionDto } from 'ragbag-frontend-sdk';
-import { EyeSlashOutline, FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
+import { EyeSlashOutline, FilterOutline, FolderOutline, GlobeOutline, LockOutline } from 'flowbite-svelte-icons';
 import { p } from '../router';
 
 export interface TreeNode {
@@ -18,6 +18,8 @@ export interface TreeNode {
 	locked?: boolean;
 	/** Links directly in the collection that others added since the user last looked. */
 	newCount?: number;
+	/** Search of a smart collection, which shows its results and holds neither links nor sub-collections. */
+	query?: string;
 	icon?: Component<{ class?: string }>;
 	children?: TreeNode[];
 }
@@ -32,10 +34,13 @@ export function collectionToTreeNode(collection: CollectionDto, spaceId: string)
 			? EyeSlashOutline
 			: collection.restricted
 				? LockOutline
-				: collection.shared
-					? GlobeOutline
-					: FolderOutline,
+				: collection.query
+					? FilterOutline
+					: collection.shared
+						? GlobeOutline
+						: FolderOutline,
 		restricted: collection.restricted,
+		query: collection.query,
 		bookmarkCount: collection.bookmarkCount,
 		locked: collection.locked,
 		newCount: collection.newCount,
@@ -75,19 +80,26 @@ export interface FlatTreeOption {
 	id: string;
 	label: string;
 	depth: number;
+	/** Set for smart collections. */
+	query?: string;
 }
 
 export function flattenTree(nodes: TreeNode[], depth = 0): FlatTreeOption[] {
 	const result: FlatTreeOption[] = [];
 	for (const node of nodes) {
 		if (node.id) {
-			result.push({ id: node.id, label: node.label, depth });
+			result.push({ id: node.id, label: node.label, depth, query: node.query });
 		}
 		if (node.children) {
 			result.push(...flattenTree(node.children, depth + 1));
 		}
 	}
 	return result;
+}
+
+/** The collections that can take links or sub-collections: all but the smart ones. */
+export function flattenTargets(nodes: TreeNode[]): FlatTreeOption[] {
+	return flattenTree(nodes).filter((option) => !option.query);
 }
 
 /** Find a node by ID in the tree. */

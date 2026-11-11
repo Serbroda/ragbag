@@ -89,6 +89,15 @@ func (s *Server) GetBookmarks(c echo.Context, collectionID api.ID) error {
 	if err != nil {
 		return err
 	}
+	if collection.Query != nil {
+		// A smart collection: what its search finds in the space, for this user
+		hidden, err := s.hiddenCollections(ctxOf(c), s.store, collection.SpaceID, currentUser(c))
+		if err != nil {
+			return err
+		}
+		bookmarks, err := s.store.SearchBookmarks(ctxOf(c), collection.SpaceID, *collection.Query, keys(hidden))
+		return s.respondBookmarks(c, bookmarks, err)
+	}
 	bookmarks, err := s.store.BookmarksInCollection(ctxOf(c), collectionID)
 	if err != nil {
 		return err
@@ -214,7 +223,11 @@ func (s *Server) LookupBookmarks(c echo.Context, spaceID api.ID, params api.Look
 }
 
 func (s *Server) CreateBookmark(c echo.Context, collectionID api.ID) error {
-	if _, _, err := s.requireCollection(ctxOf(c), s.store, collectionID, currentUser(c), PermCreateBookmarks); err != nil {
+	collection, _, err := s.requireCollection(ctxOf(c), s.store, collectionID, currentUser(c), PermCreateBookmarks)
+	if err != nil {
+		return err
+	}
+	if err := holdsLinks(collection); err != nil {
 		return err
 	}
 	var req api.CreateBookmarkDto
@@ -285,6 +298,9 @@ func (s *Server) UpdateBookmark(c echo.Context, bookmarkID api.ID) error {
 		}
 		if target.SpaceID != bookmark.SpaceID {
 			return badRequest("Links can only be moved within their space")
+		}
+		if err := holdsLinks(target); err != nil {
+			return err
 		}
 		bookmark.CollectionID = target.ID
 	}

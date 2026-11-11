@@ -35,6 +35,10 @@ export interface CreateCollectionDto {
      * Further space members who may see a private collection
      */
     memberIds?: Array<string>;
+    /**
+     * Creates a smart collection showing the results of this search (at most 200 characters)
+     */
+    query?: string;
 }
 
 /**
@@ -59,6 +63,7 @@ export function CreateCollectionDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'parentId': json['parentId'] == null ? undefined : json['parentId'],
         'restricted': json['restricted'] == null ? undefined : json['restricted'],
         'memberIds': json['memberIds'] == null ? undefined : json['memberIds'],
+        'query': json['query'] == null ? undefined : json['query'],
     };
 }
 
@@ -77,6 +82,7 @@ export function CreateCollectionDtoToJSONTyped(value?: CreateCollectionDto | nul
         'parentId': value['parentId'],
         'restricted': value['restricted'],
         'memberIds': value['memberIds'],
+        'query': value['query'],
     };
 }
 

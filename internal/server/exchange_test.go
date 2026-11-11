@@ -3,6 +3,7 @@ package server_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/stretchr/testify/require"
 	"github.com/tidwall/gjson"
@@ -116,4 +117,83 @@ func TestContributorsMayNeitherExportNorImport(t *testing.T) {
 	f.join(contributor, f.space, "CONTRIBUTOR", f.owner)
 	f.export(contributor, f.root).expect(403)
 	f.importFile(contributor, f.root, f.export(f.owner, f.root).expect(200).Body, true).expect(403)
+}
+
+const browserBookmarks = `<!DOCTYPE NETSCAPE-Bookmark-file-1>
+<META HTTP-EQUIV="Content-Type" CONTENT="text/html; charset=UTF-8">
+<TITLE>Bookmarks</TITLE>
+<H1>Bookmarks</H1>
+<DL><p>
+    <DT><H3 ADD_DATE="1700000000" PERSONAL_TOOLBAR_FOLDER="true">Bookmarks bar</H3>
+    <DL><p>
+        <DT><A HREF="https://example.org/go" ADD_DATE="1700000000" ICON="data:image/png;base64,AAAA" TAGS="Go,dev">Go &amp; friends</A>
+        <DD>A language
+        <DT><H3>Recipes</H3>
+        <DD>Things to cook
+        <DL><p>
+            <DT><A HREF="https://example.org/soup" ADD_DATE="1700000001000">Soup</A>
+        </DL><p>
+        <DT><A HREF="place:sort=8&maxResults=10">Most visited</A>
+        <DT><A HREF="javascript:void(location.href='https://example.org')">Bookmarklet</A>
+    </DL><p>
+    <DT><A HREF="https://example.org/loose">Loose</A>
+</DL><p>`
+
+func (f *exchangeFixture) importBookmarks(s *session, collectionID, file string, preview bool) *request {
+	r := f.req("POST", "/api/v1/collections/%s/import", collectionID).as(s).query("preview", fmt.Sprint(preview)).json(file)
+	r.ctype = "text/html; charset=utf-8"
+	return r
+}
+
+func TestImportOfABrowsersBookmarksFile(t *testing.T) {
+	f := newExchangeFixture(t)
+	target := f.createCollection(f.owner, f.space, "Browser", "")
+
+	f.importBookmarks(f.owner, target, browserBookmarks, true).expect(200).has("preview", true).
+		has("collectionsCreated", 2).has("bookmarksImported", 3).has("bookmarksInvalid", 2)
+	f.req("GET", "/api/v1/collections/%s/bookmarks", target).as(f.owner).expect(200).has("#", 0)
+
+	f.importBookmarks(f.owner, target, browserBookmarks, false).expect(200).has("bookmarksImported", 3)
+	// Links outside of a folder land in the target itself
+	f.req("GET", "/api/v1/collections/%s/bookmarks", target).as(f.owner).expect(200).
+		has("#", 1).has("0.title", "Loose")
+	tree := f.req("GET", "/api/v1/spaces/%s/collections", f.space).as(f.owner).expect(200)
+	bar := tree.get(`#(name=="Browser").children.0`)
+	require.Equal(t, "Bookmarks bar", bar.Get("name").String(), tree.Body)
+	require.Equal(t, "Recipes", bar.Get("children.0.name").String())
+	require.Equal(t, "Things to cook", bar.Get("children.0.description").String())
+
+	links := f.req("GET", "/api/v1/collections/%s/bookmarks", bar.Get("id").String()).as(f.owner).expect(200)
+	links.has("#", 1).has("0.title", "Go & friends").has("0.description", "A language")
+	requireTime(t, "2023-11-14T22:13:20Z", links.str("0.createdAt"))
+	require.ElementsMatch(t, []string{"Go", "dev"}, []string{links.str("0.tags.0"), links.str("0.tags.1")})
+	// Dates in milliseconds are understood as well
+	soup := f.req("GET", "/api/v1/collections/%s/bookmarks", bar.Get("children.0.id").String()).as(f.owner).expect(200)
+	requireTime(t, "2023-11-14T22:13:21Z", soup.has("0.title", "Soup").str("0.createdAt"))
+
+	// Again: folders are merged, known links skipped
+	f.importBookmarks(f.owner, target, browserBookmarks, false).expect(200).
+		has("collectionsCreated", 0).has("collectionsMerged", 2).has("bookmarksImported", 0).has("bookmarksSkipped", 3)
+}
+
+// requireTime compares instants: PostgreSQL answers in the session's time zone, SQLite in UTC.
+func requireTime(t *testing.T, expected, actual string) {
+	t.Helper()
+	want, err := time.Parse(time.RFC3339, expected)
+	require.NoError(t, err)
+	got, err := time.Parse(time.RFC3339, actual)
+	require.NoError(t, err)
+	require.True(t, want.Equal(got), "expected %s, got %s", expected, actual)
+}
+
+func TestImportRejectsHTMLWithoutBookmarks(t *testing.T) {
+	f := newExchangeFixture(t)
+	res := f.importBookmarks(f.owner, f.root, `<html><body><p>Hello</p></body></html>`, false).expect(400)
+	require.Contains(t, res.str("detail"), "Not a bookmarks file")
+	// Pocket's export has lists instead of folders
+	f.importBookmarks(f.owner, f.root, `<h1>Unread</h1><ul><li><a href="https://example.org/pocket" time_added="1700000000" tags="later">Pocket</a></li></ul>`,
+		false).expect(200).has("bookmarksImported", 1).has("collectionsCreated", 0)
+	contributor := f.register()
+	f.join(contributor, f.space, "CONTRIBUTOR", f.owner)
+	f.importBookmarks(contributor, f.root, browserBookmarks, true).expect(403)
 }
