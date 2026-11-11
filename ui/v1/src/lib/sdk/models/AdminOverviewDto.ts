@@ -76,6 +76,10 @@ export interface AdminOverviewDto {
      */
     openReports: number;
     /**
+     * Accounts an admin made Pro
+     */
+    grantedPro?: number;
+    /**
      * 
      */
     settings: AdminSettingsDto;
@@ -134,6 +138,7 @@ export function AdminOverviewDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'publicLinks': json['publicLinks'],
         'imageBytes': json['imageBytes'],
         'openReports': json['openReports'],
+        'grantedPro': json['grantedPro'] == null ? undefined : json['grantedPro'],
         'settings': AdminSettingsDtoFromJSON(json['settings']),
     };
 }
@@ -161,6 +166,7 @@ export function AdminOverviewDtoToJSONTyped(value?: AdminOverviewDto | null, ign
         'publicLinks': value['publicLinks'],
         'imageBytes': value['imageBytes'],
         'openReports': value['openReports'],
+        'grantedPro': value['grantedPro'],
         'settings': AdminSettingsDtoToJSON(value['settings']),
     };
 }

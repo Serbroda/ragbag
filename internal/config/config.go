@@ -33,7 +33,9 @@ type Config struct {
 	CORSAllowedOrigins []string
 	// RateLimits slow down password guessing, bot sign-ups and floods (per IP, user and account)
 	RateLimits bool
-	Quotas     Quotas
+	// Quotas apply to everybody, or with Plans.Enabled to the Free plan
+	Quotas Quotas
+	Plans  Plans
 	// Mail is used when Mail.Host is set: confirming new accounts and resetting passwords by email
 	Mail mail.Config
 	// PublicURL is the address the instance is reached at, for links in emails (never taken from a request)
@@ -41,8 +43,10 @@ type Config struct {
 	// LegalURLs point to legal pages elsewhere (IMPRINT_URL, PRIVACY_URL, TERMS_URL), by page; without one
 	// the page is DATA_DIR/legal/<page>.md
 	LegalURLs map[string]string
-	Backups   Backups
-	Log       logging.Config
+	// SupportURL is a donation page (Ko-fi & co.) linked in the app; donations unlock nothing
+	SupportURL string
+	Backups    Backups
+	Log        logging.Config
 	// AnonymizeIPs logs IPv4 addresses without their last byte and IPv6 ones by their /48 (rate limits still
 	// count the full address)
 	AnonymizeIPs bool
@@ -64,6 +68,13 @@ type Quotas struct {
 	CollectionsPerSpace int
 	// UploadMBPerUser is the size of the uploaded images (avatar, space icons, preview images)
 	UploadMBPerUser int
+}
+
+// Plans split accounts into Free (Quotas) and Pro (Plans.Pro): instance admins and accounts an admin made Pro.
+// Off, the default for self-hosting, everybody is the same.
+type Plans struct {
+	Enabled bool
+	Pro     Quotas
 }
 
 // Load reads RAGBAG_* and the documented short variables (see .env.example).
@@ -89,6 +100,16 @@ func Load() (Config, error) {
 		SpacesPerUser:       envInt("QUOTA_SPACES_PER_USER", 0),
 		CollectionsPerSpace: envInt("QUOTA_COLLECTIONS_PER_SPACE", 0),
 		UploadMBPerUser:     envInt("QUOTA_UPLOAD_MB_PER_USER", 0),
+	}
+
+	cfg.Plans = Plans{
+		Enabled: envBool("PLANS_ENABLED", false),
+		Pro: Quotas{
+			LinksPerUser:        envInt("QUOTA_PRO_LINKS_PER_USER", 0),
+			SpacesPerUser:       envInt("QUOTA_PRO_SPACES_PER_USER", 0),
+			CollectionsPerSpace: envInt("QUOTA_PRO_COLLECTIONS_PER_SPACE", 0),
+			UploadMBPerUser:     envInt("QUOTA_PRO_UPLOAD_MB_PER_USER", 0),
+		},
 	}
 
 	cfg.Mail = mail.Config{
@@ -129,6 +150,11 @@ func Load() (Config, error) {
 		if !strings.HasPrefix(cfg.PublicURL, "https://") && !strings.HasPrefix(cfg.PublicURL, "http://") {
 			return cfg, errors.New("PUBLIC_URL is required with SMTP_HOST, e.g. https://ragbag.example.com (links in emails)")
 		}
+	}
+
+	cfg.SupportURL = env("SUPPORT_URL", "")
+	if cfg.SupportURL != "" && !strings.HasPrefix(cfg.SupportURL, "https://") {
+		return cfg, fmt.Errorf("SUPPORT_URL must be an https address, not %q", cfg.SupportURL)
 	}
 
 	level, err := logging.ParseLevel(env("LOG_LEVEL", "info"))

@@ -13,6 +13,14 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { QuotasDto } from './QuotasDto';
+import {
+    QuotasDtoFromJSON,
+    QuotasDtoFromJSONTyped,
+    QuotasDtoToJSON,
+    QuotasDtoToJSONTyped,
+} from './QuotasDto';
+
 /**
  * The configuration in effect (environment variables), read-only
  * @export
@@ -91,6 +99,18 @@ export interface AdminSettingsDto {
      * 
      */
     logMaxAgeDays?: number;
+    /**
+     * PLANS_ENABLED; the QUOTA_* are then those of the Free plan
+     */
+    plans?: boolean;
+    /**
+     * SUPPORT_URL, the donation page linked in the app; empty without one
+     */
+    supportUrl?: string;
+    /**
+     * 
+     */
+    proQuotas?: QuotasDto;
 }
 
 /**
@@ -138,6 +158,9 @@ export function AdminSettingsDtoFromJSONTyped(json: any, ignoreDiscriminator: bo
         'logAnonymizeIp': json['logAnonymizeIp'] == null ? undefined : json['logAnonymizeIp'],
         'logFile': json['logFile'] == null ? undefined : json['logFile'],
         'logMaxAgeDays': json['logMaxAgeDays'] == null ? undefined : json['logMaxAgeDays'],
+        'plans': json['plans'] == null ? undefined : json['plans'],
+        'supportUrl': json['supportUrl'] == null ? undefined : json['supportUrl'],
+        'proQuotas': json['proQuotas'] == null ? undefined : QuotasDtoFromJSON(json['proQuotas']),
     };
 }
 
@@ -170,6 +193,9 @@ export function AdminSettingsDtoToJSONTyped(value?: AdminSettingsDto | null, ign
         'logAnonymizeIp': value['logAnonymizeIp'],
         'logFile': value['logFile'],
         'logMaxAgeDays': value['logMaxAgeDays'],
+        'plans': value['plans'],
+        'supportUrl': value['supportUrl'],
+        'proQuotas': QuotasDtoToJSON(value['proQuotas']),
     };
 }
 

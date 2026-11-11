@@ -112,3 +112,16 @@ func TestMailNeedsASenderAndThePublicAddress(t *testing.T) {
 		t.Fatalf("unexpected config: %+v %+v", cfg.PublicURL, cfg.Mail)
 	}
 }
+
+func TestTheSupportLinkMustBeHTTPS(t *testing.T) {
+	t.Setenv("JWT_SECRET", "0123456789abcdef0123456789abcdef")
+	t.Setenv("SUPPORT_URL", "javascript:alert(1)")
+	if _, err := Load(); err == nil {
+		t.Fatal("expected an error for a SUPPORT_URL that is no https address")
+	}
+	t.Setenv("SUPPORT_URL", "https://ko-fi.com/example")
+	cfg, err := Load()
+	if err != nil || cfg.SupportURL != "https://ko-fi.com/example" {
+		t.Fatalf("unexpected support link %q: %v", cfg.SupportURL, err)
+	}
+}

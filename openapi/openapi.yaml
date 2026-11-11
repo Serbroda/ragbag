@@ -489,6 +489,60 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/admin/users/{userId}/pro:
+    put:
+      summary: Make an account Pro (PLANS_ENABLED)
+      operationId: grantPro
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Take back Pro granted by an admin
+      operationId: revokePro
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      parameters:
+        - in: path
+          name: userId
+          required: true
+          schema:
+            $ref: '#/components/schemas/ID'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AdminUserDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/admin/reports:
     get:
       summary: Reports of public links, open ones first
@@ -737,6 +791,24 @@ paths:
                 $ref: '#/components/schemas/UserDto'
         '401':
           $ref: '#/components/responses/Unauthorized'
+
+  /v1/users/me/plan:
+    get:
+      summary: The own plan (PLANS_ENABLED) with usage and the limits of Free and Pro
+      operationId: getPlan
+      tags:
+        - Plan
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PlanDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
 
   /v1/users/me/delete:
     post:
@@ -2846,6 +2918,69 @@ components:
       required:
         - valid
 
+    PlanName:
+      type: string
+      enum: [ FREE, PRO ]
+
+    ProSource:
+      description: Why an account is Pro
+      type: string
+      enum: [ ADMIN, GRANTED ]
+
+    QuotasDto:
+      description: Limits, 0 is unlimited
+      type: object
+      properties:
+        linksPerUser:
+          type: integer
+        spacesPerUser:
+          type: integer
+        collectionsPerSpace:
+          type: integer
+        uploadMbPerUser:
+          type: integer
+      required:
+        - linksPerUser
+        - spacesPerUser
+        - collectionsPerSpace
+        - uploadMbPerUser
+
+    PlanUsageDto:
+      description: What counts against the limits
+      type: object
+      properties:
+        links:
+          type: integer
+        spaces:
+          type: integer
+          description: Spaces the user owns
+        uploadBytes:
+          type: integer
+          format: int64
+      required:
+        - links
+        - spaces
+        - uploadBytes
+
+    PlanDto:
+      type: object
+      properties:
+        plan:
+          $ref: '#/components/schemas/PlanName'
+        proSource:
+          $ref: '#/components/schemas/ProSource'
+        usage:
+          $ref: '#/components/schemas/PlanUsageDto'
+        free:
+          $ref: '#/components/schemas/QuotasDto'
+        pro:
+          $ref: '#/components/schemas/QuotasDto'
+      required:
+        - plan
+        - usage
+        - free
+        - pro
+
     PasswordResetDto:
       type: object
       properties:
@@ -2887,6 +3022,11 @@ components:
           description: Blocked by an instance admin since then
         blockedReason:
           type: string
+        plan:
+          $ref: '#/components/schemas/PlanName'
+          description: Only with PLANS_ENABLED
+        proSource:
+          $ref: '#/components/schemas/ProSource'
       required:
         - id
         - username
@@ -2926,6 +3066,9 @@ components:
           description: Size of all stored images
         openReports:
           type: integer
+        grantedPro:
+          type: integer
+          description: Accounts an admin made Pro
         settings:
           $ref: '#/components/schemas/AdminSettingsDto'
       required:
@@ -2992,6 +3135,14 @@ components:
           description: LOG_FILE, empty for stdout
         logMaxAgeDays:
           type: integer
+        plans:
+          type: boolean
+          description: PLANS_ENABLED; the QUOTA_* are then those of the Free plan
+        supportUrl:
+          type: string
+          description: SUPPORT_URL, the donation page linked in the app; empty without one
+        proQuotas:
+          $ref: '#/components/schemas/QuotasDto'
       required:
         - publicUrl
         - registrationOpen

@@ -48,7 +48,7 @@ docker compose -f docker-compose.postgres.yaml up -d --build   # app + PostgreSQ
 Configuration is via environment variables (`internal/config`, documented in `.env.example`; for local
 development the server also reads `.env.local` and `.env` from the working directory, real variables win): `DATABASE_URL`
 (`sqlite:<path>` or `postgres://…`), `JWT_SECRET` (required, also locally), `ADMIN_USERS`,
-`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `IMPRINT_URL`/`PRIVACY_URL`/`TERMS_URL`, `BACKUP_*`, `LOG_MAX_AGE_DAYS`, `LOG_ANONYMIZE_IP`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
+`REGISTRATION_ENABLED`, `RATE_LIMIT_ENABLED`, `QUOTA_*`, `PLANS_ENABLED`, `SUPPORT_URL`, `SMTP_*`, `PUBLIC_URL`, `DATA_DIR`, `IMPRINT_URL`/`PRIVACY_URL`/`TERMS_URL`, `BACKUP_*`, `LOG_MAX_AGE_DAYS`, `LOG_ANONYMIZE_IP`, `ALLOW_PRIVATE_HOSTS`, `SECURE_COOKIE`, `CORS_ALLOWED_ORIGINS`, `LOG_LEVEL`, `LOG_FILE`
 (rotating, `internal/logging`), `LOG_FORMAT`. Values that still look like
 `${…}` (podman-compose not interpolating an empty default) are ignored with a warning. `docker/entrypoint.sh` starts
 as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), then drops privileges with su-exec.
@@ -181,6 +181,12 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   included), spaces owned per user (not the first one at registration), collections per space, uploaded image
   bytes per user (`images.created_by`). Checked before creating, or at the end of the transaction with
   `adding = 0` (imports, replaced images); 403 "Limit reached".
+- **Plans** (`plans.go`, `PLANS_ENABLED`, off by default for self-hosting): Free gets `config.Quotas`, Pro
+  `Plans.Pro` (`quotasOf`, `userQuotas`; collections by the space's owners, `spaceQuotas`). Pro (`proSource`) are
+  instance admins and `users.pro_granted_at` (admins, `PUT/DELETE /admin/users/{id}/pro`); nothing is sold.
+  `PlanPage.svelte` at `/app/plan` (account menu). `SUPPORT_URL` (feature flag `support_url`) links a donation
+  page next to the search (`SupportButton.svelte`, closing it is kept in localStorage) and at the bottom of the
+  account menu, deliberately not on the plan page: donations unlock nothing.
 - **Email** (`internal/mail`, `email.go`, only with `SMTP_HOST`; tests use `UseMailer` with a fake): new
   accounts get `email_verified_at` only by `POST /auth/verify-email/{token}` (48 h, hash in
   `email_verifications`), which also creates their first space and signs them in; until then login answers 403

@@ -208,6 +208,42 @@ func (e JoinRoleEnum) Valid() bool {
 	}
 }
 
+// Defines values for PlanName.
+const (
+	FREE PlanName = "FREE"
+	PRO  PlanName = "PRO"
+)
+
+// Valid indicates whether the value is a known member of the PlanName enum.
+func (e PlanName) Valid() bool {
+	switch e {
+	case FREE:
+		return true
+	case PRO:
+		return true
+	default:
+		return false
+	}
+}
+
+// Defines values for ProSource.
+const (
+	ProSourceADMIN   ProSource = "ADMIN"
+	ProSourceGRANTED ProSource = "GRANTED"
+)
+
+// Valid indicates whether the value is a known member of the ProSource enum.
+func (e ProSource) Valid() bool {
+	switch e {
+	case ProSourceADMIN:
+		return true
+	case ProSourceGRANTED:
+		return true
+	default:
+		return false
+	}
+}
+
 // Defines values for ReportCategory.
 const (
 	CHILDSAFETY  ReportCategory = "CHILD_SAFETY"
@@ -400,6 +436,9 @@ type AdminOverviewDto struct {
 	Collections int                      `json:"collections"`
 	Database    AdminOverviewDtoDatabase `json:"database"`
 
+	// GrantedPro Accounts an admin made Pro
+	GrantedPro *int `json:"grantedPro,omitempty"`
+
 	// ImageBytes Size of all stored images
 	ImageBytes    int64 `json:"imageBytes"`
 	OpenReports   int   `json:"openReports"`
@@ -439,10 +478,16 @@ type AdminSettingsDto struct {
 	LogAnonymizeIp *bool   `json:"logAnonymizeIp,omitempty"`
 
 	// LogFile LOG_FILE, empty for stdout
-	LogFile                  *string `json:"logFile,omitempty"`
-	LogMaxAgeDays            *int    `json:"logMaxAgeDays,omitempty"`
-	PublicUrl                string  `json:"publicUrl"`
-	QuotaCollectionsPerSpace int     `json:"quotaCollectionsPerSpace"`
+	LogFile       *string `json:"logFile,omitempty"`
+	LogMaxAgeDays *int    `json:"logMaxAgeDays,omitempty"`
+
+	// Plans PLANS_ENABLED; the QUOTA_* are then those of the Free plan
+	Plans *bool `json:"plans,omitempty"`
+
+	// ProQuotas Limits, 0 is unlimited
+	ProQuotas                *QuotasDto `json:"proQuotas,omitempty"`
+	PublicUrl                string     `json:"publicUrl"`
+	QuotaCollectionsPerSpace int        `json:"quotaCollectionsPerSpace"`
 
 	// QuotaLinksPerUser 0 is unlimited
 	QuotaLinksPerUser    int  `json:"quotaLinksPerUser"`
@@ -450,6 +495,9 @@ type AdminSettingsDto struct {
 	QuotaUploadMbPerUser int  `json:"quotaUploadMbPerUser"`
 	RateLimits           bool `json:"rateLimits"`
 	RegistrationOpen     bool `json:"registrationOpen"`
+
+	// SupportUrl SUPPORT_URL, the donation page linked in the app; empty without one
+	SupportUrl *string `json:"supportUrl,omitempty"`
 }
 
 // AdminUserDto defines model for AdminUserDto.
@@ -469,6 +517,12 @@ type AdminUserDto struct {
 	// Id UUID
 	Id            ID   `json:"id"`
 	InstanceAdmin bool `json:"instanceAdmin"`
+
+	// Plan Only with PLANS_ENABLED
+	Plan *PlanName `json:"plan,omitempty"`
+
+	// ProSource Why an account is Pro
+	ProSource *ProSource `json:"proSource,omitempty"`
 
 	// Spaces Number of spaces the user is a member of
 	Spaces   *int   `json:"spaces,omitempty"`
@@ -961,6 +1015,45 @@ type PasswordResetPreviewDto struct {
 
 	// Valid False if the link is unknown, expired or already used
 	Valid bool `json:"valid"`
+}
+
+// PlanDto defines model for PlanDto.
+type PlanDto struct {
+	// Free Limits, 0 is unlimited
+	Free QuotasDto `json:"free"`
+	Plan PlanName  `json:"plan"`
+
+	// Pro Limits, 0 is unlimited
+	Pro QuotasDto `json:"pro"`
+
+	// ProSource Why an account is Pro
+	ProSource *ProSource `json:"proSource,omitempty"`
+
+	// Usage What counts against the limits
+	Usage PlanUsageDto `json:"usage"`
+}
+
+// PlanName defines model for PlanName.
+type PlanName string
+
+// PlanUsageDto What counts against the limits
+type PlanUsageDto struct {
+	Links int `json:"links"`
+
+	// Spaces Spaces the user owns
+	Spaces      int   `json:"spaces"`
+	UploadBytes int64 `json:"uploadBytes"`
+}
+
+// ProSource Why an account is Pro
+type ProSource string
+
+// QuotasDto Limits, 0 is unlimited
+type QuotasDto struct {
+	CollectionsPerSpace int `json:"collectionsPerSpace"`
+	LinksPerUser        int `json:"linksPerUser"`
+	SpacesPerUser       int `json:"spacesPerUser"`
+	UploadMbPerUser     int `json:"uploadMbPerUser"`
 }
 
 // ReactionDto defines model for ReactionDto.
@@ -1576,6 +1669,12 @@ type ServerInterface interface {
 	// CreatePasswordReset Create a one-time password reset link for a user (replaces an older one)
 	// (POST /v1/admin/users/{userId}/password-reset)
 	CreatePasswordReset(ctx echo.Context, userId ID) error
+	// RevokePro Take back Pro granted by an admin
+	// (DELETE /v1/admin/users/{userId}/pro)
+	RevokePro(ctx echo.Context, userId ID) error
+	// GrantPro Make an account Pro (PLANS_ENABLED)
+	// (PUT /v1/admin/users/{userId}/pro)
+	GrantPro(ctx echo.Context, userId ID) error
 	// DeleteBookmark Delete a bookmark
 	// (DELETE /v1/bookmarks/{bookmarkId})
 	DeleteBookmark(ctx echo.Context, bookmarkId ID) error
@@ -1792,6 +1891,9 @@ type ServerInterface interface {
 	// SetPin Set or change the PIN that unlocks the user's locked collections (needs the account password)
 	// (PUT /v1/users/me/pin)
 	SetPin(ctx echo.Context) error
+	// GetPlan The own plan (PLANS_ENABLED) with usage and the limits of Free and Pro
+	// (GET /v1/users/me/plan)
+	GetPlan(ctx echo.Context) error
 	// GetSpaceBar Personal order and folders of the space bar
 	// (GET /v1/users/me/space-bar)
 	GetSpaceBar(ctx echo.Context) error
@@ -2172,6 +2274,38 @@ func (w *ServerInterfaceWrapper) CreatePasswordReset(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.CreatePasswordReset(ctx, userId)
+	return err
+}
+
+// RevokePro converts echo context to params.
+func (w *ServerInterfaceWrapper) RevokePro(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.RevokePro(ctx, userId)
+	return err
+}
+
+// GrantPro converts echo context to params.
+func (w *ServerInterfaceWrapper) GrantPro(ctx echo.Context) error {
+	var err error
+	// ------------- Path parameter "userId" -------------
+	var userId ID
+
+	err = runtime.BindStyledParameterWithOptions("simple", "userId", ctx.Param("userId"), &userId, runtime.BindStyledParameterOptions{ParamLocation: runtime.ParamLocationPath, Explode: false, Required: true, Type: "string", Format: "", ValueIsUnescaped: ctx.Request().URL.RawPath == ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter userId: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GrantPro(ctx, userId)
 	return err
 }
 
@@ -3344,6 +3478,15 @@ func (w *ServerInterfaceWrapper) SetPin(ctx echo.Context) error {
 	return err
 }
 
+// GetPlan converts echo context to params.
+func (w *ServerInterfaceWrapper) GetPlan(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetPlan(ctx)
+	return err
+}
+
 // GetSpaceBar converts echo context to params.
 func (w *ServerInterfaceWrapper) GetSpaceBar(ctx echo.Context) error {
 	var err error
@@ -3456,6 +3599,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.DELETE(options.BaseURL+"/v1/admin/users/:userId", wrapper.DeleteUser, options.OperationMiddlewares["deleteUser"]...)
 	router.DELETE(options.BaseURL+"/v1/admin/users/:userId/block", wrapper.UnblockUser, options.OperationMiddlewares["unblockUser"]...)
 	router.PUT(options.BaseURL+"/v1/admin/users/:userId/block", wrapper.BlockUser, options.OperationMiddlewares["blockUser"]...)
+	router.DELETE(options.BaseURL+"/v1/admin/users/:userId/pro", wrapper.RevokePro, options.OperationMiddlewares["revokePro"]...)
+	router.PUT(options.BaseURL+"/v1/admin/users/:userId/pro", wrapper.GrantPro, options.OperationMiddlewares["grantPro"]...)
 	router.GET(options.BaseURL+"/v1/admin/reports", wrapper.GetReports, options.OperationMiddlewares["getReports"]...)
 	router.POST(options.BaseURL+"/v1/admin/reports/:reportId/resolve", wrapper.ResolveReport, options.OperationMiddlewares["resolveReport"]...)
 	router.GET(options.BaseURL+"/v1/admin/overview", wrapper.GetAdminOverview, options.OperationMiddlewares["getAdminOverview"]...)
@@ -3466,6 +3611,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/admin/backups/:name", wrapper.DownloadStoredBackup, options.OperationMiddlewares["downloadStoredBackup"]...)
 	router.POST(options.BaseURL+"/v1/admin/backup/restore", wrapper.RestoreBackup, options.OperationMiddlewares["restoreBackup"]...)
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
+	router.GET(options.BaseURL+"/v1/users/me/plan", wrapper.GetPlan, options.OperationMiddlewares["getPlan"]...)
 	router.POST(options.BaseURL+"/v1/users/me/delete", wrapper.DeleteAccount, options.OperationMiddlewares["deleteAccount"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/display-name", wrapper.SetDisplayName, options.OperationMiddlewares["setDisplayName"]...)

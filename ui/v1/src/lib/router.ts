@@ -51,6 +51,10 @@ export const { p, navigate, isActive, route } = createRouter({
 	'/admin/:tab': {
 		'/': () => import('./pages/AdminPage.svelte'),
 	},
+	// Free or Pro (PLANS_ENABLED): usage and limits
+	'/plan': {
+		'/': () => import('./pages/PlanPage.svelte'),
+	},
 	// First login of the setup admin: own password, then start fresh or restore a backup
 	'/setup': {
 		'/': () => import('./pages/SetupPage.svelte'),

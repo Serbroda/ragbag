@@ -100,6 +100,20 @@
 		}
 	}
 
+	/** Free or Pro (PLANS_ENABLED); admins are always Pro. */
+	async function setPro(user: AdminUserDto, granted: boolean) {
+		busyUserId = user.id;
+		error = '';
+		try {
+			const updated = granted ? await api.grantPro({ userId: user.id }) : await api.revokePro({ userId: user.id });
+			users = users.map((u) => (u.id === updated.id ? updated : u));
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to change the plan.');
+		} finally {
+			busyUserId = null;
+		}
+	}
+
 	async function remove(user: AdminUserDto) {
 		busyUserId = user.id;
 		error = '';
@@ -146,6 +160,12 @@
 									>Admin</span
 								>
 							{/if}
+							{#if user.plan === 'PRO' && !user.instanceAdmin}
+								<span
+									class="ms-1 rounded-md bg-amber-500/15 px-1.5 py-0.5 text-xs font-medium text-amber-700 dark:text-amber-300"
+									>Pro</span
+								>
+							{/if}
 							{#if user.blockedAt}
 								<span
 									class="ms-1 rounded-md bg-red-500/15 px-1.5 py-0.5 text-xs font-medium text-red-700 dark:text-red-300"
@@ -162,6 +182,15 @@
 						<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => createLink(user)}>
 							Reset link
 						</Button>
+						{#if user.plan === 'FREE'}
+							<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => setPro(user, true)}>
+								Make Pro
+							</Button>
+						{:else if user.proSource === 'GRANTED'}
+							<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => setPro(user, false)}>
+								Remove Pro
+							</Button>
+						{/if}
 						{#if !user.instanceAdmin && user.id !== session.me?.id}
 							{#if user.blockedAt}
 								<Button size="xs" color="light" disabled={busyUserId === user.id} onclick={() => unblock(user)}>
