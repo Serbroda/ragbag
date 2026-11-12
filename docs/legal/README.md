@@ -10,5 +10,10 @@ Copy them into the data directory as `legal/imprint.md`, `legal/privacy.md` and 
 new accounts to accept the terms. Changes apply without a restart. A first line `# Title` becomes the page title;
 raw HTML is not shown (comments like the ones in the templates are dropped).
 
+When the terms of use change, put the new text in place and record the change in the administration
+(overview, “Terms changed…”): from the chosen day every account has to accept them again before going on
+(API tokens answer 403 until then), a later day shows a notice first. Typos need no new acceptance; the
+privacy policy is information and is never accepted (tell people about bigger changes anyway).
+
 Pages that live elsewhere (e.g. the imprint of your website) are linked with `IMPRINT_URL`, `PRIVACY_URL` and
 `TERMS_URL` instead.

@@ -210,6 +210,11 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   HTML (`GET /app/legal/{page}`, public), or `IMPRINT_URL` & co.; the feature flags `legal_*` say where they are
   (`utils/legal.ts`, `LegalLinks.svelte`). With terms, `POST /auth/register` needs `acceptTerms`
   (`users.terms_accepted_at`). German templates in `docs/legal`.
+- **Changed terms** (`terms.go`, `terms_changes`): instance admins record a change on `/admin` (`POST /admin/terms`,
+  today or announced for a later day, `DELETE /admin/terms/next` withdraws it). From `effective_at`, accounts whose
+  `terms_accepted_at` is older (or null) get 403 with `X-Ragbag-Terms` on everything but `allowedPendingTerms`
+  (own account, `POST /users/me/terms`, deleting the account), API tokens included; the frontend opens `/terms`
+  (`TermsPage.svelte`). Announced changes show `TermsNotice.svelte` (`UserDto.termsChangeAt`).
 - **Security headers** (`headers.go`): a strict CSP for the app (scripts/styles from `'self'`, images from
   anywhere, no frames) and `default-src 'none'` plus `no-store` for `/api`; HSTS only over HTTPS. No inline
   scripts in `index.html` or `meta.go` (the CSP would block them); handlers may override (images: sandbox).

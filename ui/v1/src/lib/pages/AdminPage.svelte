@@ -1,7 +1,7 @@
 <script lang="ts">
 	import { AdminApi } from 'ragbag-frontend-sdk';
-	import type { AdminOverviewDto, BackupsDto } from 'ragbag-frontend-sdk';
-	import { Button } from 'flowbite-svelte';
+	import type { AdminOverviewDto, BackupsDto, TermsStateDto } from 'ragbag-frontend-sdk';
+	import { Button, Input, Label } from 'flowbite-svelte';
 	import { ArrowLeftOutline } from 'flowbite-svelte-icons';
 	import { apiConfig, downloadBackup, errorMessage } from '../api/client';
 	import { navigate, p, route } from '../router';
@@ -29,6 +29,10 @@
 	let downloading = $state(false);
 	let creating = $state(false);
 	let backups = $state<BackupsDto | null>(null);
+	let terms = $state<TermsStateDto | null>(null);
+	let termsOpen = $state(false);
+	let termsDate = $state('');
+	let termsBusy = $state(false);
 
 	loadMe()
 		.then((me) => {
@@ -42,7 +46,8 @@
 
 	async function loadOverview() {
 		try {
-			overview = await new AdminApi(apiConfig()).getAdminOverview();
+			const admin = new AdminApi(apiConfig());
+			[overview, terms] = await Promise.all([admin.getAdminOverview(), admin.getTermsState()]);
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to load the overview.');
 		}
@@ -87,6 +92,46 @@
 			error = await errorMessage(err, 'Failed to create the backup.');
 		} finally {
 			downloading = false;
+		}
+	}
+
+	/** Today, as the value of a date field. */
+	function today(): string {
+		const now = new Date();
+		return `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, '0')}-${String(now.getDate()).padStart(2, '0')}`;
+	}
+
+	function openTerms() {
+		termsDate = today();
+		termsOpen = true;
+	}
+
+	async function changeTerms(e: Event) {
+		e.preventDefault();
+		termsBusy = true;
+		error = '';
+		try {
+			// A later day applies from its start (local time), today right away
+			const [year, month, day] = termsDate.split('-').map(Number);
+			const effectiveAt = termsDate > today() ? new Date(year, month - 1, day) : undefined;
+			terms = await new AdminApi(apiConfig()).changeTerms({ changeTermsRequest: { effectiveAt } });
+			termsOpen = false;
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to record the change.');
+		} finally {
+			termsBusy = false;
+		}
+	}
+
+	async function withdrawTerms() {
+		termsBusy = true;
+		error = '';
+		try {
+			terms = await new AdminApi(apiConfig()).withdrawTermsChange();
+		} catch (err) {
+			error = await errorMessage(err, 'Failed to withdraw the change.');
+		} finally {
+			termsBusy = false;
 		}
 	}
 
@@ -190,6 +235,55 @@
 						>
 							{o.openReports} open report{o.openReports === 1 ? '' : 's'} of public links: decide now →
 						</button>
+					{/if}
+
+					{#if terms?.terms}
+						{@const t = terms}
+						<h2 class="mb-2 mt-8 text-sm font-semibold">Terms of use</h2>
+						<div class="rounded-lg border border-gray-200 p-4 text-sm dark:border-gray-800">
+							<p>
+								{#if t.inForceSince}
+									In force since {t.inForceSince.toLocaleString()}: accepted by {t.accepted.toLocaleString()} of
+									{t.accounts.toLocaleString()} accounts. The others are asked on their next visit, and their API tokens
+									stop working until then.
+								{:else}
+									Accepted by {t.accepted.toLocaleString()} of {t.accounts.toLocaleString()} accounts (at registration).
+								{/if}
+							</p>
+							{#if t.next}
+								<p class="mt-2 text-amber-700 dark:text-amber-300">
+									Changing on {t.next.toLocaleString()}: until then everybody sees a notice.
+								</p>
+							{/if}
+							{#if termsOpen}
+								<form class="mt-4 flex flex-col gap-3" onsubmit={changeTerms}>
+									<p class="text-gray-500 dark:text-gray-400">
+										Put the new text into <code>terms.md</code> (or at <code>TERMS_URL</code>) first. From the chosen day,
+										every account has to accept the terms again before going on; a later day shows a notice until then.
+										Small corrections (typos, the address) need no new acceptance.
+									</p>
+									<div class="max-w-48">
+										<Label for="terms-date" class="mb-2">The new terms apply from</Label>
+										<Input id="terms-date" type="date" min={today()} bind:value={termsDate} required />
+									</div>
+									<div class="flex gap-2">
+										<Button size="sm" type="submit" disabled={termsBusy}>
+											{termsDate > today() ? 'Announce' : 'Ask everybody now'}
+										</Button>
+										<Button size="sm" color="alternative" onclick={() => (termsOpen = false)}>Cancel</Button>
+									</div>
+								</form>
+							{:else}
+								<div class="mt-4 flex flex-wrap gap-2">
+									<Button size="sm" color="light" onclick={openTerms}>Terms changed…</Button>
+									{#if t.next}
+										<Button size="sm" color="light" class="text-red-600 dark:text-red-400" disabled={termsBusy} onclick={withdrawTerms}>
+											Withdraw the change
+										</Button>
+									{/if}
+								</div>
+							{/if}
+						</div>
 					{/if}
 
 					<h2 class="mb-2 mt-8 text-sm font-semibold">Configuration</h2>

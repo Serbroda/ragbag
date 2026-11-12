@@ -44,6 +44,11 @@ import {
     BlockUserRequestToJSON,
 } from '../models/BlockUserRequest';
 import {
+    type ChangeTermsRequest,
+    ChangeTermsRequestFromJSON,
+    ChangeTermsRequestToJSON,
+} from '../models/ChangeTermsRequest';
+import {
     type InstanceDto,
     InstanceDtoFromJSON,
     InstanceDtoToJSON,
@@ -58,6 +63,11 @@ import {
     ResolveReportRequestFromJSON,
     ResolveReportRequestToJSON,
 } from '../models/ResolveReportRequest';
+import {
+    type TermsStateDto,
+    TermsStateDtoFromJSON,
+    TermsStateDtoToJSON,
+} from '../models/TermsStateDto';
 
 export interface BlockUserOperationRequest {
     /**
@@ -68,6 +78,13 @@ export interface BlockUserOperationRequest {
      * 
      */
     blockUserRequest: BlockUserRequest;
+}
+
+export interface ChangeTermsOperationRequest {
+    /**
+     * 
+     */
+    changeTermsRequest: ChangeTermsRequest;
 }
 
 export interface CreatePasswordResetRequest {
@@ -206,6 +223,61 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async blockUser(requestParameters: BlockUserOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
         const response = await this.blockUserRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for changeTerms without sending the request
+     */
+    async changeTermsRequestOpts(requestParameters: ChangeTermsOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['changeTermsRequest'] == null) {
+            throw new runtime.RequiredError(
+                'changeTermsRequest',
+                'Required parameter "changeTermsRequest" was null or undefined when calling changeTerms().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/terms`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: ChangeTermsRequestToJSON(requestParameters['changeTermsRequest']),
+        };
+    }
+
+    /**
+     * The terms of use change: from effectiveAt (now if left out or past), every account has to accept them again; until then its requests (API tokens too) answer 403 with the header X-Ragbag-Terms 
+     */
+    async changeTermsRaw(requestParameters: ChangeTermsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TermsStateDto>> {
+        const requestOptions = await this.changeTermsRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TermsStateDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * The terms of use change: from effectiveAt (now if left out or past), every account has to accept them again; until then its requests (API tokens too) answer 403 with the header X-Ragbag-Terms 
+     */
+    async changeTerms(requestParameters: ChangeTermsOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TermsStateDto> {
+        const response = await this.changeTermsRaw(requestParameters, initOverrides);
         return await response.value();
     }
 
@@ -683,6 +755,51 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for getTermsState without sending the request
+     */
+    async getTermsStateRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/terms`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Changes of the terms of use: since when the current ones apply, the next change and how many accounts accepted the current ones 
+     */
+    async getTermsStateRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TermsStateDto>> {
+        const requestOptions = await this.getTermsStateRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TermsStateDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Changes of the terms of use: since when the current ones apply, the next change and how many accounts accepted the current ones 
+     */
+    async getTermsState(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TermsStateDto> {
+        const response = await this.getTermsStateRaw(initOverrides);
+        return await response.value();
+    }
+
+    /**
      * Creates request options for grantPro without sending the request
      */
     async grantProRequestOpts(requestParameters: GrantProRequest): Promise<runtime.RequestOpts> {
@@ -1012,6 +1129,51 @@ export class AdminApi extends runtime.BaseAPI {
      */
     async unblockUser(requestParameters: UnblockUserRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<AdminUserDto> {
         const response = await this.unblockUserRaw(requestParameters, initOverrides);
+        return await response.value();
+    }
+
+    /**
+     * Creates request options for withdrawTermsChange without sending the request
+     */
+    async withdrawTermsChangeRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/terms/next`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Withdraw the announced changes of the terms of use that are not in effect yet
+     */
+    async withdrawTermsChangeRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<TermsStateDto>> {
+        const requestOptions = await this.withdrawTermsChangeRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => TermsStateDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Withdraw the announced changes of the terms of use that are not in effect yet
+     */
+    async withdrawTermsChange(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<TermsStateDto> {
+        const response = await this.withdrawTermsChangeRaw(initOverrides);
         return await response.value();
     }
 

@@ -100,6 +100,9 @@ func (s *Server) authenticateToken(c echo.Context, raw string) error {
 	if !s.apiTokensFor(user) {
 		return forbidden(tokensNeedPro + ", and this account is on the Free plan")
 	}
+	if err := s.requireTerms(c, user); err != nil {
+		return err
+	}
 	if !tokenMay(token.Scope, c.Request().Method, c.Request().URL.Path) {
 		if token.Scope == scopeRead && tokenMay(scopeWrite, c.Request().Method, c.Request().URL.Path) {
 			return forbidden("This API token only reads: create one that may also write")

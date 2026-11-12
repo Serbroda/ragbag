@@ -104,7 +104,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 			// No AllowHeaders: the requested headers are echoed; browsers ignore "*" for requests with credentials
 			AllowCredentials: true,
-			ExposeHeaders:    []string{"X-Ragbag-Setup", twoFactorHeader, "Retry-After"},
+			ExposeHeaders:    []string{"X-Ragbag-Setup", termsHeader, twoFactorHeader, "Retry-After"},
 		}))
 	}
 
@@ -167,6 +167,9 @@ func (s *Server) authenticate(next echo.HandlerFunc) echo.HandlerFunc {
 			// The frontend opens the setup page from wherever it was
 			c.Response().Header().Set("X-Ragbag-Setup", "password")
 			return forbidden("Choose your own password first")
+		}
+		if err := s.requireTerms(c, user); err != nil {
+			return err
 		}
 		s.withUnlock(c, user)
 		return next(c)

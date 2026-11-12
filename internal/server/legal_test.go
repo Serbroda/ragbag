@@ -5,6 +5,7 @@ import (
 	"os"
 	"path/filepath"
 	"testing"
+	"time"
 
 	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/google/uuid"
@@ -65,4 +66,52 @@ func TestLegalPagesElsewhere(t *testing.T) {
 	admin := e.login("admin", "test123")
 	e.req("GET", "/api/v1/admin/overview").as(admin).expect(200).
 		has("settings.legalTerms", "https://example.com/agb").has("settings.legalImprint", "")
+}
+
+func TestChangedTermsHaveToBeAcceptedAgain(t *testing.T) {
+	e := newEnv(t)
+	admin := e.login("admin", "test123")
+	user := e.register()
+	space := e.firstSpace(user)
+	token, _ := e.apiToken(user, "READ")
+
+	// Without terms there is nothing to change
+	e.req("POST", "/api/v1/admin/terms").as(admin).json(`{}`).expect(400)
+	e.writeLegal("terms", "# Terms\n\nBe nice.\n")
+	e.req("POST", "/api/v1/admin/terms").as(user).json(`{}`).expect(403)
+
+	// Announced: everything works, the app shows when
+	next := time.Now().Add(48 * time.Hour).UTC().Truncate(time.Second)
+	state := e.req("POST", "/api/v1/admin/terms").as(admin).json(fmt.Sprintf(`{"effectiveAt":%q}`, next.Format(time.RFC3339))).
+		expect(200).has("accounts", 2)
+	require.True(t, next.Equal(state.get("next").Time()))
+	me := e.req("GET", "/api/v1/users/me").as(user).expect(200)
+	require.False(t, me.get("termsPending").Exists())
+	require.True(t, next.Equal(me.get("termsChangeAt").Time()))
+	e.req("GET", "/api/v1/spaces").as(user).expect(200)
+	e.req("DELETE", "/api/v1/admin/terms/next").as(admin).expect(200)
+	e.req("DELETE", "/api/v1/admin/terms/next").as(admin).expect(404)
+
+	// In effect: neither the app nor API tokens work until the user accepts them
+	state = e.req("POST", "/api/v1/admin/terms").as(admin).json(`{}`).expect(200)
+	require.True(t, state.get("inForceSince").Exists())
+	require.Equal(t, int64(0), state.get("accepted").Int())
+	denied := e.req("GET", "/api/v1/spaces").as(user).expect(403)
+	require.Equal(t, "accept", denied.Header.Get("X-Ragbag-Terms"))
+	denied = e.req("GET", "/api/v1/spaces/%s/collections", space).bearer(token).expect(403)
+	require.Equal(t, "accept", denied.Header.Get("X-Ragbag-Terms"))
+	e.req("POST", "/api/v1/users/me/terms").bearer(token).expect(403)
+	e.req("GET", "/api/v1/users/me").as(user).expect(200).has("termsPending", true)
+
+	e.req("POST", "/api/v1/users/me/terms").as(user).expect(204)
+	e.req("GET", "/api/v1/spaces").as(user).expect(200)
+	e.req("GET", "/api/v1/spaces/%s/collections", space).bearer(token).expect(200)
+	require.False(t, e.req("GET", "/api/v1/users/me").as(user).expect(200).get("termsPending").Exists())
+
+	// New accounts accept them when registering; who does not agree may still delete the account
+	e.req("POST", "/api/auth/register").json(registerBody(`,"acceptTerms":true`)).expect(200)
+	e.req("POST", "/api/v1/users/me/terms").as(admin).expect(204)
+	e.req("GET", "/api/v1/admin/terms").as(admin).expect(200).has("accepted", 3).has("accounts", 3)
+	e.req("POST", "/api/v1/admin/terms").as(admin).json(`{}`).expect(200)
+	e.req("POST", "/api/v1/users/me/delete").as(user).json(`{"password":"secret123"}`).expect(204)
 }

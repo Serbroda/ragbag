@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 /**
  * 
  * @export
@@ -67,6 +67,15 @@ export interface UserDto {
      */
     mustChangePassword?: boolean;
     /**
+     * The terms of use changed and have to be accepted (POST /users/me/terms) before anything else works; only set for the current user
+     * 
+     */
+    termsPending?: boolean;
+    /**
+     * The terms of use change then (announced); only set for the current user
+     */
+    termsChangeAt?: Date;
+    /**
      * Unresolved reports of public links (instance admins only)
      */
     openReports?: number;
@@ -103,6 +112,8 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'apiTokens': json['apiTokens'] == null ? undefined : json['apiTokens'],
         'startSpaceId': json['startSpaceId'] == null ? undefined : json['startSpaceId'],
         'mustChangePassword': json['mustChangePassword'] == null ? undefined : json['mustChangePassword'],
+        'termsPending': json['termsPending'] == null ? undefined : json['termsPending'],
+        'termsChangeAt': json['termsChangeAt'] == null ? undefined : (parseDateTime(json['termsChangeAt'])),
         'openReports': json['openReports'] == null ? undefined : json['openReports'],
     };
 }
@@ -129,6 +140,8 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'apiTokens': value['apiTokens'],
         'startSpaceId': value['startSpaceId'],
         'mustChangePassword': value['mustChangePassword'],
+        'termsPending': value['termsPending'],
+        'termsChangeAt': value['termsChangeAt'] == null ? value['termsChangeAt'] : serializeDateTime(value['termsChangeAt']),
         'openReports': value['openReports'],
     };
 }

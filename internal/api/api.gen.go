@@ -700,6 +700,12 @@ type ChangePasswordRequest struct {
 	NewPassword     string `json:"newPassword"`
 }
 
+// ChangeTermsRequest defines model for ChangeTermsRequest.
+type ChangeTermsRequest struct {
+	// EffectiveAt From when the new terms apply; now if left out or in the past
+	EffectiveAt *time.Time `json:"effectiveAt,omitempty"`
+}
+
 // CollectionAccessDto defines model for CollectionAccessDto.
 type CollectionAccessDto struct {
 	// CanManage Whether the current user may change who can see the collection
@@ -1355,6 +1361,24 @@ type TagCountDto struct {
 	Tag   string `json:"tag"`
 }
 
+// TermsStateDto defines model for TermsStateDto.
+type TermsStateDto struct {
+	// Accepted Active accounts that accepted the terms in force (since inForceSince, else ever)
+	Accepted int `json:"accepted"`
+
+	// Accounts Active (confirmed, not blocked) accounts
+	Accounts int `json:"accounts"`
+
+	// InForceSince The last change in effect; accounts that accepted before have to accept again
+	InForceSince *time.Time `json:"inForceSince,omitempty"`
+
+	// Next An announced change, not in effect yet
+	Next *time.Time `json:"next,omitempty"`
+
+	// Terms Where the terms of use are; missing without any (then nothing can be changed)
+	Terms *string `json:"terms,omitempty"`
+}
+
 // TrashDto defines model for TrashDto.
 type TrashDto struct {
 	Bookmarks     []TrashedBookmarkDto   `json:"bookmarks"`
@@ -1550,6 +1574,12 @@ type UserDto struct {
 	// StartSpaceId Opened on start instead of the last visited space; unset when the user leaves it
 	StartSpaceId *ID `json:"startSpaceId,omitempty"`
 
+	// TermsChangeAt The terms of use change then (announced); only set for the current user
+	TermsChangeAt *time.Time `json:"termsChangeAt,omitempty"`
+
+	// TermsPending The terms of use changed and have to be accepted (POST /users/me/terms) before anything else works; only set for the current user
+	TermsPending *bool `json:"termsPending,omitempty"`
+
 	// TwoFactor Signs in with the code of an authenticator app as well; only set for the current user
 	TwoFactor *bool  `json:"twoFactor,omitempty"`
 	Username  string `json:"username"`
@@ -1643,6 +1673,9 @@ type CompleteSetupJSONRequestBody = CompleteSetupRequest
 
 // ResolveReportJSONRequestBody defines body for ResolveReport for application/json ContentType.
 type ResolveReportJSONRequestBody = ResolveReportRequest
+
+// ChangeTermsJSONRequestBody defines body for ChangeTerms for application/json ContentType.
+type ChangeTermsJSONRequestBody = ChangeTermsRequest
 
 // BlockUserJSONRequestBody defines body for BlockUser for application/json ContentType.
 type BlockUserJSONRequestBody = BlockUserRequest
@@ -1814,6 +1847,15 @@ type ServerInterface interface {
 	// ResolveReport Decide on a report: disable the reported public link, dismiss the report, or enable a disabled link again. The reporter and (for links) the one who shared it are told by email with the note
 	// (POST /v1/admin/reports/{reportId}/resolve)
 	ResolveReport(ctx echo.Context, reportId ID) error
+	// GetTermsState Changes of the terms of use: since when the current ones apply, the next change and how many accounts accepted the current ones
+	// (GET /v1/admin/terms)
+	GetTermsState(ctx echo.Context) error
+	// ChangeTerms The terms of use change: from effectiveAt (now if left out or past), every account has to accept them again; until then its requests (API tokens too) answer 403 with the header X-Ragbag-Terms
+	// (POST /v1/admin/terms)
+	ChangeTerms(ctx echo.Context) error
+	// WithdrawTermsChange Withdraw the announced changes of the terms of use that are not in effect yet
+	// (DELETE /v1/admin/terms/next)
+	WithdrawTermsChange(ctx echo.Context) error
 	// GetAllUsers All users of this installation
 	// (GET /v1/admin/users)
 	GetAllUsers(ctx echo.Context) error
@@ -2078,6 +2120,9 @@ type ServerInterface interface {
 	// SetStartSpace The space to open on start; null opens the last visited one
 	// (PUT /v1/users/me/start-space)
 	SetStartSpace(ctx echo.Context) error
+	// AcceptTerms Accept the current terms of use (after they changed, nothing else works before)
+	// (POST /v1/users/me/terms)
+	AcceptTerms(ctx echo.Context) error
 	// GetApiTokens The own personal API tokens (without the tokens themselves, which are only shown when created)
 	// (GET /v1/users/me/tokens)
 	GetApiTokens(ctx echo.Context) error
@@ -2394,6 +2439,33 @@ func (w *ServerInterfaceWrapper) ResolveReport(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.ResolveReport(ctx, reportId)
+	return err
+}
+
+// GetTermsState converts echo context to params.
+func (w *ServerInterfaceWrapper) GetTermsState(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.GetTermsState(ctx)
+	return err
+}
+
+// ChangeTerms converts echo context to params.
+func (w *ServerInterfaceWrapper) ChangeTerms(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ChangeTerms(ctx)
+	return err
+}
+
+// WithdrawTermsChange converts echo context to params.
+func (w *ServerInterfaceWrapper) WithdrawTermsChange(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.WithdrawTermsChange(ctx)
 	return err
 }
 
@@ -3787,6 +3859,15 @@ func (w *ServerInterfaceWrapper) SetStartSpace(ctx echo.Context) error {
 	return err
 }
 
+// AcceptTerms converts echo context to params.
+func (w *ServerInterfaceWrapper) AcceptTerms(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.AcceptTerms(ctx)
+	return err
+}
+
 // GetApiTokens converts echo context to params.
 func (w *ServerInterfaceWrapper) GetApiTokens(ctx echo.Context) error {
 	var err error
@@ -3940,6 +4021,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/v1/admin/reports/:reportId/resolve", wrapper.ResolveReport, options.OperationMiddlewares["resolveReport"]...)
 	router.GET(options.BaseURL+"/v1/admin/overview", wrapper.GetAdminOverview, options.OperationMiddlewares["getAdminOverview"]...)
 	router.GET(options.BaseURL+"/v1/admin/instance", wrapper.GetInstance, options.OperationMiddlewares["getInstance"]...)
+	router.GET(options.BaseURL+"/v1/admin/terms", wrapper.GetTermsState, options.OperationMiddlewares["getTermsState"]...)
+	router.POST(options.BaseURL+"/v1/admin/terms", wrapper.ChangeTerms, options.OperationMiddlewares["changeTerms"]...)
+	router.DELETE(options.BaseURL+"/v1/admin/terms/next", wrapper.WithdrawTermsChange, options.OperationMiddlewares["withdrawTermsChange"]...)
 	router.GET(options.BaseURL+"/v1/admin/backup", wrapper.DownloadBackup, options.OperationMiddlewares["downloadBackup"]...)
 	router.GET(options.BaseURL+"/v1/admin/backups", wrapper.GetBackups, options.OperationMiddlewares["getBackups"]...)
 	router.POST(options.BaseURL+"/v1/admin/backups", wrapper.CreateBackup, options.OperationMiddlewares["createBackup"]...)
@@ -3948,6 +4032,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/users/me", wrapper.Me, options.OperationMiddlewares["me"]...)
 	router.GET(options.BaseURL+"/v1/users/me/plan", wrapper.GetPlan, options.OperationMiddlewares["getPlan"]...)
 	router.POST(options.BaseURL+"/v1/users/me/delete", wrapper.DeleteAccount, options.OperationMiddlewares["deleteAccount"]...)
+	router.POST(options.BaseURL+"/v1/users/me/terms", wrapper.AcceptTerms, options.OperationMiddlewares["acceptTerms"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/start-space", wrapper.SetStartSpace, options.OperationMiddlewares["setStartSpace"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/display-name", wrapper.SetDisplayName, options.OperationMiddlewares["setDisplayName"]...)
 	router.PUT(options.BaseURL+"/v1/users/me/pin", wrapper.SetPin, options.OperationMiddlewares["setPin"]...)

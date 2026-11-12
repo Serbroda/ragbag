@@ -66,6 +66,10 @@ export const { p, navigate, isActive, route } = createRouter({
 	'/setup': {
 		'/': () => import('./pages/SetupPage.svelte'),
 	},
+	// The terms of use changed: accept them (or leave) before going on
+	'/terms': {
+		'/': () => import('./pages/TermsPage.svelte'),
+	},
 	'/invite/:token': {
 		'/': () => import('./pages/InvitePage.svelte'),
 	},
