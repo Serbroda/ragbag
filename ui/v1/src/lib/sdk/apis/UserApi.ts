@@ -188,6 +188,50 @@ export interface UpdateSpaceBarRequest {
 export class UserApi extends runtime.BaseAPI {
 
     /**
+     * Creates request options for acceptTerms without sending the request
+     */
+    async acceptTermsRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/terms`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Accept the current terms of use (after they changed, nothing else works before)
+     */
+    async acceptTermsRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.acceptTermsRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Accept the current terms of use (after they changed, nothing else works before)
+     */
+    async acceptTerms(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.acceptTermsRaw(initOverrides);
+    }
+
+    /**
      * Creates request options for createApiToken without sending the request
      */
     async createApiTokenRequestOpts(requestParameters: CreateApiTokenOperationRequest): Promise<runtime.RequestOpts> {

@@ -26,9 +26,11 @@ type User struct {
 	BlockedAt     *time.Time `db:"blocked_at"`
 	BlockedReason *string    `db:"blocked_reason"`
 	// DisplayName is shown instead of the username where set; not unique
-	DisplayName *string   `db:"display_name"`
-	CreatedAt   time.Time `db:"created_at"`
-	UpdatedAt   time.Time `db:"updated_at"`
+	DisplayName *string `db:"display_name"`
+	// TermsAcceptedAt: when the account last accepted the terms of use, nil if never
+	TermsAcceptedAt *time.Time `db:"terms_accepted_at"`
+	CreatedAt       time.Time  `db:"created_at"`
+	UpdatedAt       time.Time  `db:"updated_at"`
 	Plan
 }
 
@@ -44,7 +46,7 @@ func (u *User) Name() string {
 const shownName = `COALESCE(u.display_name, u.username)`
 
 const userColumns = `id, username, email, password_hash, token_version, avatar_image_id, email_verified_at, setup_admin, must_change_password,
-	deleted_at, blocked_at, blocked_reason, display_name, created_at, updated_at`
+	deleted_at, blocked_at, blocked_reason, display_name, terms_accepted_at, created_at, updated_at`
 
 // selectedUserColumns are read with every user: userColumns and the plan.
 const selectedUserColumns = userColumns + `, ` + planColumns
@@ -57,7 +59,7 @@ func (s *Store) CreateUser(ctx context.Context, username, email, passwordHash st
 	if verified {
 		user.EmailVerifiedAt = &at
 	}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, ?, ?)`,
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, ?, NULL, ?, ?)`,
 		user.ID, user.Username, user.Email, user.PasswordHash, user.EmailVerifiedAt, false, false, displayName, at, at)
 	return user, err
 }
@@ -116,7 +118,7 @@ func (s *Store) AllUsers(ctx context.Context) ([]UserWithSpaces, error) {
 	err := s.sel(ctx, &users, `
 		SELECT u.id, u.username, u.email, u.password_hash, u.token_version, u.avatar_image_id, u.email_verified_at,
 		       u.setup_admin, u.must_change_password, u.deleted_at, u.blocked_at, u.blocked_reason, u.display_name,
-		       u.created_at, u.updated_at, u.totp_enabled_at, `+userPlanColumns+`,
+		       u.terms_accepted_at, u.created_at, u.updated_at, u.totp_enabled_at, `+userPlanColumns+`,
 		       (SELECT COUNT(*) FROM space_members m WHERE m.user_id = u.id) AS spaces
 		FROM users u WHERE u.deleted_at IS NULL ORDER BY u.username`)
 	return users, err
@@ -218,7 +220,7 @@ func (s *Store) CreateSetupAdmin(ctx context.Context, username, email, passwordH
 	at := now()
 	user := &User{ID: newID(), Username: username, Email: email, PasswordHash: passwordHash, EmailVerifiedAt: &at,
 		SetupAdmin: true, MustChangePassword: true, CreatedAt: at, UpdatedAt: at}
-	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, NULL, ?, ?)`,
+	_, err := s.exec(ctx, `INSERT INTO users (`+userColumns+`) VALUES (?, ?, ?, ?, 0, NULL, ?, ?, ?, NULL, NULL, NULL, NULL, NULL, ?, ?)`,
 		user.ID, user.Username, user.Email, user.PasswordHash, at, true, true, at, at)
 	return user, err
 }

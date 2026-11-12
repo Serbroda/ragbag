@@ -50,6 +50,9 @@ func (s *Server) meView(c echo.Context, user *store.User, hasPin bool) error {
 		return err
 	}
 	dto.StartSpaceId = start
+	if err := s.termsOfMe(c, user, &dto); err != nil {
+		return err
+	}
 	if *dto.InstanceAdmin {
 		open, err := s.store.CountOpenReports(ctxOf(c))
 		if err != nil {

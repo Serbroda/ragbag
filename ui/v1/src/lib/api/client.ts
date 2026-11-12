@@ -64,6 +64,11 @@ const authMiddleware: Middleware = {
 			if (!window.location.pathname.endsWith('/setup')) window.location.href = `${appBase()}/setup`;
 			return;
 		}
+		// Changed terms of use are accepted before anything else
+		if (context.response.status === 403 && context.response.headers.get('X-Ragbag-Terms')) {
+			if (!window.location.pathname.endsWith('/terms')) window.location.href = `${appBase()}/terms`;
+			return;
+		}
 		if (context.response.status !== 401) return;
 
 		// Don't retry auth endpoints (login, register, refresh)
@@ -205,6 +210,10 @@ export async function reportShare(token: string, createReportRequest: CreateRepo
 export async function deleteAccount(password: string): Promise<void> {
 	await new UserApi(apiConfig()).deleteAccount({ deleteAccountRequest: { password } });
 	setAccessToken(null);
+}
+
+export async function acceptTerms(): Promise<void> {
+	await new UserApi(apiConfig()).acceptTerms();
 }
 
 /** The public link of a shared collection, e.g. https://ragbag.example/app/share/abc… */

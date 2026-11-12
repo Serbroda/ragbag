@@ -46,6 +46,7 @@
 	import MemberChecklist from '../components/MemberChecklist.svelte';
 	import KoFiIcon from '../components/KoFiIcon.svelte';
 	import SupportButton from '../components/SupportButton.svelte';
+	import TermsNotice from '../components/TermsNotice.svelte';
 	import LegalLinks from '../components/LegalLinks.svelte';
 	import { collectionsToTree, flattenTargets, flattenTree, pathToNode, type TreeNode } from '../components/tree';
 	import { CollectionApi, SpaceApi } from 'ragbag-frontend-sdk';
@@ -1069,6 +1070,10 @@
 					<CloseOutline class="h-5 w-5" />
 				</button>
 			</div>
+		{/if}
+
+		{#if session.me?.termsChangeAt}
+			<TermsNotice at={session.me.termsChangeAt} />
 		{/if}
 
 		<main class="relative flex-1 overflow-y-auto overscroll-y-contain" data-scroll-root bind:this={scrollRoot}>

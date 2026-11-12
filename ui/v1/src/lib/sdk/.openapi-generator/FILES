@@ -26,6 +26,7 @@ models/BlockUserRequest.ts
 models/BookmarkDto.ts
 models/BookmarkMetadataDto.ts
 models/ChangePasswordRequest.ts
+models/ChangeTermsRequest.ts
 models/CollectionAccessDto.ts
 models/CollectionAccessMemberDto.ts
 models/CollectionDto.ts
@@ -88,6 +89,7 @@ models/SpacePermissionEnum.ts
 models/SpaceWebhookDto.ts
 models/StartSpaceDto.ts
 models/TagCountDto.ts
+models/TermsStateDto.ts
 models/TrashDto.ts
 models/TrashSelectionDto.ts
 models/TrashedBookmarkDto.ts

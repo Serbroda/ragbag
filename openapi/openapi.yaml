@@ -667,6 +667,78 @@ paths:
         '403':
           $ref: '#/components/responses/Forbidden'
 
+  /v1/admin/terms:
+    get:
+      summary: >
+        Changes of the terms of use: since when the current ones apply, the next change and how many accounts
+        accepted the current ones
+      operationId: getTermsState
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TermsStateDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+    post:
+      summary: >
+        The terms of use change: from effectiveAt (now if left out or past), every account has to accept them
+        again; until then its requests (API tokens too) answer 403 with the header X-Ragbag-Terms
+      operationId: changeTerms
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/ChangeTermsRequest'
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TermsStateDto'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+
+  /v1/admin/terms/next:
+    delete:
+      summary: Withdraw the announced changes of the terms of use that are not in effect yet
+      operationId: withdrawTermsChange
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TermsStateDto'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
   /v1/admin/backup:
     get:
       summary: >
@@ -859,6 +931,22 @@ paths:
           $ref: '#/components/responses/Unauthorized'
         '409':
           $ref: '#/components/responses/Conflict'
+
+  /v1/users/me/terms:
+    post:
+      summary: Accept the current terms of use (after they changed, nothing else works before)
+      operationId: acceptTerms
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
 
   /v1/users/me/start-space:
     put:
@@ -3366,6 +3454,38 @@ components:
         - openReports
         - settings
 
+    TermsStateDto:
+      type: object
+      properties:
+        terms:
+          type: string
+          description: Where the terms of use are; missing without any (then nothing can be changed)
+        inForceSince:
+          type: string
+          format: date-time
+          description: The last change in effect; accounts that accepted before have to accept again
+        next:
+          type: string
+          format: date-time
+          description: An announced change, not in effect yet
+        accepted:
+          type: integer
+          description: Active accounts that accepted the terms in force (since inForceSince, else ever)
+        accounts:
+          type: integer
+          description: Active (confirmed, not blocked) accounts
+      required:
+        - accepted
+        - accounts
+
+    ChangeTermsRequest:
+      type: object
+      properties:
+        effectiveAt:
+          type: string
+          format: date-time
+          description: From when the new terms apply; now if left out or in the past
+
     AdminSettingsDto:
       description: The configuration in effect (environment variables), read-only
       type: object
@@ -3757,6 +3877,15 @@ components:
         mustChangePassword:
           type: boolean
           description: The setup admin still has its random initial password; everything else answers 403
+        termsPending:
+          type: boolean
+          description: >
+            The terms of use changed and have to be accepted (POST /users/me/terms) before anything else works;
+            only set for the current user
+        termsChangeAt:
+          type: string
+          format: date-time
+          description: The terms of use change then (announced); only set for the current user
         openReports:
           type: integer
           description: Unresolved reports of public links (instance admins only)

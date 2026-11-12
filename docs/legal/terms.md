@@ -49,9 +49,10 @@ regelmäßig zu exportieren.
 
 ## 7. Änderungen
 
-Wir können diese Bedingungen ändern, wenn sich der Dienst oder die Rechtslage ändert. Über wesentliche
-Änderungen informieren wir rechtzeitig vorher per E-Mail; widersprichst du nicht, gelten sie als angenommen.
-Auf das Widerspruchsrecht weisen wir in der E-Mail hin.
+Wir können diese Bedingungen ändern, wenn sich der Dienst oder die Rechtslage ändert. Wesentliche Änderungen
+kündigen wir rechtzeitig vorher in Ragbag an; ab ihrem Inkrafttreten bitten wir dich beim nächsten Besuch, ihnen
+zuzustimmen. Bis dahin kannst du Ragbag nicht weiter nutzen (auch nicht über API-Tokens). Stimmst du nicht zu,
+kannst du dein Konto jederzeit löschen.
 
 ## 8. Schluss
 
