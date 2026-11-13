@@ -107,8 +107,21 @@ func TestHeadlinesSectionOnTheDashboard(t *testing.T) {
 	f.req("PUT", "/api/v1/spaces/%s/dashboard", f.space).as(f.viewer).
 		json(`{"sections":[{"title":"News","type":"HEADLINES"}]}`).expect(200).
 		has("sections.0.type", "HEADLINES").has("sections.0.allFeeds", true).
-		has("sections.0.bookmarks.#", 1).has("sections.0.bookmarks.0.id", shared)
+		has("sections.0.bookmarks.#", 1).has("sections.0.bookmarks.0.id", shared).
+		has("sections.0.fullWidth", false).has("sections.0.headlineCount", 5)
 	f.req("GET", "/api/v1/spaces/%s/dashboard", f.space).as(f.owner).expect(200).has("customized", false)
+
+	// Width and number of headlines are kept per section, and only for headlines
+	f.req("PUT", "/api/v1/spaces/%s/dashboard", f.space).as(f.viewer).
+		json(`{"sections":[{"title":"News","type":"HEADLINES","fullWidth":true,"headlineCount":15},
+			{"title":"More","type":"HEADLINES"},{"title":"Recent","type":"RECENT","fullWidth":true,"headlineCount":15}]}`).
+		expect(200)
+	view := f.req("GET", "/api/v1/spaces/%s/dashboard", f.space).as(f.viewer).expect(200).
+		has("sections.0.fullWidth", true).has("sections.0.headlineCount", 15).
+		has("sections.1.fullWidth", false).has("sections.1.headlineCount", 5)
+	require.False(t, view.get("sections.2.headlineCount").Exists())
+	f.req("PUT", "/api/v1/spaces/%s/dashboard", f.space).as(f.viewer).
+		json(`{"sections":[{"title":"News","type":"HEADLINES","headlineCount":31}]}`).expect(400)
 
 	// Picked links: those without a feed drop out
 	f.req("PUT", "/api/v1/spaces/%s/dashboard", f.space).as(f.owner).

@@ -168,7 +168,10 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   same checks as `sharedCollection`) when shown; the server keeps each feed in memory for an hour (failures 10
   minutes), shared by all users, and only a load counts against the fetch limit. Nothing of a feed is stored.
   The dashboard section `HEADLINES` merges the feeds of picked links (none picked: every link of the space with a
-  feed, `allFeeds`) via `GET /spaces/{id}/headlines?bookmarkId=…`, newest first, each article once.
+  feed, `allFeeds`) via `GET /spaces/{id}/headlines?bookmarkId=…`, newest first, each article once. It shows
+  `headline_count` of them (default 5); headline sections in a row that are not `full_width` form one board
+  (`HeadlineBoard.svelte`: columns by container width, tabs when narrow), "new since the last visit" is kept per
+  device in localStorage.
 - **Link previews** (`meta.go`): the server writes title, description and Open Graph tags into `index.html` per
   page (chat apps do not run JavaScript). Shared collections go through the same `sharedCollection` as the API,
   so private, revoked or unknown links get the generic preview; pages behind a login never reveal anything.

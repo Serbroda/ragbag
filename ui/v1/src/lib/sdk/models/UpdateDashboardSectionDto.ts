@@ -39,6 +39,14 @@ export interface UpdateDashboardSectionDto {
      * Only used for LINKS (in display order) and HEADLINES sections (none = every link with a feed)
      */
     bookmarkIds?: Array<string>;
+    /**
+     * HEADLINES only; across the whole width instead of a column next to its neighbors
+     */
+    fullWidth?: boolean;
+    /**
+     * HEADLINES only; how many headlines it shows before "Show more" (left out = the default, 5)
+     */
+    headlineCount?: number;
 }
 
 
@@ -65,6 +73,8 @@ export function UpdateDashboardSectionDtoFromJSONTyped(json: any, ignoreDiscrimi
         'title': json['title'],
         'type': DashboardSectionTypeEnumFromJSON(json['type']),
         'bookmarkIds': json['bookmarkIds'] == null ? undefined : json['bookmarkIds'],
+        'fullWidth': json['fullWidth'] == null ? undefined : json['fullWidth'],
+        'headlineCount': json['headlineCount'] == null ? undefined : json['headlineCount'],
     };
 }
 
@@ -82,6 +92,8 @@ export function UpdateDashboardSectionDtoToJSONTyped(value?: UpdateDashboardSect
         'title': value['title'],
         'type': DashboardSectionTypeEnumToJSON(value['type']),
         'bookmarkIds': value['bookmarkIds'],
+        'fullWidth': value['fullWidth'],
+        'headlineCount': value['headlineCount'],
     };
 }
 

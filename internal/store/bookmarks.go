@@ -325,11 +325,14 @@ type DashboardSection struct {
 	Type        string   `db:"type"`
 	Position    int      `db:"position"`
 	BookmarkIDs []string `db:"-"`
+	// FullWidth and HeadlineCount (nil: the default) only matter for HEADLINES
+	FullWidth     bool `db:"full_width"`
+	HeadlineCount *int `db:"headline_count"`
 }
 
 func (s *Store) DashboardSections(ctx context.Context, userID, spaceID string) ([]DashboardSection, error) {
 	var sections []DashboardSection
-	if err := s.sel(ctx, &sections, `SELECT id, title, type, position FROM dashboard_sections
+	if err := s.sel(ctx, &sections, `SELECT id, title, type, position, full_width, headline_count FROM dashboard_sections
 		WHERE user_id = ? AND space_id = ? ORDER BY position`, userID, spaceID); err != nil || len(sections) == 0 {
 		return sections, err
 	}
@@ -362,8 +365,9 @@ func (s *Store) ReplaceDashboard(ctx context.Context, userID, spaceID string, se
 	at := now()
 	for position, section := range sections {
 		id := newID()
-		if _, err := s.exec(ctx, `INSERT INTO dashboard_sections (id, user_id, space_id, title, type, position, created_at)
-			VALUES (?, ?, ?, ?, ?, ?, ?)`, id, userID, spaceID, section.Title, section.Type, position, at); err != nil {
+		if _, err := s.exec(ctx, `INSERT INTO dashboard_sections (id, user_id, space_id, title, type, position, full_width,
+			headline_count, created_at) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`, id, userID, spaceID, section.Title, section.Type,
+			position, section.FullWidth, section.HeadlineCount, at); err != nil {
 			return err
 		}
 		for itemPosition, bookmarkID := range section.BookmarkIDs {

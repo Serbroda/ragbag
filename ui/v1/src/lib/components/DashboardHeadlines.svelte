@@ -6,11 +6,21 @@
 	import { getDomain, safeUrl } from '../utils/format';
 	import { headlineAge, isFreshHeadline } from '../utils/links';
 
-	/** A dashboard section: the headlines of several links' feeds merged into one list, newest first. */
-	let { spaceId, sources }: { spaceId: string; sources: BookmarkDto[] } = $props();
+	/**
+	 * A dashboard section: the headlines of several links' feeds merged into one list, newest first. Headlines
+	 * published after the last visit (seenKey, kept on this device) are marked and counted in newCount; while the
+	 * section is not visible (another tab), the visit does not count.
+	 */
+	let {
+		spaceId,
+		sources,
+		seenKey,
+		count = 5,
+		visible = true,
+		newCount = $bindable(),
+	}: { spaceId: string; sources: BookmarkDto[]; seenKey: string; count?: number; visible?: boolean; newCount?: number } = $props();
 
 	const LOADED = 30;
-	const SHOWN = 10;
 
 	let result = $state<HeadlinesDto | null>(null);
 	let failed = $state(false);
@@ -40,7 +50,36 @@
 			return [{ ...item, href, source, favicon: safeUrl(source?.favicon) }];
 		}),
 	);
-	const shown = $derived(expanded ? items : items.slice(0, SHOWN));
+	const shown = $derived(expanded ? items : items.slice(0, count));
+
+	/** The last visit before this one: what was published after it is new, until the next visit. */
+	const seenBefore = $derived(readSeen(seenKey));
+	const isNew = (date: Date | undefined) => !!seenBefore && !!date && date > seenBefore;
+
+	$effect(() => {
+		newCount = items.filter((item) => isNew(item.publishedAt)).length;
+	});
+
+	$effect(() => {
+		if (result && !result.failed && visible) writeSeen(seenKey);
+	});
+
+	function readSeen(key: string): Date | null {
+		try {
+			const value = localStorage.getItem(key);
+			return value ? new Date(value) : null;
+		} catch {
+			return null;
+		}
+	}
+
+	function writeSeen(key: string) {
+		try {
+			localStorage.setItem(key, new Date().toISOString());
+		} catch {
+			// Unavailable storage: nothing is marked as new
+		}
+	}
 	let failedIcons = $state<Set<string>>(new Set());
 </script>
 
@@ -77,7 +116,11 @@
 							<span
 								class="line-clamp-2 break-words text-sm group-hover:text-primary-600 group-hover:underline dark:group-hover:text-primary-400 {fresh
 									? 'font-medium text-gray-900 dark:text-gray-100'
-									: 'text-gray-700 dark:text-gray-300'}">{item.title}</span
+									: 'text-gray-700 dark:text-gray-300'}"
+								>{#if isNew(item.publishedAt)}<span
+										class="me-1.5 inline-block h-2 w-2 rounded-full bg-primary-500 align-middle"
+										title="New since your last visit"
+									></span>{/if}{item.title}</span
 							>
 							{#if item.source}
 								<span class="mt-0.5 flex items-center gap-1.5 text-xs text-gray-500">
@@ -101,13 +144,13 @@
 				</li>
 			{/each}
 		</ul>
-		{#if items.length > SHOWN}
+		{#if items.length > count}
 			<button
 				type="button"
 				class="w-full rounded-b-xl border-t border-gray-100 py-2 text-sm text-gray-500 hover:bg-gray-50 hover:text-gray-800 dark:border-gray-800 dark:hover:bg-gray-800/60 dark:hover:text-gray-200"
 				onclick={() => (expanded = !expanded)}
 			>
-				{expanded ? 'Show fewer' : `Show ${items.length - SHOWN} more`}
+				{expanded ? 'Show fewer' : `Show ${items.length - count} more`}
 			</button>
 		{/if}
 	{/if}

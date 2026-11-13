@@ -14,6 +14,9 @@ const (
 	maxSections        = 30
 	maxLinksPerSection = 100
 	recentCount        = 12
+	// Headlines a section shows before "Show more", unless the user picked another number (at most maxHeadlines)
+	defaultHeadlineCount = 5
+	maxHeadlines         = 30
 )
 
 // GetDashboard returns the user's own layout, or favorites + recent until they customize it. Every member,
@@ -46,11 +49,16 @@ func (s *Server) dashboardView(c echo.Context, spaceID string) error {
 	result := api.DashboardDto{Customized: customized, Sections: []api.DashboardSectionDto{}}
 	for _, section := range sections {
 		var bookmarks []store.Bookmark
-		var allFeeds *bool
+		var allFeeds, fullWidth *bool
+		var headlineCount *int
 		switch api.DashboardSectionTypeEnum(section.Type) {
 		case api.LINKS:
 			bookmarks, err = s.pinnedBookmarks(c, section.BookmarkIDs, hidden)
 		case api.HEADLINES:
+			fullWidth, headlineCount = ptr(section.FullWidth), ptr(defaultHeadlineCount)
+			if section.HeadlineCount != nil {
+				headlineCount = section.HeadlineCount
+			}
 			// The links whose feeds it shows: the picked ones that (still) have a feed, else all of the space's
 			allFeeds = ptr(len(section.BookmarkIDs) == 0)
 			if *allFeeds {
@@ -79,7 +87,7 @@ func (s *Server) dashboardView(c echo.Context, spaceID string) error {
 		result.Sections = append(result.Sections, api.DashboardSectionDto{
 			// Sections of the default layout have no id
 			Id: nilIfEmpty(section.ID), Title: section.Title, Type: api.DashboardSectionTypeEnum(section.Type), Bookmarks: dtos,
-			AllFeeds: allFeeds,
+			AllFeeds: allFeeds, FullWidth: fullWidth, HeadlineCount: headlineCount,
 		})
 	}
 	return c.JSON(http.StatusOK, result)
@@ -156,7 +164,15 @@ func (s *Server) UpdateDashboard(c echo.Context, spaceID api.ID) error {
 				}
 			}
 		}
-		sections = append(sections, store.DashboardSection{Title: title, Type: string(section.Type), BookmarkIDs: ids})
+		saved := store.DashboardSection{Title: title, Type: string(section.Type), BookmarkIDs: ids}
+		if section.Type == api.HEADLINES {
+			if count := section.HeadlineCount; count != nil && (*count < 1 || *count > maxHeadlines) {
+				return badRequest("A headlines section shows 1 to %d headlines", maxHeadlines)
+			}
+			saved.FullWidth = section.FullWidth != nil && *section.FullWidth
+			saved.HeadlineCount = section.HeadlineCount
+		}
+		sections = append(sections, saved)
 	}
 
 	bookmarks, err := s.store.BookmarksByIDs(ctxOf(c), referenced)
