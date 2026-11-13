@@ -3,6 +3,7 @@ package server_test
 import (
 	"fmt"
 	"testing"
+	"time"
 
 	"github.com/Serbroda/ragbag/internal/config"
 	"github.com/google/uuid"
@@ -93,8 +94,9 @@ func TestInvitedAccountsJoinTheSpaceWithTheirConfirmation(t *testing.T) {
 	_, first := box.await(t, 1, email)
 	members := e.req("GET", "/api/v1/spaces/%s/members", adminSpace).as(admin).expect(200).get("#").Int()
 
-	// A new link (signing in before confirming) still joins the space
-	e.req("POST", "/api/auth/login").json(loginBody(username, testPassword)).expect(403)
+	// A new link (sent again before confirming) still joins the space
+	e.sentVerificationAgo(3 * time.Minute)
+	e.req("POST", "/api/auth/resend-verification").json(loginBody(username, testPassword)).expect(204)
 	_, second := box.await(t, 2, email)
 	require.NotEqual(t, first, second)
 	access := e.req("POST", "/api/auth/verify-email/%s", second).expect(200).str("access_token")

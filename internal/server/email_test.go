@@ -74,13 +74,23 @@ func TestNewAccountsConfirmTheirEmailAddressFirst(t *testing.T) {
 	kind, token := box.await(t, 1, email)
 	require.Equal(t, "verify-email", kind)
 
-	// Signing in waits for the confirmation and sends a new link, which replaces the first one
+	// Signing in waits for the confirmation and sends nothing; the header lets the page offer a new link
 	res := e.req("POST", "/api/auth/login").json(loginBody(username, testPassword)).expect(403)
 	require.Contains(t, res.str("detail"), email)
-	_, newToken := box.await(t, 2, email)
-	e.req("POST", "/api/auth/verify-email/%s", token).expect(400)
+	require.Equal(t, "required", res.Header.Get("X-Ragbag-Verify-Email"))
 	// A wrong password tells nothing and sends nothing
-	e.req("POST", "/api/auth/login").json(loginBody(username, "wrong-password")).expect(401)
+	res = e.req("POST", "/api/auth/login").json(loginBody(username, "wrong-password")).expect(401)
+	require.Empty(t, res.Header.Get("X-Ragbag-Verify-Email"))
+	e.req("POST", "/api/auth/resend-verification").json(loginBody(username, "wrong-password")).expect(401)
+
+	// A new link only once the last one is out for 2 minutes; it replaces the first one
+	res = e.req("POST", "/api/auth/resend-verification").json(loginBody(username, testPassword)).expect(429)
+	require.NotEmpty(t, res.Header.Get("Retry-After"))
+	e.sentVerificationAgo(3 * time.Minute)
+	e.req("POST", "/api/auth/resend-verification").json(loginBody(email, testPassword)).expect(204)
+	_, newToken := box.await(t, 2, email)
+	e.req("POST", "/api/auth/resend-verification").json(loginBody(username, testPassword)).expect(429)
+	e.req("POST", "/api/auth/verify-email/%s", token).expect(400)
 
 	res = e.req("POST", "/api/auth/verify-email/%s", newToken).expect(200)
 	require.NotEmpty(t, res.str("access_token"))
@@ -90,7 +100,15 @@ func TestNewAccountsConfirmTheirEmailAddressFirst(t *testing.T) {
 	// The link works once; afterwards the account signs in normally
 	e.req("POST", "/api/auth/verify-email/%s", newToken).expect(400)
 	e.login(username, testPassword)
+	e.req("POST", "/api/auth/resend-verification").json(loginBody(username, testPassword)).expect(409)
 	require.Equal(t, 2, box.count())
+}
+
+// sentVerificationAgo dates the confirmation links back, so they may be sent again.
+func (e *env) sentVerificationAgo(ago time.Duration) {
+	e.t.Helper()
+	_, err := e.db.Exec(e.db.Rebind(`UPDATE email_verifications SET created_at = ?`), time.Now().UTC().Add(-ago))
+	require.NoError(e.t, err)
 }
 
 func TestConfirmationLinksExpire(t *testing.T) {

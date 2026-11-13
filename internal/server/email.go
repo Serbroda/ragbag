@@ -6,9 +6,11 @@ import (
 	"fmt"
 	"log/slog"
 	"net/http"
+	"strings"
 	"time"
 
 	"github.com/Serbroda/ragbag/internal/api"
+	"github.com/Serbroda/ragbag/internal/auth"
 	"github.com/Serbroda/ragbag/internal/mail"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/labstack/echo/v4"
@@ -19,6 +21,11 @@ import (
 // confirmed right away and only instance admins create reset links.
 
 const (
+	// verifyHeader tells the login page that the password was right but the address is not confirmed yet, so it
+	// offers to send the link again
+	verifyHeader = "X-Ragbag-Verify-Email"
+	// resendPause is how long a confirmation link has to be out before it can be sent again
+	resendPause          = 2 * time.Minute
 	verificationValidity = 48 * time.Hour
 	// unverifiedRetention is how long an account may wait for its confirmation before it is deleted
 	unverifiedRetention = 7 * 24 * time.Hour
@@ -71,6 +78,59 @@ The link is valid for 48 hours. Accounts that are not confirmed within 7 days ar
 If you did not create this account, just ignore this email.
 `, user.Name(), s.cfg.PublicURL, token))
 	return nil
+}
+
+// ResendVerification sends the confirmation link again, to who knows the password of the unconfirmed account. At
+// most every resendPause and within the mail limit per account, so nobody fills an inbox with it.
+func (s *Server) ResendVerification(c echo.Context) error {
+	var req api.LoginRequest
+	if err := bind(c, &req); err != nil {
+		return err
+	}
+	if !s.mailEnabled() {
+		return badRequest("This Ragbag sends no emails")
+	}
+	user, err := s.store.UserByLogin(ctxOf(c), req.Username)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+	// Wrong passwords count like failed logins
+	account := strings.ToLower(strings.TrimSpace(req.Username))
+	if err == nil {
+		account = user.ID
+	}
+	if err := s.loginBlocked(c, account); err != nil {
+		return err
+	}
+	if err != nil || !auth.CheckPassword(user.PasswordHash, req.Password) {
+		s.loginFailed(account)
+		audit(c, slog.LevelWarn, "login failed", "login", req.Username)
+		return unauthorized("Invalid credentials")
+	}
+	c.Set(usernameKey, user.Username)
+	if user.BlockedAt != nil {
+		return blockedMessage(user)
+	}
+	if user.EmailVerifiedAt != nil {
+		return conflict("Your email address is confirmed already: just sign in")
+	}
+	verification, err := s.store.EmailVerificationOf(ctxOf(c), user.ID)
+	if err != nil && !errors.Is(err, store.ErrNotFound) {
+		return err
+	}
+	if err == nil {
+		if wait := resendPause - time.Since(verification.CreatedAt); wait > 0 {
+			return refuse(c, wait, "We just sent the link: check your inbox and the spam folder, or ask again in a moment")
+		}
+	}
+	if wait := s.mails.take(user.ID); wait > 0 {
+		return refuse(c, wait, "We sent the link several times already: please try again later")
+	}
+	if err := s.sendVerification(c, s.store, user); err != nil {
+		return err
+	}
+	audit(c, slog.LevelInfo, "confirmation link sent again")
+	return c.NoContent(http.StatusNoContent)
 }
 
 // VerifyEmail confirms the account, creates its first space and signs it in.

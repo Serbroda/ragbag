@@ -1680,6 +1680,9 @@ type ResetPasswordJSONRequestBody = ResetPasswordRequest
 // RegisterJSONRequestBody defines body for Register for application/json ContentType.
 type RegisterJSONRequestBody = RegisterRequest
 
+// ResendVerificationJSONRequestBody defines body for ResendVerification for application/json ContentType.
+type ResendVerificationJSONRequestBody = LoginRequest
+
 // CompleteSetupJSONRequestBody defines body for CompleteSetup for application/json ContentType.
 type CompleteSetupJSONRequestBody = CompleteSetupRequest
 
@@ -1823,6 +1826,9 @@ type ServerInterface interface {
 	// Register Register a new user. When the server sends email (feature flag "email"), the account must confirm its address with the link sent to it before it can sign in.
 	// (POST /auth/register)
 	Register(ctx echo.Context) error
+	// ResendVerification Send the confirmation link of an account that is not confirmed yet again (public, with its username or email and password); at most every 2 minutes, else 429 with Retry-After
+	// (POST /auth/resend-verification)
+	ResendVerification(ctx echo.Context) error
 	// CompleteSetup Replace the random initial password of the setup admin (created on the first start of an empty instance) and set its email address; returns new tokens
 	// (POST /auth/setup)
 	CompleteSetup(ctx echo.Context) error
@@ -2316,6 +2322,15 @@ func (w *ServerInterfaceWrapper) Register(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Register(ctx)
+	return err
+}
+
+// ResendVerification converts echo context to params.
+func (w *ServerInterfaceWrapper) ResendVerification(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ResendVerification(ctx)
 	return err
 }
 
@@ -4025,6 +4040,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/auth/invites/:token", wrapper.GetRegistrationInvite, options.OperationMiddlewares["getRegistrationInvite"]...)
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login, options.OperationMiddlewares["login"]...)
 	router.POST(options.BaseURL+"/auth/verify-email/:token", wrapper.VerifyEmail, options.OperationMiddlewares["verifyEmail"]...)
+	router.POST(options.BaseURL+"/auth/resend-verification", wrapper.ResendVerification, options.OperationMiddlewares["resendVerification"]...)
 	router.POST(options.BaseURL+"/auth/refresh", wrapper.Refresh, options.OperationMiddlewares["refresh"]...)
 	router.POST(options.BaseURL+"/auth/logout", wrapper.Logout, options.OperationMiddlewares["logout"]...)
 	router.GET(options.BaseURL+"/auth/logout/all", wrapper.LogoutAll, options.OperationMiddlewares["logoutAll"]...)

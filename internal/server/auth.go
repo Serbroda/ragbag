@@ -236,14 +236,10 @@ func (s *Server) Login(c echo.Context) error {
 	}
 	if user.EmailVerifiedAt == nil {
 		if s.mailEnabled() {
-			// The password was right, so a new link is no help for strangers
-			if s.mailAllowed(user) {
-				if err := s.sendVerification(c, s.store, user); err != nil {
-					return err
-				}
-			}
+			// The password was right, so the login page may offer to send the link again (ResendVerification)
 			audit(c, slog.LevelInfo, "login refused until the email address is confirmed")
-			return forbidden("Please confirm your email address first: we sent a new link to %s", user.Email)
+			c.Response().Header().Set(verifyHeader, "required")
+			return forbidden("Please confirm your email address first: open the link we sent to %s", user.Email)
 		}
 		// Email was turned off since the registration: nothing left to wait for
 		if err := s.store.InTx(ctxOf(c), func(tx *store.Store) error { return s.confirmUser(c, tx, user) }); err != nil {

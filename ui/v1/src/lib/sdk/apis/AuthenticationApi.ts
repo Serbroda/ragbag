@@ -120,6 +120,13 @@ export interface RequestPasswordResetOperationRequest {
     requestPasswordResetRequest: RequestPasswordResetRequest;
 }
 
+export interface ResendVerificationRequest {
+    /**
+     * 
+     */
+    loginRequest: LoginRequest;
+}
+
 export interface ResetPasswordOperationRequest {
     /**
      * 
@@ -632,6 +639,52 @@ export class AuthenticationApi extends runtime.BaseAPI {
      */
     async requestPasswordReset(requestParameters: RequestPasswordResetOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.requestPasswordResetRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for resendVerification without sending the request
+     */
+    async resendVerificationRequestOpts(requestParameters: ResendVerificationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['loginRequest'] == null) {
+            throw new runtime.RequiredError(
+                'loginRequest',
+                'Required parameter "loginRequest" was null or undefined when calling resendVerification().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/auth/resend-verification`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: LoginRequestToJSON(requestParameters['loginRequest']),
+        };
+    }
+
+    /**
+     * Send the confirmation link of an account that is not confirmed yet again (public, with its username or email and password); at most every 2 minutes, else 429 with Retry-After 
+     */
+    async resendVerificationRaw(requestParameters: ResendVerificationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.resendVerificationRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Send the confirmation link of an account that is not confirmed yet again (public, with its username or email and password); at most every 2 minutes, else 429 with Retry-After 
+     */
+    async resendVerification(requestParameters: ResendVerificationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.resendVerificationRaw(requestParameters, initOverrides);
     }
 
     /**
