@@ -1,6 +1,6 @@
 <script lang="ts">
 	import { SpaceApi } from 'ragbag-frontend-sdk';
-	import type { BookmarkDto, DashboardDto, DashboardSectionTypeEnum } from 'ragbag-frontend-sdk';
+	import type { BookmarkDto, DashboardDto, DashboardSectionDto, DashboardSectionTypeEnum } from 'ragbag-frontend-sdk';
 	import { getContext, untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { dndzone, dragHandle, dragHandleZone } from 'svelte-dnd-action';
@@ -19,7 +19,7 @@
 	import { apiConfig, errorMessage } from '../api/client';
 	import { navigate, route } from '../router';
 	import LinkTile from '../components/LinkTile.svelte';
-	import DashboardHeadlines from '../components/DashboardHeadlines.svelte';
+	import HeadlineBoard from '../components/HeadlineBoard.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import { shownName } from '../utils/format';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
@@ -104,6 +104,30 @@
 		},
 	};
 
+	/**
+	 * What view mode shows: sections one below the other, except that headline sections in a row form one board
+	 * (columns side by side, tabs on narrow screens), so every category is in view without scrolling. A full width
+	 * headline section stands on its own.
+	 */
+	type Block =
+		| { kind: 'section'; key: string; section: DashboardSectionDto }
+		| { kind: 'headlines'; key: string; sections: DashboardSectionDto[] };
+
+	const blocks = $derived.by(() => {
+		const result: Block[] = [];
+		dashboard?.sections.forEach((section, index) => {
+			const key = section.id ?? String(index);
+			if (section.type !== 'HEADLINES' || section.bookmarks.length === 0) {
+				result.push({ kind: 'section', key, section });
+				return;
+			}
+			const last = result.at(-1);
+			if (!section.fullWidth && last?.kind === 'headlines' && !last.sections[0].fullWidth) last.sections.push(section);
+			else result.push({ kind: 'headlines', key, sections: [section] });
+		});
+		return result;
+	});
+
 	/** Sections with links to pick: arranged for LINKS, the feeds to merge for HEADLINES. */
 	function hasItems(type: DashboardSectionTypeEnum): boolean {
 		return type === 'LINKS' || type === 'HEADLINES';
@@ -114,7 +138,18 @@
 	// drag-and-drop library needs ids that are unique across all zones.
 
 	type DraftItem = { id: string; bookmark: BookmarkDto };
-	type DraftSection = { id: string; title: string; type: DashboardSectionTypeEnum; items: DraftItem[] };
+	type DraftSection = {
+		id: string;
+		title: string;
+		type: DashboardSectionTypeEnum;
+		items: DraftItem[];
+		/** HEADLINES only */
+		fullWidth: boolean;
+		headlineCount: number;
+	};
+
+	const HEADLINE_COUNTS = [5, 10, 15, 20];
+	const DEFAULT_HEADLINE_COUNT = 5;
 
 	let editing = $state(false);
 	let draft = $state<DraftSection[]>([]);
@@ -132,6 +167,8 @@
 			id: uid(),
 			title: section.title,
 			type: section.type,
+			fullWidth: section.fullWidth ?? false,
+			headlineCount: section.headlineCount ?? DEFAULT_HEADLINE_COUNT,
 			// A headlines section with all feeds has nothing picked
 			items:
 				section.type === 'LINKS' || (section.type === 'HEADLINES' && !section.allFeeds)
@@ -144,7 +181,7 @@
 
 	function addSection(type: DashboardSectionTypeEnum) {
 		const title = type === 'LINKS' ? 'New section' : TYPE_META[type].label;
-		draft = [...draft, { id: uid(), title, type, items: [] }];
+		draft = [...draft, { id: uid(), title, type, items: [], fullWidth: false, headlineCount: DEFAULT_HEADLINE_COUNT }];
 	}
 
 	function removeSection(sectionId: string) {
@@ -180,6 +217,7 @@
 						title: s.title.trim(),
 						type: s.type,
 						bookmarkIds: hasItems(s.type) ? s.items.map((item) => item.bookmark.id) : undefined,
+						...(s.type === 'HEADLINES' ? { fullWidth: s.fullWidth, headlineCount: s.headlineCount } : {}),
 					})),
 				},
 			});
@@ -273,53 +311,56 @@
 	{:else if dashboard && !editing}
 		<!-- View mode -->
 		<div class="space-y-10">
-			{#each dashboard.sections as section, index (section.id ?? index)}
-				{@const meta = TYPE_META[section.type]}
-				<section>
-					<h2 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
-						<meta.icon class="h-3.5 w-3.5" />
-						{section.title}
-						<span class="font-normal normal-case tracking-normal text-gray-400"
-							>· {section.bookmarks.length}{section.type === 'HEADLINES'
-								? ` feed${section.bookmarks.length === 1 ? '' : 's'}`
-								: ''}</span
-						>
-					</h2>
-					{#if section.type === 'HEADLINES' && section.bookmarks.length > 0}
-						<DashboardHeadlines {spaceId} sources={section.bookmarks} />
-					{:else if section.bookmarks.length === 0}
-						<div class="rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-800">
-							{#if section.type === 'FAVORITES'}
-								Star links to see them here.
-							{:else if section.type === 'RECENT'}
-								Nothing has been added to this space yet.
-							{:else if section.type === 'HEADLINES'}
-								No links with headlines yet: turn them on in a link’s edit dialog.
-							{:else}
-								No links yet. Use
-								<button type="button" class="text-primary-600 hover:underline dark:text-primary-400" onclick={startEditing}>
-									Customize
-								</button>
-								to add some.
-							{/if}
-						</div>
-					{:else}
-						<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
-							{#each section.bookmarks as bookmark (bookmark.id)}
-								<LinkTile {bookmark}>
-									{#snippet overlay()}
-										<FavoriteButton
-											bookmarkId={bookmark.id}
-											favorite={bookmark.favorite ?? false}
-											class={bookmark.favorite ? '' : 'opacity-0 focus:opacity-100 group-hover:opacity-100'}
-											onchange={() => load(spaceId)}
-										/>
-									{/snippet}
-								</LinkTile>
-							{/each}
-						</div>
-					{/if}
-				</section>
+			{#each blocks as block (block.key)}
+				{#if block.kind === 'headlines'}
+					<HeadlineBoard {spaceId} sections={block.sections} />
+				{:else}
+					{@const section = block.section}
+					{@const meta = TYPE_META[section.type]}
+					<section>
+						<h2 class="mb-3 flex items-center gap-2 text-xs font-semibold uppercase tracking-wider text-gray-500 dark:text-gray-400">
+							<meta.icon class="h-3.5 w-3.5" />
+							{section.title}
+							<span class="font-normal normal-case tracking-normal text-gray-400"
+								>· {section.bookmarks.length}{section.type === 'HEADLINES'
+									? ` feed${section.bookmarks.length === 1 ? '' : 's'}`
+									: ''}</span
+							>
+						</h2>
+						{#if section.bookmarks.length === 0}
+							<div class="rounded-xl border-2 border-dashed border-gray-200 px-4 py-6 text-center text-sm text-gray-500 dark:border-gray-800">
+								{#if section.type === 'FAVORITES'}
+									Star links to see them here.
+								{:else if section.type === 'RECENT'}
+									Nothing has been added to this space yet.
+								{:else if section.type === 'HEADLINES'}
+									No links with headlines yet: turn them on in a link’s edit dialog.
+								{:else}
+									No links yet. Use
+									<button type="button" class="text-primary-600 hover:underline dark:text-primary-400" onclick={startEditing}>
+										Customize
+									</button>
+									to add some.
+								{/if}
+							</div>
+						{:else}
+							<div class="grid gap-3 sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4">
+								{#each section.bookmarks as bookmark (bookmark.id)}
+									<LinkTile {bookmark}>
+										{#snippet overlay()}
+											<FavoriteButton
+												bookmarkId={bookmark.id}
+												favorite={bookmark.favorite ?? false}
+												class={bookmark.favorite ? '' : 'opacity-0 focus:opacity-100 group-hover:opacity-100'}
+												onchange={() => load(spaceId)}
+											/>
+										{/snippet}
+									</LinkTile>
+								{/each}
+							</div>
+						{/if}
+					</section>
+				{/if}
 			{/each}
 			{#if dashboard.sections.length === 0}
 				<div class="rounded-xl border-2 border-dashed border-gray-200 py-14 text-center dark:border-gray-800">
@@ -382,11 +423,44 @@
 
 					{#if hasItems(section.type)}
 						{#if section.type === 'HEADLINES'}
-							<p class="mb-2 text-sm text-gray-500 dark:text-gray-400">
-								{section.items.length === 0
-									? 'Shows all links of the space with headlines. Pick some to show only theirs.'
-									: 'Shows the headlines of these links.'}
-							</p>
+							<div class="mb-2 flex flex-wrap items-center gap-x-4 gap-y-2">
+								<p class="min-w-0 flex-1 text-sm text-gray-500 dark:text-gray-400">
+									{section.items.length === 0
+										? 'Shows all links of the space with headlines. Pick some to show only theirs.'
+										: 'Shows the headlines of these links.'}
+								</p>
+								<div
+									class="flex rounded-lg bg-gray-200 p-0.5 text-xs dark:bg-gray-800"
+									role="radiogroup"
+									aria-label="Width of {section.title}"
+									title="Columns sit next to the headline sections around them"
+								>
+									{#each [{ value: false, label: 'Column' }, { value: true, label: 'Full width' }] as option (option.label)}
+										<button
+											type="button"
+											role="radio"
+											aria-checked={section.fullWidth === option.value}
+											class="rounded-md px-2.5 py-1 font-medium {section.fullWidth === option.value
+												? 'bg-white text-gray-900 shadow-sm dark:bg-gray-700 dark:text-white'
+												: 'text-gray-500 hover:text-gray-800 dark:text-gray-400 dark:hover:text-gray-200'}"
+											onclick={() => (section.fullWidth = option.value)}
+										>
+											{option.label}
+										</button>
+									{/each}
+								</div>
+								<label class="flex items-center gap-2 text-xs text-gray-500 dark:text-gray-400">
+									<select
+										class="cursor-pointer rounded-lg border-0 bg-gray-200 py-1 pl-2.5 pr-7 text-xs font-medium text-gray-700 focus:ring-2 focus:ring-primary-500 dark:bg-gray-800 dark:text-gray-200"
+										bind:value={section.headlineCount}
+									>
+										{#each HEADLINE_COUNTS as count (count)}
+											<option value={count}>{count}</option>
+										{/each}
+									</select>
+									headlines shown
+								</label>
+							</div>
 						{/if}
 						<div
 							class="grid gap-3 rounded-lg sm:grid-cols-2 lg:grid-cols-3 2xl:grid-cols-4 {section.type === 'LINKS' ||

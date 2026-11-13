@@ -4811,6 +4811,12 @@ components:
         allFeeds:
           type: boolean
           description: A HEADLINES section without picked links, showing every link of the space with a feed
+        fullWidth:
+          type: boolean
+          description: HEADLINES only; shown across the whole width instead of as a column next to its neighbors
+        headlineCount:
+          type: integer
+          description: HEADLINES only; how many headlines it shows before "Show more" (default 5)
       required:
         - title
         - type
@@ -4837,6 +4843,14 @@ components:
           description: Only used for LINKS (in display order) and HEADLINES sections (none = every link with a feed)
           items:
             $ref: '#/components/schemas/ID'
+        fullWidth:
+          type: boolean
+          description: HEADLINES only; across the whole width instead of a column next to its neighbors
+        headlineCount:
+          type: integer
+          minimum: 1
+          maximum: 30
+          description: HEADLINES only; how many headlines it shows before "Show more" (left out = the default, 5)
       required:
         - title
         - type

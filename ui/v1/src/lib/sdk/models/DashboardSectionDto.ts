@@ -54,6 +54,14 @@ export interface DashboardSectionDto {
      * A HEADLINES section without picked links, showing every link of the space with a feed
      */
     allFeeds?: boolean;
+    /**
+     * HEADLINES only; shown across the whole width instead of as a column next to its neighbors
+     */
+    fullWidth?: boolean;
+    /**
+     * HEADLINES only; how many headlines it shows before "Show more" (default 5)
+     */
+    headlineCount?: number;
 }
 
 
@@ -83,6 +91,8 @@ export function DashboardSectionDtoFromJSONTyped(json: any, ignoreDiscriminator:
         'type': DashboardSectionTypeEnumFromJSON(json['type']),
         'bookmarks': ((json['bookmarks'] as Array<any>).map(BookmarkDtoFromJSON)),
         'allFeeds': json['allFeeds'] == null ? undefined : json['allFeeds'],
+        'fullWidth': json['fullWidth'] == null ? undefined : json['fullWidth'],
+        'headlineCount': json['headlineCount'] == null ? undefined : json['headlineCount'],
     };
 }
 
@@ -102,6 +112,8 @@ export function DashboardSectionDtoToJSONTyped(value?: DashboardSectionDto | nul
         'type': DashboardSectionTypeEnumToJSON(value['type']),
         'bookmarks': ((value['bookmarks'] as Array<any>).map(BookmarkDtoToJSON)),
         'allFeeds': value['allFeeds'],
+        'fullWidth': value['fullWidth'],
+        'headlineCount': value['headlineCount'],
     };
 }
 

@@ -893,6 +893,12 @@ type DashboardSectionDto struct {
 	// Bookmarks For HEADLINES the links whose feeds it shows
 	Bookmarks []BookmarkDto `json:"bookmarks"`
 
+	// FullWidth HEADLINES only; shown across the whole width instead of as a column next to its neighbors
+	FullWidth *bool `json:"fullWidth,omitempty"`
+
+	// HeadlineCount HEADLINES only; how many headlines it shows before "Show more" (default 5)
+	HeadlineCount *int `json:"headlineCount,omitempty"`
+
 	// Id Empty for sections of the default layout
 	Id    *string `json:"id,omitempty"`
 	Title string  `json:"title"`
@@ -1516,8 +1522,14 @@ type UpdateDashboardDto struct {
 // UpdateDashboardSectionDto defines model for UpdateDashboardSectionDto.
 type UpdateDashboardSectionDto struct {
 	// BookmarkIds Only used for LINKS (in display order) and HEADLINES sections (none = every link with a feed)
-	BookmarkIds *[]ID  `json:"bookmarkIds,omitempty"`
-	Title       string `json:"title"`
+	BookmarkIds *[]ID `json:"bookmarkIds,omitempty"`
+
+	// FullWidth HEADLINES only; across the whole width instead of a column next to its neighbors
+	FullWidth *bool `json:"fullWidth,omitempty"`
+
+	// HeadlineCount HEADLINES only; how many headlines it shows before "Show more" (left out = the default, 5)
+	HeadlineCount *int   `json:"headlineCount,omitempty"`
+	Title         string `json:"title"`
 
 	// Type LINKS holds hand-picked bookmarks in a custom order, FAVORITES and RECENT are filled automatically, HEADLINES merges the headlines of hand-picked links with a feed (all of the space's if none are picked)
 	Type DashboardSectionTypeEnum `json:"type"`
