@@ -87,7 +87,7 @@ func checkWritable(path string) error {
 	if err != nil {
 		hint := ""
 		if errors.Is(err, os.ErrPermission) {
-			hint = " (with the systemd service use /var/log/ragbag/, which systemd creates for it)"
+			hint = " (with the systemd service use /var/log/ragbag/, which systemd creates for it; in the container /data/logs/)"
 		}
 		return fmt.Errorf("cannot write LOG_FILE %s: %w%s", path, err, hint)
 	}
