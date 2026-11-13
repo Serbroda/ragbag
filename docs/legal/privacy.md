@@ -37,10 +37,15 @@ nur im Arbeitsspeicher und sind nach kurzer Zeit oder einem Neustart weg.
 
 ## 4. Konto
 
-Für ein Konto speichern wir Benutzernamen, E-Mail-Adresse, Passwort (nur als BCrypt-Hash), optional ein
-Profilbild und eine PIN für gesperrte Sammlungen (ebenfalls nur als Hash), den Zeitpunkt der Registrierung und
-der Zustimmung zu den Nutzungsbedingungen. Rechtsgrundlage ist die Erfüllung des Nutzungsvertrags
-(Art. 6 Abs. 1 lit. b DSGVO).
+Für ein Konto speichern wir Benutzernamen, E-Mail-Adresse, Passwort (nur als BCrypt-Hash), optional einen
+Anzeigenamen, ein Profilbild und eine PIN für gesperrte Sammlungen (ebenfalls nur als Hash), den Zeitpunkt der
+Registrierung und der Zustimmung zu den Nutzungsbedingungen. Rechtsgrundlage ist die Erfüllung des
+Nutzungsvertrags (Art. 6 Abs. 1 lit. b DSGVO).
+
+Schaltest du die Zwei-Faktor-Anmeldung ein, speichern wir den Schlüssel für deine Authenticator-App
+verschlüsselt und die Wiederherstellungscodes nur als Hash. Für API-Tokens speichern wir Name, Berechtigung,
+Ablaufdatum, den Zeitpunkt der letzten Nutzung und einen Hash des Tokens; das Token selbst siehst nur du, einmal
+beim Erstellen.
 
 <!-- Nur mit SMTP_HOST: -->
 Zur Bestätigung der E-Mail-Adresse und zum Zurücksetzen des Passworts schicken wir dir E-Mails mit einem Link;
@@ -60,35 +65,48 @@ und wird danach endgültig gelöscht. Wer einen öffentlichen Link zu einer Samm
 für alle mit dem Link sichtbar – ohne Mitglieder und ohne wer was eingetragen hat.
 
 Wenn du einen Link speicherst, ruft der Server die Seite auf, um Titel, Beschreibung und Vorschaubild zu lesen.
-Diese Anfrage kommt vom Server, nicht von deinem Gerät.
+Diese Anfrage kommt vom Server, nicht von deinem Gerät. Ebenso lädt der Server die Nachrichten-Feeds (RSS
+oder Atom), die an Links hinterlegt sind, um Schlagzeilen anzuzeigen; er hält sie bis zu einer Stunde im
+Arbeitsspeicher und speichert nichts davon.
 
 ## 6. Inhalte von anderen Seiten
 
-Vorschaubilder und Symbole (Favicons) gespeicherter Links lädt dein Browser direkt von den jeweiligen Seiten.
-Dabei erfahren deren Betreiber deine IP-Adresse und den Zeitpunkt, aber nicht, dass du Ragbag nutzt (es wird
-keine Herkunftsadresse mitgeschickt). Wer das nicht möchte, kann Vorschaubilder je Link ausblenden.
+Vorschaubilder und Symbole (Favicons) gespeicherter Links und von Schlagzeilen lädt dein Browser direkt von den
+jeweiligen Seiten. Dabei erfahren deren Betreiber deine IP-Adresse und den Zeitpunkt, aber nicht, dass du Ragbag
+nutzt (es wird keine Herkunftsadresse mitgeschickt). Wer das nicht möchte, kann Vorschaubilder je Link ausblenden.
 
-## 7. Speicher im Browser
+## 7. Discord
+
+Wer einen Space verwaltet, kann ihn mit einem Discord-Kanal verbinden. Dann schickt der Server zu jedem neuen
+Link Titel, Adresse, Beschreibung und Vorschaubild, den Namen der Person, die ihn eingetragen hat, sowie den
+Namen der Sammlung und des Space an Discord (Discord Inc., 444 De Haro Street, Suite 200, San Francisco, CA 94107,
+USA). Dort sieht es, wer den Kanal lesen kann; es gilt die Datenschutzerklärung von Discord. Links in privaten
+Sammlungen und Importe werden nie geschickt. Rechtsgrundlage ist das berechtigte Interesse der Mitglieder, neue
+Links dort zu sehen, wo sie sich ohnehin austauschen (Art. 6 Abs. 1 lit. f DSGVO).
+
+## 8. Speicher im Browser
 
 Ragbag setzt ein technisch notwendiges Cookie für die Anmeldung (`refresh_token`, nur für die Anmeldung, bis zu
 [14] Tage). Im lokalen Speicher des Browsers liegen das Anmelde-Token und deine Anzeige-Einstellungen
-(Ansicht, Sortierung, zuletzt geöffneter Space). Das ist für den Dienst erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG);
+(Ansicht, Sortierung, zuletzt geöffneter Space, schon gesehene Schlagzeilen, geschlossene Hinweise), für die
+Dauer der Sitzung außerdem das Token für entsperrte Sammlungen und ein noch nicht gespeicherter Link oder eine
+Einladung, bis du angemeldet bist. Das ist für den Dienst erforderlich (§ 25 Abs. 2 Nr. 2 TDDDG);
 eine Einwilligung ist dafür nicht nötig. Es gibt keine Cookies von Dritten.
 
-## 8. Meldungen
+## 9. Meldungen
 
 Öffentliche Links kann jede Person melden. Wir speichern dann die Meldung, optional Name und E-Mail-Adresse der
 meldenden Person (um über die Entscheidung zu informieren) und die Entscheidung. Erledigte Meldungen löschen wir
 nach 180 Tagen. Rechtsgrundlage sind unsere Pflichten nach Art. 16 und 17 DSA (Art. 6 Abs. 1 lit. c DSGVO).
 
-## 9. Datensicherung
+## 10. Datensicherung
 
 <!-- Streichen, wenn du keine Backups machst. -->
 Zur Sicherung erstellen wir regelmäßig Backups der Datenbank, die [7] Tage aufbewahrt werden
 <!-- BACKUP_KEEP × BACKUP_INTERVAL_HOURS, plus Kopien an anderen Orten -->. Gelöschte Daten verschwinden mit dem
 Ablauf der Backups.
 
-## 10. Deine Rechte
+## 11. Deine Rechte
 
 Du hast das Recht auf Auskunft (Art. 15 DSGVO), Berichtigung (Art. 16), Löschung (Art. 17), Einschränkung der
 Verarbeitung (Art. 18), Datenübertragbarkeit (Art. 20; Sammlungen lassen sich als JSON exportieren) und

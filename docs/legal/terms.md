@@ -34,11 +34,12 @@ Nicht erlaubt sind insbesondere:
 ein Konto sperren oder löschen. Betroffene informieren wir per E-Mail über die Maßnahme und ihre Gründe und
 können darauf antworten. Bei schweren Verstößen handeln wir ohne vorherige Warnung.
 
-## 5. Kündigung
+## 5. Ende der Nutzung
 
-Du kannst dein Konto jederzeit selbst löschen. Wir können die Nutzung mit einer Frist von [vier Wochen] beenden
-oder den Dienst einstellen, aus wichtigem Grund (z. B. Verstöße nach Abschnitt 3) auch sofort. Exportiere
-Sammlungen, die du behalten möchtest, rechtzeitig (Menü einer Sammlung → Export).
+Du kannst dein Konto jederzeit selbst löschen. Stellen wir den Dienst ein oder beenden wir deine Nutzung ohne
+besonderen Grund, kündigen wir das mindestens [vier Wochen] vorher an, damit du deine Sammlungen exportieren
+kannst (Menü einer Sammlung → Export). Aus wichtigem Grund, z. B. bei Verstößen nach Abschnitt 3, sperren oder
+löschen wir ein Konto sofort.
 
 ## 6. Haftung
 

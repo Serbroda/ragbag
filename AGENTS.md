@@ -202,7 +202,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   `email_verifications`), which also creates their first space and signs them in; until then login answers 403
   and resends the link. Unconfirmed accounts are deleted after 7 days (hourly job). `POST /auth/password-reset`
   mails a 1 h link in `password_resets` and always answers 204. Mails go out in the background, at most 3 per
-  account per hour (`Server.mails`, also without rate limits); links use `PUBLIC_URL`, never the request's host. Without SMTP accounts are
+  account per hour (`Server.mails`, also without rate limits); links use `PUBLIC_URL`, never the request's host. Admins check the settings with a test email
+  to their own address (`POST /admin/mail/test`, sent while the request waits, 502 with the server's error). Without SMTP accounts are
   confirmed at once, waiting ones on their next login.
 - **Operations** (`operations.go`): `ScheduledBackups` (from main) writes `backup.Dir` files every
   `BACKUP_INTERVAL_HOURS` when `BACKUP_KEEP` > 0, next due an interval after the newest file, and prunes to

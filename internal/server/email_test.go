@@ -2,6 +2,7 @@ package server_test
 
 import (
 	"context"
+	"errors"
 	"fmt"
 	"regexp"
 	"strings"
@@ -181,4 +182,32 @@ func TestWithoutEmailNothingChanges(t *testing.T) {
 	user := e.register()
 	e.req("GET", "/api/v1/spaces").as(user).expect(200).has("#", 1)
 	e.req("POST", "/api/auth/password-reset").json(fmt.Sprintf(`{"login":%q}`, user.Username)).expect(400)
+}
+
+// refusingMailer stands in for an SMTP server that does not take mail.
+type refusingMailer struct{}
+
+func (refusingMailer) Send(context.Context, mail.Message) error {
+	return errors.New("535 authentication failed")
+}
+
+func TestAdminsSendATestEmail(t *testing.T) {
+	e := newEnv(t)
+	admin := e.login("admin", "test123")
+	user := e.register()
+	box := &mailbox{}
+	e.srv.UseMailer(box)
+	e.req("POST", "/api/v1/admin/mail/test").as(user).expect(403)
+
+	// Sent while the request waits, to the admin's own address
+	e.req("POST", "/api/v1/admin/mail/test").as(admin).expect(204)
+	require.Equal(t, 1, box.count())
+	require.Equal(t, "admin@example.com", box.messages[0].To)
+
+	// The mail server's error is shown
+	e.srv.UseMailer(refusingMailer{})
+	e.req("POST", "/api/v1/admin/mail/test").as(admin).expect(502).has("detail", "The mail server did not take the email: 535 authentication failed")
+
+	e.srv.UseMailer(nil)
+	e.req("POST", "/api/v1/admin/mail/test").as(admin).expect(400)
 }

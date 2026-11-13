@@ -33,6 +33,9 @@
 	let termsOpen = $state(false);
 	let termsDate = $state('');
 	let termsBusy = $state(false);
+	let mailBusy = $state(false);
+	/** The outcome of the last test email: sent, or the mail server's error */
+	let mailResult = $state<{ ok: boolean; text: string } | null>(null);
 
 	loadMe()
 		.then((me) => {
@@ -120,6 +123,19 @@
 			error = await errorMessage(err, 'Failed to record the change.');
 		} finally {
 			termsBusy = false;
+		}
+	}
+
+	async function sendTestMail() {
+		mailBusy = true;
+		mailResult = null;
+		try {
+			await new AdminApi(apiConfig()).sendTestMail();
+			mailResult = { ok: true, text: `Sent to ${session.me?.email ?? 'your address'}. Check the spam folder too.` };
+		} catch (err) {
+			mailResult = { ok: false, text: await errorMessage(err, 'The test email failed.') };
+		} finally {
+			mailBusy = false;
 		}
 	}
 
@@ -320,6 +336,16 @@
 							</div>
 						{/each}
 					</dl>
+					{#if s.email}
+						<div class="mt-3 flex flex-wrap items-center gap-3 text-sm">
+							<Button size="sm" color="light" disabled={mailBusy} onclick={sendTestMail}>
+								{mailBusy ? 'Sending…' : 'Send a test email'}
+							</Button>
+							{#if mailResult}
+								<span class={mailResult.ok ? 'text-green-700 dark:text-green-400' : 'text-red-600 dark:text-red-400'}>{mailResult.text}</span>
+							{/if}
+						</div>
+					{/if}
 				{:else}
 					<p class="text-gray-500 dark:text-gray-400">Loading…</p>
 				{/if}

@@ -1850,6 +1850,9 @@ type ServerInterface interface {
 	// GetInstance State of the installation (whether a backup can be restored)
 	// (GET /v1/admin/instance)
 	GetInstance(ctx echo.Context) error
+	// SendTestMail Send a test email to the admin's own address right away, so the SMTP settings can be checked; a failure answers 502 with the mail server's error
+	// (POST /v1/admin/mail/test)
+	SendTestMail(ctx echo.Context) error
 	// GetAdminOverview What the admin page shows first (version, database, counts and the effective configuration)
 	// (GET /v1/admin/overview)
 	GetAdminOverview(ctx echo.Context) error
@@ -2417,6 +2420,15 @@ func (w *ServerInterfaceWrapper) GetInstance(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.GetInstance(ctx)
+	return err
+}
+
+// SendTestMail converts echo context to params.
+func (w *ServerInterfaceWrapper) SendTestMail(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.SendTestMail(ctx)
 	return err
 }
 
@@ -4036,6 +4048,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.GET(options.BaseURL+"/v1/admin/terms", wrapper.GetTermsState, options.OperationMiddlewares["getTermsState"]...)
 	router.POST(options.BaseURL+"/v1/admin/terms", wrapper.ChangeTerms, options.OperationMiddlewares["changeTerms"]...)
 	router.DELETE(options.BaseURL+"/v1/admin/terms/next", wrapper.WithdrawTermsChange, options.OperationMiddlewares["withdrawTermsChange"]...)
+	router.POST(options.BaseURL+"/v1/admin/mail/test", wrapper.SendTestMail, options.OperationMiddlewares["sendTestMail"]...)
 	router.GET(options.BaseURL+"/v1/admin/backup", wrapper.DownloadBackup, options.OperationMiddlewares["downloadBackup"]...)
 	router.GET(options.BaseURL+"/v1/admin/backups", wrapper.GetBackups, options.OperationMiddlewares["getBackups"]...)
 	router.POST(options.BaseURL+"/v1/admin/backups", wrapper.CreateBackup, options.OperationMiddlewares["createBackup"]...)

@@ -739,6 +739,32 @@ paths:
         '404':
           $ref: '#/components/responses/NotFound'
 
+  /v1/admin/mail/test:
+    post:
+      summary: >
+        Send a test email to the admin's own address right away, so the SMTP settings can be checked; a failure
+        answers 502 with the mail server's error
+      operationId: sendTestMail
+      tags:
+        - Admin
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          description: Sent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '502':
+          description: The mail server refused or could not be reached
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /v1/admin/backup:
     get:
       summary: >
