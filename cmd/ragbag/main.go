@@ -5,6 +5,7 @@ import (
 	"context"
 	"errors"
 	"log/slog"
+	"net"
 	"net/http"
 	"os"
 	"os/signal"
@@ -104,12 +105,18 @@ func run() error {
 		Handler:           srv.Handler(ui.Frontend()),
 		ReadHeaderTimeout: 10 * time.Second,
 	}
+	// Listening first, so the start message only comes once requests are answered (and a taken port fails here)
+	listener, err := net.Listen("tcp", cfg.Addr)
+	if err != nil {
+		return err
+	}
+	slog.Info("ragbag started", "version", version, "addr", listener.Addr().String(), "database", string(dialect),
+		"log_level", cfg.Log.Level.String(), "registration", cfg.RegistrationOpen, "admins", len(cfg.AdminUsers),
+		"private_hosts", cfg.AllowPrivateHosts)
+	logging.Banner(cfg.Log, banner(cfg, version, listener.Addr()))
 	errs := make(chan error, 1)
 	go func() {
-		slog.Info("ragbag started", "version", version, "addr", cfg.Addr, "database", string(dialect),
-			"log_level", cfg.Log.Level.String(), "registration", cfg.RegistrationOpen, "admins", len(cfg.AdminUsers),
-			"private_hosts", cfg.AllowPrivateHosts)
-		errs <- httpServer.ListenAndServe()
+		errs <- httpServer.Serve(listener)
 	}()
 
 	select {
