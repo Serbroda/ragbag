@@ -99,6 +99,8 @@
 
 	function selectSpace(spaceId: string) {
 		closeMenus();
+		// On phones the navigation stays open: after switching spaces one usually picks a collection next
+		keepSidebarOpen = spaceId !== activeSpaceId;
 		navigate('/space/:spaceId', { params: { spaceId } });
 	}
 
@@ -272,10 +274,12 @@
 		return undefined;
 	}
 
-	// Close the off-canvas navigation after navigating on mobile
+	// Close the off-canvas navigation after navigating on mobile, except after switching spaces (selectSpace)
+	let keepSidebarOpen = false;
 	$effect(() => {
 		route.pathname;
-		sidebarOpen = false;
+		if (!keepSidebarOpen) sidebarOpen = false;
+		keepSidebarOpen = false;
 	});
 
 	// --- Search ---
