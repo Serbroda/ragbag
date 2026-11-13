@@ -5,7 +5,7 @@
 	import type { InvitePreviewDto } from 'ragbag-frontend-sdk';
 	import {
 		errorMessage, login, register, fetchFeatureFlags, requestPasswordReset, pendingInvite, getRegistrationInvite,
-		needsTwoFactorCode,
+		needsTwoFactorCode, needsEmailConfirmation, resendVerification, retryAfter,
 	} from '../api/client';
 	import { route } from '../router';
 	import { continueAfterSignIn } from '../utils/signin';
@@ -58,6 +58,43 @@
 	let success = $state(route.search.reset ? 'Your password has been changed. Sign in with the new one.' : '');
 	let loading = $state(false);
 
+	/** Pause between two confirmation mails, like the server's */
+	const RESEND_PAUSE = 120;
+	// An account that is not confirmed yet: its credentials (only in memory) to send the link again
+	let unconfirmed = $state<{ login: string; password: string } | null>(null);
+	let resendAt = $state(0);
+	let now = $state(Date.now());
+	let resending = $state(false);
+	const resendIn = $derived(Math.max(0, Math.ceil((resendAt - now) / 1000)));
+	$effect(() => {
+		if (resendIn === 0) return;
+		const timer = setInterval(() => (now = Date.now()), 1000);
+		return () => clearInterval(timer);
+	});
+
+	function waitBeforeResend(seconds: number) {
+		now = Date.now();
+		resendAt = now + seconds * 1000;
+	}
+
+	async function resend() {
+		if (!unconfirmed) return;
+		resending = true;
+		error = '';
+		success = '';
+		try {
+			await resendVerification(unconfirmed.login, unconfirmed.password);
+			success = 'We sent a new confirmation link. Check your inbox (and the spam folder).';
+			waitBeforeResend(RESEND_PAUSE);
+		} catch (err) {
+			const wait = retryAfter(err);
+			if (wait) waitBeforeResend(wait);
+			error = await errorMessage(err, 'The link could not be sent. Please try again.');
+		} finally {
+			resending = false;
+		}
+	}
+
 	function resetForm() {
 		username = '';
 		displayName = '';
@@ -69,6 +106,7 @@
 		code = '';
 		error = '';
 		success = '';
+		unconfirmed = null;
 	}
 
 	function toggleMode() {
@@ -101,6 +139,7 @@
 					loading = false;
 					return;
 				}
+				const login = username;
 				await register(
 					username, email, password, acceptTerms, inviteRegisters ? inviteToken ?? undefined : undefined,
 					displayName.trim() || undefined,
@@ -110,12 +149,17 @@
 					? `Almost done: we sent a confirmation link to ${email}. Open it to start using Ragbag${space ? ` and join ${space}` : ''}.`
 					: `Registration successful! You can now sign in${space ? ` and open ${space}` : ''}.`;
 				isRegister = false;
+				if (emailEnabled) {
+					unconfirmed = { login, password };
+					waitBeforeResend(RESEND_PAUSE);
+				}
 				username = '';
 				displayName = '';
 				email = '';
 				password = '';
 				confirmPassword = '';
 			} else {
+				unconfirmed = null;
 				await login(username, password, codeStep ? code : undefined);
 				continueAfterSignIn();
 			}
@@ -127,6 +171,7 @@
 				code = '';
 				return;
 			}
+			if (needsEmailConfirmation(err)) unconfirmed = { login: username, password };
 			// Wrong credentials get the friendly text; unconfirmed addresses and rate limits the server's
 			error = isForgot
 				? await errorMessage(err, 'The reset link could not be sent. Please try again.')
@@ -163,6 +208,18 @@
 		{/if}
 		{#if success}
 			<Alert color="green" class="mb-4">{success}</Alert>
+		{/if}
+		{#if unconfirmed}
+			<p class="-mt-2 mb-4 text-center text-sm text-gray-500 dark:text-gray-400">
+				No email?
+				{#if resendIn}
+					You can ask for a new one in {Math.floor(resendIn / 60)}:{String(resendIn % 60).padStart(2, '0')}.
+				{:else}
+					<button type="button" class="font-medium text-primary-500 hover:underline disabled:opacity-50" disabled={resending} onclick={resend}>
+						Send it again
+					</button>
+				{/if}
+			</p>
 		{/if}
 
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">

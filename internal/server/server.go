@@ -104,7 +104,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 			AllowMethods: []string{http.MethodGet, http.MethodPost, http.MethodPut, http.MethodDelete, http.MethodOptions},
 			// No AllowHeaders: the requested headers are echoed; browsers ignore "*" for requests with credentials
 			AllowCredentials: true,
-			ExposeHeaders:    []string{"X-Ragbag-Setup", termsHeader, twoFactorHeader, "Retry-After"},
+			ExposeHeaders:    []string{"X-Ragbag-Setup", termsHeader, twoFactorHeader, verifyHeader, "Retry-After"},
 		}))
 	}
 
@@ -119,7 +119,7 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 // publicPaths can be used without being signed in.
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
-	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/auth/invites/*", "/api/v1/images/*", "/api/v1/shares/*",
+	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/auth/resend-verification", "/api/auth/invites/*", "/api/v1/images/*", "/api/v1/shares/*",
 	"/api/v1/shares/*/reports", "/api/v1/shares/*/bookmarks/*/headlines", "/api/app/legal/*", "/api/health",
 }
 

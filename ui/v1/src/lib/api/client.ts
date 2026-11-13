@@ -148,6 +148,22 @@ export function needsTwoFactorCode(err: unknown): boolean {
 	return err instanceof ResponseError && err.response.headers.get('X-Ragbag-Two-Factor') === 'required';
 }
 
+/** A failed login whose password was right: the email address is not confirmed yet (offer to send the link again). */
+export function needsEmailConfirmation(err: unknown): boolean {
+	return err instanceof ResponseError && err.response.headers.get('X-Ragbag-Verify-Email') === 'required';
+}
+
+/** Sends the confirmation link of an unconfirmed account again; the server allows it every 2 minutes. */
+export async function resendVerification(username: string, password: string): Promise<void> {
+	await new AuthenticationApi(anonConfig()).resendVerification({ loginRequest: { username, password } });
+}
+
+/** Seconds a 429 asks to wait (Retry-After), 0 for other errors. */
+export function retryAfter(err: unknown): number {
+	if (!(err instanceof ResponseError) || err.response.status !== 429) return 0;
+	return Number(err.response.headers.get('Retry-After')) || 0;
+}
+
 export function takeLoginPassword(): string | null {
 	const password = loginPassword;
 	loginPassword = null;

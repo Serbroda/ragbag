@@ -25,6 +25,13 @@ func (s *Store) ReplaceEmailVerification(ctx context.Context, userID, tokenHash 
 	return err
 }
 
+// EmailVerificationOf is the confirmation link the user waits for.
+func (s *Store) EmailVerificationOf(ctx context.Context, userID string) (*EmailVerification, error) {
+	var verification EmailVerification
+	return &verification, s.get(ctx, &verification,
+		`SELECT user_id, token_hash, expires_at, created_at FROM email_verifications WHERE user_id = ?`, userID)
+}
+
 // SetVerificationInvite remembers the space invite an unconfirmed account registered with.
 func (s *Store) SetVerificationInvite(ctx context.Context, userID, inviteID string) error {
 	_, err := s.exec(ctx, `UPDATE email_verifications SET invite_id = ? WHERE user_id = ?`, inviteID, userID)

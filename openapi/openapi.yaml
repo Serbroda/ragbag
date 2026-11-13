@@ -176,6 +176,41 @@ paths:
         '400':
           $ref: '#/components/responses/BadRequest'
 
+  /auth/resend-verification:
+    post:
+      summary: >
+        Send the confirmation link of an account that is not confirmed yet again (public, with its username or email
+        and password); at most every 2 minutes, else 429 with Retry-After
+      operationId: resendVerification
+      tags:
+        - Authentication
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LoginRequest'
+      responses:
+        '204':
+          description: Sent
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '401':
+          $ref: '#/components/responses/Unauthorized'
+        '409':
+          description: The address is confirmed already
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+        '429':
+          description: Too soon, see Retry-After
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Error'
+
   /auth/refresh:
     post:
       summary: Refresh access token

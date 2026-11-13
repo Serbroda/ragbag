@@ -12,6 +12,7 @@ Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag
 ```bash
 make dev            # server on :8080 with the settings from .env.local (an empty database starts with the setup, like in production)
 make dev-ui         # Vite dev server on :5173 against the server on :8080
+make dev-mail       # Mailpit on :1025 (SMTP) and :8025 (the caught mails); dev-mail-stop ends it
 make build          # frontend → ui/v1/dist, then bin/ragbag with the frontend embedded
 make test           # go test ./... (SQLite)
 make test-postgres  # the same tests against a throwaway PostgreSQL container
@@ -200,7 +201,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Email** (`internal/mail`, `email.go`, only with `SMTP_HOST`; tests use `UseMailer` with a fake): new
   accounts get `email_verified_at` only by `POST /auth/verify-email/{token}` (48 h, hash in
   `email_verifications`), which also creates their first space and signs them in; until then login answers 403
-  and resends the link. Unconfirmed accounts are deleted after 7 days (hourly job). `POST /auth/password-reset`
+  with `X-Ragbag-Verify-Email` (sends nothing); `POST /auth/resend-verification` (username and password) sends
+  the link again, at most every 2 minutes (`resendPause`, 429 with Retry-After) and within the mail limit.
+  Unconfirmed accounts are deleted after 7 days (hourly job). `POST /auth/password-reset`
   mails a 1 h link in `password_resets` and always answers 204. Mails go out in the background, at most 3 per
   account per hour (`Server.mails`, also without rate limits); links use `PUBLIC_URL`, never the request's host. Admins check the settings with a test email
   to their own address (`POST /admin/mail/test`, sent while the request waits, 502 with the server's error). Without SMTP accounts are
