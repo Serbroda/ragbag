@@ -43,6 +43,18 @@ func ParseLevel(value string) (slog.Level, error) {
 // file is the log file in use, nil when logging to stdout.
 var file *lumberjack.Logger
 
+// Banner writes a block of plain text, e.g. the start message, to stdout and to the log file if there is one.
+// JSON logs leave it out: log shippers expect one object per line.
+func Banner(cfg Config, text string) {
+	if cfg.JSON {
+		return
+	}
+	fmt.Fprint(os.Stdout, text)
+	if file != nil {
+		fmt.Fprint(file, text)
+	}
+}
+
 // Rotate starts a new log file (main does it daily), so MaxAgeDays also holds for quiet instances whose file
 // never reaches MaxSizeMB.
 func Rotate() error {
