@@ -490,7 +490,11 @@ version (*Export as JSON*), start the new one with an empty database, create you
 ```bash
 make dev        # API on :8080 with the settings from .env.local (created from .env.local.example)
 make dev-ui     # frontend with hot reload on :5173, talks to :8080
+make dev-mail   # Mailpit catches every email (SMTP_* in .env.local.example), read them at http://localhost:8025
 ```
+
+In GoLand/IntelliJ the shared run configuration *Mailpit* does the same as `make dev-mail`; add it to a compound
+configuration to start it with the server.
 
 The first start with an empty database goes through the setup like on a server: sign in as `admin` with the
 password in `data/initial-admin-password`. `make help` lists all targets, the most important:

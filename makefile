@@ -5,8 +5,9 @@ LDFLAGS := -s -w -X main.version=$(VERSION)
 # docker or podman, whichever is installed
 CONTAINER ?= $(shell command -v docker 2>/dev/null || command -v podman 2>/dev/null)
 OPENAPI_GENERATOR := docker.io/openapitools/openapi-generator-cli:v7.26.0
+MAILPIT := docker.io/axllent/mailpit:v1
 
-.PHONY: help build build-ui build-server build-linux install generate dev dev-ui test test-postgres check docker clean \
+.PHONY: help build build-ui build-server build-linux install generate dev dev-ui dev-mail dev-mail-stop test test-postgres check docker clean \
 	version release-patch release-minor release-major
 
 help: ## Show this help
@@ -40,6 +41,14 @@ dev: ## Run the server on :8080 with the settings from .env.local (an empty data
 
 dev-ui: ## Run the Vite dev server on :5173 (talks to the server on :8080)
 	cd ui/v1 && npm run dev
+
+dev-mail: ## Start Mailpit: SMTP on :1025 catches every email, read them at http://localhost:8025
+	@$(CONTAINER) ps -q -f name=^ragbag-mailpit$$ | grep -q . \
+		|| $(CONTAINER) run -d --rm --name ragbag-mailpit -p 1025:1025 -p 8025:8025 $(MAILPIT) >/dev/null
+	@echo "Mailpit is running: SMTP localhost:1025, mails at http://localhost:8025"
+
+dev-mail-stop: ## Stop Mailpit (the caught emails are gone)
+	-@$(CONTAINER) stop ragbag-mailpit >/dev/null
 
 test: ## Run all Go tests against SQLite
 	go test ./...
