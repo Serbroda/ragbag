@@ -180,3 +180,33 @@ func (s *Server) DeleteUnverifiedAccounts(ctx context.Context) {
 		slog.Info("deleted unconfirmed accounts", "accounts", deleted)
 	}
 }
+
+// SendTestMail checks the SMTP settings: it sends to the admin's own address while the request waits, so a
+// failure shows up in the administration instead of only in the log.
+func (s *Server) SendTestMail(c echo.Context) error {
+	if err := s.requireInstanceAdmin(c); err != nil {
+		return err
+	}
+	if !s.mailEnabled() {
+		return badRequest("Email is off: set SMTP_HOST and restart")
+	}
+	user, err := s.store.UserByID(ctxOf(c), currentUser(c))
+	if err != nil {
+		return err
+	}
+	if user.Email == "" {
+		return badRequest("Your account has no email address to send to")
+	}
+	ctx, cancel := context.WithTimeout(ctxOf(c), 30*time.Second)
+	defer cancel()
+	err = s.mailer.Send(ctx, mail.Message{To: user.Email, Subject: "Ragbag test email", Text: fmt.Sprintf(`Hi %s,
+
+this is a test email from the administration of %s. Email works.
+`, user.Name(), s.cfg.PublicURL)})
+	if err != nil {
+		audit(c, slog.LevelWarn, "test email failed", "error", err)
+		return &apiError{http.StatusBadGateway, "Email failed", "The mail server did not take the email: " + err.Error()}
+	}
+	audit(c, slog.LevelInfo, "test email sent")
+	return c.NoContent(http.StatusNoContent)
+}

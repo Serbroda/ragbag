@@ -1080,6 +1080,50 @@ export class AdminApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for sendTestMail without sending the request
+     */
+    async sendTestMailRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/admin/mail/test`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Send a test email to the admin\'s own address right away, so the SMTP settings can be checked; a failure answers 502 with the mail server\'s error 
+     */
+    async sendTestMailRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.sendTestMailRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Send a test email to the admin\'s own address right away, so the SMTP settings can be checked; a failure answers 502 with the mail server\'s error 
+     */
+    async sendTestMail(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.sendTestMailRaw(initOverrides);
+    }
+
+    /**
      * Creates request options for unblockUser without sending the request
      */
     async unblockUserRequestOpts(requestParameters: UnblockUserRequest): Promise<runtime.RequestOpts> {
