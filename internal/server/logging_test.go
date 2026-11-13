@@ -62,6 +62,6 @@ func TestRequestsAndLoginsAreLoggedWithoutSecrets(t *testing.T) {
 		require.NotContains(t, out, secret)
 	}
 	// The frontend's files are only logged at DEBUG
-	e.req("GET", "/app/").send()
-	require.True(t, strings.Contains(logs.String(), "level=DEBUG msg=request method=GET path=/app/"), logs.String())
+	e.req("GET", "/").send()
+	require.True(t, strings.Contains(logs.String(), "level=DEBUG msg=request method=GET path=/"), logs.String())
 }

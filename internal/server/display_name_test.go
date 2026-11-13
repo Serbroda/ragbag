@@ -60,7 +60,7 @@ func TestOthersSeeTheDisplayName(t *testing.T) {
 	token := e.invite(owner, space, "VIEWER")
 	e.req("GET", "/api/v1/invites/%s", token).as(member).expect(200).has("invitedBy", "Danny R.")
 	e.req("GET", "/api/auth/invites/%s", token).expect(200).has("invitedBy", "Danny R.")
-	require.Contains(t, e.req("GET", "/app/invite/%s", token).expect(200).Body, "Danny R. invited you to")
+	require.Contains(t, e.req("GET", "/invite/%s", token).expect(200).Body, "Danny R. invited you to")
 
 	// Admins see both
 	admin := e.login("admin", "test123")

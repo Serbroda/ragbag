@@ -75,7 +75,7 @@ func TestSharedCollectionIsPublicWithoutTheRestOfTheSpace(t *testing.T) {
 	}
 	f.open("not-a-token", "").expect(404)
 
-	page := f.req("GET", "/app/share/%s", token).send()
+	page := f.req("GET", "/share/%s", token).send()
 	require.Equal(t, "noindex, nofollow", page.Header.Get("X-Robots-Tag"))
 }
 

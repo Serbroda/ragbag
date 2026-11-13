@@ -251,8 +251,8 @@ accounts cannot create any, and the tokens of an account that is Free again answ
 
 ### Reverse proxy
 
-Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything to port 8080; the app lives under
-`/app`, the API under `/api`. When the proxy terminates HTTPS and sends `X-Forwarded-Proto: https`, the login cookie
+Ragbag works behind nginx proxy manager, Traefik, Caddy & co. Forward everything to port 8080; the API lives under
+`/api`, the app everywhere else (addresses with the `/app` prefix of versions up to 0.30 are redirected). When the proxy terminates HTTPS and sends `X-Forwarded-Proto: https`, the login cookie
 is marked `Secure` automatically. Link previews in chat apps (WhatsApp, Signal, Discord) need the public address
 for their image: set `PUBLIC_URL`, otherwise Ragbag builds it from the `Host` and `X-Forwarded-Proto` headers the
 proxy passes on.
@@ -375,7 +375,7 @@ Reports about anything else (spaces are not public) reach you through the contac
 A public instance needs an imprint and a privacy policy (in Germany § 5 DDG and Art. 13 GDPR), terms of use are
 recommended. Put them as Markdown into the data directory – `legal/imprint.md`, `legal/privacy.md`,
 `legal/terms.md` (systemd: `/var/lib/ragbag/legal/`, Docker: `/data/legal/`) – or link pages elsewhere with
-`IMPRINT_URL`, `PRIVACY_URL` and `TERMS_URL`. Ragbag shows them at `/app/legal/…` and links them on the sign-in
+`IMPRINT_URL`, `PRIVACY_URL` and `TERMS_URL`. Ragbag shows them at `/legal/…` and links them on the sign-in
 page, on public links and in the account menu; with terms, registering needs accepting them (the time is
 stored). Changes to the files apply without a restart, raw HTML in them is not shown. The admin overview says
 which are missing.

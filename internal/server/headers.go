@@ -30,7 +30,7 @@ func (s *Server) securityHeaders(next echo.HandlerFunc) echo.HandlerFunc {
 		header.Set("Referrer-Policy", "no-referrer")
 		header.Set("X-Frame-Options", "DENY")
 		// Not for the window the bookmarklet opens: it closes itself after saving, which needs window.opener
-		if c.Request().URL.Path != "/app/add" {
+		if c.Request().URL.Path != "/add" {
 			header.Set("Cross-Origin-Opener-Policy", "same-origin")
 		}
 		header.Set("Permissions-Policy", "camera=(), microphone=(), geolocation=(), payment=(), usb=(), "+

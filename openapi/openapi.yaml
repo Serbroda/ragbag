@@ -3578,7 +3578,7 @@ components:
           type: integer
         legalImprint:
           type: string
-          description: Where the imprint is (an address or /app/legal/imprint), empty without one
+          description: Where the imprint is (an address or /legal/imprint), empty without one
         legalPrivacy:
           type: string
         legalTerms:
@@ -3706,7 +3706,7 @@ components:
           type: string
         shareToken:
           type: string
-          description: The token of the reported link (/app/share/{token})
+          description: The token of the reported link (/share/{token})
         currentToken:
           type: string
           description: The collection's current link, if it still has one
@@ -4694,7 +4694,7 @@ components:
           type: boolean
         token:
           type: string
-          description: The secret part of the link /app/share/{token}; only set if shared
+          description: The secret part of the link /share/{token}; only set if shared
         createdAt:
           type: string
           format: date-time

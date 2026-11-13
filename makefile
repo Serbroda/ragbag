@@ -16,7 +16,7 @@ help: ## Show this help
 build: build-ui build-server ## Build bin/ragbag with the frontend embedded
 
 build-ui: ## Build the frontend into ui/v1/dist
-	cd ui/v1 && npm ci --no-audit --no-fund && VITE_APP_BASE=/app npm run build
+	cd ui/v1 && npm ci --no-audit --no-fund && npm run build
 
 build-server: ## Build the Go binary (static, no CGO)
 	CGO_ENABLED=0 go build -trimpath -ldflags "$(LDFLAGS)" -o bin/ragbag ./cmd/ragbag

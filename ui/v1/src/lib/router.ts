@@ -7,10 +7,6 @@ declare module 'sv-router' {
 	}
 }
 
-// sv-router strips the base from the path before matching, so a base of '/' would turn '/login' into
-// 'login' and match nothing. Only pass a real prefix: '/app' when served by the Spring Boot backend.
-const configuredBase = import.meta.env.VITE_APP_BASE?.replace(/\/+$/, '');
-const base = configuredBase || (globalThis.location?.pathname?.startsWith('/app') ? '/app' : undefined);
 
 export const { p, navigate, isActive, route } = createRouter({
 	'/': {
@@ -111,4 +107,4 @@ export const { p, navigate, isActive, route } = createRouter({
 			}
 		},
 	},
-}, { base });
+});

@@ -3,7 +3,7 @@
 	import type { InviteRoleEnum, SpaceMemberRoleEnum } from 'ragbag-frontend-sdk';
 	import { untrack } from 'svelte';
 	import { Button, Input, Label, Modal, Select } from 'flowbite-svelte';
-	import { apiConfig, appBase, errorMessage } from '../api/client';
+	import { apiConfig, errorMessage } from '../api/client';
 	import { copyText } from '../utils/clipboard';
 	import { session } from '../stores/spaces.svelte';
 
@@ -54,7 +54,7 @@
 					expiresAt: expiryDays > 0 ? new Date(Date.now() + expiryDays * 24 * 60 * 60 * 1000) : undefined,
 				},
 			});
-			link = `${window.location.origin}${appBase()}/invite/${invite.token}`;
+			link = `${window.location.origin}/invite/${invite.token}`;
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to create invite link.');
 		} finally {

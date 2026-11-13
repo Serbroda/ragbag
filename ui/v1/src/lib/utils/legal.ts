@@ -22,7 +22,7 @@ export function legalLinks(): Promise<LegalLink[]> {
 			(Object.keys(LABELS) as LegalPage[]).flatMap((page) => {
 				const link = flags[`legal_${page}`];
 				if (!link) return [];
-				const external = !link.startsWith('/app/');
+				const external = !link.startsWith('/');
 				return [{ page, label: LABELS[page], href: external ? link : p('/legal/:page', { params: { page } }), external }];
 			}),
 		)

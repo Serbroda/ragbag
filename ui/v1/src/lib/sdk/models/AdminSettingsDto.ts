@@ -68,7 +68,7 @@ export interface AdminSettingsDto {
      */
     quotaUploadMbPerUser: number;
     /**
-     * Where the imprint is (an address or /app/legal/imprint), empty without one
+     * Where the imprint is (an address or /legal/imprint), empty without one
      */
     legalImprint?: string;
     /**

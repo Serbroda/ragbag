@@ -6,7 +6,7 @@ WORKDIR /build/ui/v1
 COPY ui/v1/package.json ui/v1/package-lock.json ./
 RUN --mount=type=cache,target=/root/.npm npm ci --no-audit --no-fund
 COPY ui/v1 ./
-RUN VITE_APP_BASE=/app npm run build
+RUN npm run build
 
 # --- Version: the build argument, else git describe of the checkout (docker compose passes none) ---
 FROM docker.io/library/alpine:3.24 AS version

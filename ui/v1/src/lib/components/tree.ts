@@ -6,7 +6,7 @@ import { p } from '../router';
 export interface TreeNode {
 	id?: string;
 	label: string;
-	/** Link target including the router base (e.g. /app); build it with p() */
+	/** Link target; build it with p() */
 	href?: string;
 	/** Route path without the base, used to detect the active item */
 	path?: string;
