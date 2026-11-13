@@ -16,14 +16,14 @@ const (
 	defaultDescription = "Collect, organize and share links with your people. Self-hosted, like Discord for bookmarks."
 	inviteDescription  = "Ragbag is a collaborative link collection: collect, organize and share links together."
 	// ui/v1/public/og-image.png, 1200×630
-	previewImage = "/app/og-image.png"
+	previewImage = "/og-image.png"
 )
 
 type pageMeta struct {
 	title, description string
 }
 
-// pageMeta describes the page at /app/<name>. Shared collections show their name and content; everything that
+// pageMeta describes the page at /<name>. Shared collections show their name and content; everything that
 // would need a login stays generic, and a link that is unknown, revoked or private gives nothing away.
 func (s *Server) pageMeta(c echo.Context, name string) pageMeta {
 	meta := pageMeta{title: "Ragbag", description: defaultDescription}

@@ -11,7 +11,7 @@
 	} from 'ragbag-frontend-sdk';
 	import { getContext } from 'svelte';
 	import { Alert, Button, Input, Label, Modal, Select, Textarea, Toggle } from 'flowbite-svelte';
-	import { apiConfig, appBase, errorMessage, fetchFeatureFlags } from '../api/client';
+	import { apiConfig, errorMessage, fetchFeatureFlags } from '../api/client';
 	import { navigate, p, route } from '../router';
 	import RoleBadge from '../components/RoleBadge.svelte';
 	import Avatar from '../components/Avatar.svelte';
@@ -224,7 +224,7 @@
 	let manualCopyLink = $state<string | null>(null);
 
 	function inviteLink(token: string): string {
-		return `${window.location.origin}${appBase()}/invite/${token}`;
+		return `${window.location.origin}/invite/${token}`;
 	}
 
 	function isActive(invite: InviteDto): boolean {

@@ -36,7 +36,7 @@ func (s *Server) legalLink(page string) string {
 		return address
 	}
 	if info, err := os.Stat(s.legalFile(page)); err == nil && info.Mode().IsRegular() {
-		return "/app/legal/" + page
+		return "/legal/" + page
 	}
 	return ""
 }

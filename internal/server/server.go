@@ -82,7 +82,7 @@ func New(cfg config.Config, st *store.Store, version string) (*Server, error) {
 	return srv, nil
 }
 
-// Handler wires the API under /api and the frontend under /app.
+// Handler wires the API under /api and the frontend everywhere else.
 func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 	e := echo.New()
 	e.HideBanner = true
@@ -225,18 +225,22 @@ func (s *Server) isAdmin(user *store.User) bool {
 	return s.admins[strings.ToLower(user.Username)]
 }
 
-// serveFrontend serves the single page app under /app; unknown paths get index.html for client side routing.
 func init() {
 	// Go does not know the web app manifest; browsers expect it as JSON
 	_ = mime.AddExtensionType(".webmanifest", "application/manifest+json")
 }
 
+// serveFrontend serves the single page app at the root; unknown paths get index.html for client side routing.
 func (s *Server) serveFrontend(e *echo.Echo, frontend fs.FS) {
-	e.GET("/", func(c echo.Context) error { return c.Redirect(http.StatusFound, "/app/") })
-	fileServer := http.StripPrefix("/app", http.FileServer(http.FS(frontend)))
-	e.GET("/app", func(c echo.Context) error { return c.Redirect(http.StatusFound, "/app/") })
-	e.GET("/app/*", func(c echo.Context) error {
-		name := strings.TrimPrefix(c.Request().URL.Path, "/app/")
+	// Versions up to 0.30 served the app below /app: links in emails, chats, bookmarks and installed apps
+	e.GET("/app", redirectFromApp)
+	e.GET("/app/*", redirectFromApp)
+	fileServer := http.FileServer(http.FS(frontend))
+	page := func(c echo.Context) error {
+		name := strings.TrimPrefix(c.Request().URL.Path, "/")
+		if name == "api" || strings.HasPrefix(name, "api/") {
+			return echo.ErrNotFound
+		}
 		if strings.HasPrefix(name, "share/") {
 			// Public links are meant for the people they are sent to, not for search engines
 			c.Response().Header().Set("X-Robots-Tag", "noindex, nofollow")
@@ -263,5 +267,18 @@ func (s *Server) serveFrontend(e *echo.Echo, frontend fs.FS) {
 		}
 		c.Response().Header().Set("Cache-Control", "no-cache")
 		return c.HTMLBlob(http.StatusOK, s.withMeta(c, name, index))
-	})
+	}
+	e.GET("/", page)
+	e.GET("/*", page)
+}
+
+// redirectFromApp sends an address of the old /app prefix to the same page without it, for good.
+func redirectFromApp(c echo.Context) error {
+	target := strings.TrimPrefix(c.Request().URL.Path, "/app")
+	// One leading slash only: "//host" would leave the site
+	target = "/" + strings.TrimLeft(target, "/")
+	if query := c.Request().URL.RawQuery; query != "" {
+		target += "?" + query
+	}
+	return c.Redirect(http.StatusMovedPermanently, target)
 }

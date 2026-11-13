@@ -24,7 +24,7 @@ export interface CollectionShareDto {
      */
     shared: boolean;
     /**
-     * The secret part of the link /app/share/{token}; only set if shared
+     * The secret part of the link /share/{token}; only set if shared
      */
     token?: string;
     /**

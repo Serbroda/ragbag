@@ -1,4 +1,4 @@
-import { appBase, takePendingAdd, takePendingInvite } from '../api/client';
+import { takePendingAdd, takePendingInvite } from '../api/client';
 import { navigate } from '../router';
 import { loadMe, resetSession } from '../stores/spaces.svelte';
 
@@ -22,7 +22,7 @@ export async function continueAfterSignIn() {
 	if (pendingInvite) {
 		navigate('/invite/:token', { params: { token: pendingInvite } });
 	} else if (pendingAdd !== null) {
-		window.location.href = `${appBase()}/add${pendingAdd}`;
+		window.location.href = `/add${pendingAdd}`;
 	} else {
 		navigate('/');
 	}

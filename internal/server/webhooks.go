@@ -179,7 +179,7 @@ func (s *Server) announceLink(c echo.Context, bookmarkID string) {
 	if base == "" {
 		base = c.Scheme() + "://" + c.Request().Host
 	}
-	collectionURL := fmt.Sprintf("%s/app/space/%s/collections/%s", base, space.ID, collection.ID)
+	collectionURL := fmt.Sprintf("%s/space/%s/collections/%s", base, space.ID, collection.ID)
 	s.postToDiscord(space.ID, *webhook.URL, discordMessageFor(bookmark, space.Name, collection.Name, collectionURL))
 }
 

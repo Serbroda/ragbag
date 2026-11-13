@@ -428,7 +428,7 @@ type AbuseReportDto struct {
 	ResolvedAt     *time.Time                `json:"resolvedAt,omitempty"`
 	ResolvedBy     *string                   `json:"resolvedBy,omitempty"`
 
-	// ShareToken The token of the reported link (/app/share/{token})
+	// ShareToken The token of the reported link (/share/{token})
 	ShareToken string `json:"shareToken"`
 
 	// SharedBy The display name (else the username) of who created the current link
@@ -489,7 +489,7 @@ type AdminSettingsDto struct {
 	Email        bool       `json:"email"`
 	LastBackupAt *time.Time `json:"lastBackupAt,omitempty"`
 
-	// LegalImprint Where the imprint is (an address or /app/legal/imprint), empty without one
+	// LegalImprint Where the imprint is (an address or /legal/imprint), empty without one
 	LegalImprint   *string `json:"legalImprint,omitempty"`
 	LegalPrivacy   *string `json:"legalPrivacy,omitempty"`
 	LegalTerms     *string `json:"legalTerms,omitempty"`
@@ -783,7 +783,7 @@ type CollectionShareDto struct {
 	DisabledReason *string `json:"disabledReason,omitempty"`
 	Shared         bool    `json:"shared"`
 
-	// Token The secret part of the link /app/share/{token}; only set if shared
+	// Token The secret part of the link /share/{token}; only set if shared
 	Token *string `json:"token,omitempty"`
 }
 

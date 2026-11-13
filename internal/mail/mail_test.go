@@ -67,7 +67,7 @@ func TestSendingWithoutTLS(t *testing.T) {
 	port, received := fakeSMTP(t)
 	sender, err := NewSMTP(Config{Host: "127.0.0.1", Port: port, From: "Ragbag <ragbag@example.com>", TLS: TLSNone})
 	require.NoError(t, err)
-	text := "Hi lena,\n\nconfirm here: https://ragbag.test/app/verify-email/abc\n\nÄrger? Ignore it."
+	text := "Hi lena,\n\nconfirm here: https://ragbag.test/verify-email/abc\n\nÄrger? Ignore it."
 	require.NoError(t, sender.Send(context.Background(), Message{To: "lena@example.com", Subject: "Bestätigen\r\nBcc: x@evil", Text: text}))
 
 	transcript := <-received

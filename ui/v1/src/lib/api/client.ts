@@ -61,12 +61,12 @@ const authMiddleware: Middleware = {
 	async post(context) {
 		// The setup admin replaces its initial password before anything else
 		if (context.response.status === 403 && context.response.headers.get('X-Ragbag-Setup')) {
-			if (!window.location.pathname.endsWith('/setup')) window.location.href = `${appBase()}/setup`;
+			if (!window.location.pathname.endsWith('/setup')) window.location.href = `/setup`;
 			return;
 		}
 		// Changed terms of use are accepted before anything else
 		if (context.response.status === 403 && context.response.headers.get('X-Ragbag-Terms')) {
-			if (!window.location.pathname.endsWith('/terms')) window.location.href = `${appBase()}/terms`;
+			if (!window.location.pathname.endsWith('/terms')) window.location.href = `/terms`;
 			return;
 		}
 		if (context.response.status !== 401) return;
@@ -84,7 +84,7 @@ const authMiddleware: Middleware = {
 		const success = await refreshPromise;
 		if (!success) {
 			setAccessToken(null);
-			window.location.href = `${appBase()}/login`;
+			window.location.href = `/login`;
 			return;
 		}
 
@@ -232,9 +232,9 @@ export async function acceptTerms(): Promise<void> {
 	await new UserApi(apiConfig()).acceptTerms();
 }
 
-/** The public link of a shared collection, e.g. https://ragbag.example/app/share/abc… */
+/** The public link of a shared collection, e.g. https://ragbag.example/share/abc… */
 export function shareLink(token: string): string {
-	return `${window.location.origin}${appBase()}/share/${token}`;
+	return `${window.location.origin}/share/${token}`;
 }
 
 /** Who a password reset link belongs to; works without being signed in. */
@@ -304,11 +304,6 @@ export async function searchBookmarks(spaceId: string, query: string): Promise<B
 /** URL of an avatar or space icon; images are public and cached forever since every upload gets a new id. */
 export function imageUrl(imageId: string): string {
 	return `${BASE_PATH}/v1/images/${imageId}`;
-}
-
-/** Path prefix of the SPA: `/app` when served by the Spring Boot backend, empty in the Vite dev server. */
-export function appBase(): string {
-	return window.location.pathname.startsWith('/app') ? '/app' : '';
 }
 
 /** Extracts the `detail` of a ProblemDetail error response, falling back to the given message. */

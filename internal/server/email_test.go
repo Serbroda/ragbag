@@ -35,7 +35,7 @@ func (m *mailbox) count() int {
 	return len(m.messages)
 }
 
-var mailLink = regexp.MustCompile(`https://ragbag\.test/app/(verify-email|reset-password)/(\S+)`)
+var mailLink = regexp.MustCompile(`https://ragbag\.test/(verify-email|reset-password)/(\S+)`)
 
 // await waits for the n-th mail (1-based) and returns its link's kind and token.
 func (m *mailbox) await(t *testing.T, n int, to string) (kind, token string) {

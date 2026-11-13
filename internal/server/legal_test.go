@@ -33,7 +33,7 @@ func TestLegalPages(t *testing.T) {
 	e.req("POST", "/api/auth/register").json(registerBody("")).expect(200)
 
 	e.writeLegal("imprint", "# Impressum\n\nMax Mustermann, **Musterstraße 1**\n\n<script>alert(1)</script>\n\n| a | b |\n|---|---|\n| 1 | 2 |\n")
-	e.req("GET", "/api/app/config/features").expect(200).has("legal_imprint", "/app/legal/imprint")
+	e.req("GET", "/api/app/config/features").expect(200).has("legal_imprint", "/legal/imprint")
 	page := e.req("GET", "/api/app/legal/imprint").expect(200)
 	page.has("title", "Impressum").has("page", "imprint")
 	html := page.str("html")

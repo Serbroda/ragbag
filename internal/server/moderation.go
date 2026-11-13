@@ -285,7 +285,7 @@ func (s *Server) ReportShare(c echo.Context, token string) error {
 		if email != nil {
 			s.deliver(*email, "reporter", "Your report to Ragbag", fmt.Sprintf(`Hello,
 
-thank you for your report of %s/app/share/%s ("%s"). The administrators will look at it and let you know
+thank you for your report of %s/share/%s ("%s"). The administrators will look at it and let you know
 what they decided.
 `, s.cfg.PublicURL, token, report.CollectionName))
 		}
@@ -305,11 +305,11 @@ func (s *Server) notifyAdmins(ctx context.Context, report *store.AbuseReport) {
 		}
 		s.sendMail(&user.User, "New report of a public link", fmt.Sprintf(`Hi %s,
 
-somebody reported the public link %s/app/share/%s ("%s") as %s:
+somebody reported the public link %s/share/%s ("%s") as %s:
 
 %s
 
-Decide in Ragbag: %s/app/admin/reports
+Decide in Ragbag: %s/admin/reports
 `, user.Name(), s.cfg.PublicURL, report.ShareToken, report.CollectionName, report.Category, report.Details, s.cfg.PublicURL))
 	}
 }
@@ -412,7 +412,7 @@ func (s *Server) ResolveReport(c echo.Context, reportID api.ID) error {
 // mailDecision tells the reporter and, when the link changed, the one who shared it (statement of reasons).
 func (s *Server) mailDecision(ctx context.Context, report *store.AbuseReport, share *store.Share,
 	action api.ResolveReportRequestAction, note *string) {
-	link := fmt.Sprintf(`%s/app/share/%s ("%s")`, s.cfg.PublicURL, report.ShareToken, report.CollectionName)
+	link := fmt.Sprintf(`%s/share/%s ("%s")`, s.cfg.PublicURL, report.ShareToken, report.CollectionName)
 	reasons := valueOr(note, "none given")
 	if report.ReporterEmail != nil && action != api.ResolveReportRequestActionENABLELINK {
 		decision := "The administrators disabled the link."

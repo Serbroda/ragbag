@@ -9,7 +9,7 @@ import (
 
 func TestSecurityHeaders(t *testing.T) {
 	e := newEnv(t)
-	page := e.req("GET", "/app/").expect(200)
+	page := e.req("GET", "/").expect(200)
 	csp := page.Header.Get("Content-Security-Policy")
 	require.Contains(t, csp, "script-src 'self'")
 	require.Contains(t, csp, "frame-ancestors 'none'")
@@ -24,7 +24,7 @@ func TestSecurityHeaders(t *testing.T) {
 	require.Empty(t, page.Header.Get("Strict-Transport-Security"))
 
 	// The bookmarklet's window keeps its opener to close itself
-	require.Empty(t, e.req("GET", "/app/add").expect(200).Header.Get("Cross-Origin-Opener-Policy"))
+	require.Empty(t, e.req("GET", "/add").expect(200).Header.Get("Cross-Origin-Opener-Policy"))
 
 	// API answers are never pages and never cached, errors included
 	admin := e.login("admin", "test123")
@@ -35,7 +35,7 @@ func TestSecurityHeaders(t *testing.T) {
 	}
 
 	// Behind a proxy that speaks HTTPS
-	secure := e.req("GET", "/app/").header("X-Forwarded-Proto", "https").expect(200)
+	secure := e.req("GET", "/").header("X-Forwarded-Proto", "https").expect(200)
 	require.Equal(t, "max-age=31536000", secure.Header.Get("Strict-Transport-Security"))
 }
 

@@ -11,7 +11,7 @@
 		UserSettingsOutline,
 	} from 'flowbite-svelte-icons';
 	import {
-		apiConfig, appBase, changePassword, deleteAccount, errorMessage, fetchFeatureFlags, logoutEverywhere,
+		apiConfig, changePassword, deleteAccount, errorMessage, fetchFeatureFlags, logoutEverywhere,
 	} from '../api/client';
 	import { navigate, p, route } from '../router';
 	import { loadMe, loadSpaces, resetSession, session, setStartSpace } from '../stores/spaces.svelte';
@@ -159,7 +159,7 @@
 	// --- Apps ---
 	/** Saves the page that is open in the browser: drag it to the bookmarks bar. */
 	const bookmarklet = $derived(
-		`javascript:(()=>{window.open('${window.location.origin}${appBase()}/add?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'ragbag','width=560,height=760')})()`,
+		`javascript:(()=>{window.open('${window.location.origin}/add?url='+encodeURIComponent(location.href)+'&title='+encodeURIComponent(document.title),'ragbag','width=560,height=760')})()`,
 	);
 
 	// --- Account ---

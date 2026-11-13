@@ -71,7 +71,7 @@ func (s *Server) sendVerification(c echo.Context, tx *store.Store, user *store.U
 
 please confirm your email address to start using Ragbag:
 
-%s/app/verify-email/%s
+%s/verify-email/%s
 
 The link is valid for 48 hours. Accounts that are not confirmed within 7 days are deleted.
 
@@ -216,7 +216,7 @@ func (s *Server) RequestPasswordReset(c echo.Context) error {
 
 somebody (hopefully you) asked to reset the password of your Ragbag account. Choose a new one here:
 
-%s/app/reset-password/%s
+%s/reset-password/%s
 
 The link is valid for one hour and works once. Setting a new password signs you out on all devices.
 

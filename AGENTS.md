@@ -3,7 +3,8 @@
 This file provides guidance to coding agents (Claude Code, Codex & co) when working with code in this repository.
 
 Ragbag is a self-hosted, Discord-like bookmark manager: a Go server (`cmd/ragbag`) that serves a REST API under
-`/api` and the embedded Svelte frontend (`ui/v1`) under `/app`. It runs on SQLite (default) or PostgreSQL.
+`/api` and the embedded Svelte frontend (`ui/v1`) at the root (old `/app/…` addresses get a 301 to the same
+path without it, `redirectFromApp`). It runs on SQLite (default) or PostgreSQL.
 
 ## Commands
 
@@ -143,7 +144,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Space bar** order and folders are personal (`space_bars`, JSON of `SpaceBarDto`); the server drops spaces the
   user is no longer a member of. Leaving a space removes the user's reactions and visits there.
 - **Public links** (`shares.go`, one per collection) show a collection and its sub-collections to anybody, without
-  an account, at `/app/share/{token}` (`GET /api/v1/shares/{token}`, a public path). They never show the space,
+  an account, at `/share/{token}` (`GET /api/v1/shares/{token}`, a public path). They never show the space,
   members, authors, reactions or private collections; private collections cannot be shared, and a shared one that
   becomes private (or moves below one) answers 404 until it is public again. Every failure is the same 404.
   Managing the link needs `EDIT_COLLECTIONS`; only those see the token.
@@ -157,7 +158,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   (`previewImage()` in the frontend, the same order for public shares). Addresses are loaded by the browser,
   never cached. Links that point straight to an image become their own preview (`fetch.isImage`, by content
   type or first bytes). Unused uploads are deleted by the hourly job (`DeleteOrphanImages`).
-- **Quick saving**: `/app/add?url=&title=&text=` (route outside a space) is the target of the web app manifest's
+- **Quick saving**: `/add?url=&title=&text=` (route outside a space) is the target of the web app manifest's
   `share_target` (installed app on Android) and of the bookmarklet in the settings (*Apps & API*); signed-out visitors
   return there after the login (`rememberPendingAdd`).
 - **Offline** (`ui/v1/public/sw.js`): the service worker only answers failed page loads with a notice built into
@@ -195,7 +196,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Plans** (`plans.go`, `PLANS_ENABLED`, off by default for self-hosting): Free gets `config.Quotas`, Pro
   `Plans.Pro` (`quotasOf`, `userQuotas`; collections by the space's owners, `spaceQuotas`). Pro (`proSource`) are
   instance admins and `users.pro_granted_at` (admins, `PUT/DELETE /admin/users/{id}/pro`); nothing is sold.
-  `PlanPage.svelte` at `/app/plan` (account menu). `SUPPORT_URL` (feature flag `support_url`) links a donation
+  `PlanPage.svelte` at `/plan` (account menu). `SUPPORT_URL` (feature flag `support_url`) links a donation
   page next to the search (`SupportButton.svelte`, closing it is kept in localStorage) and at the bottom of the
   account menu, deliberately not on the plan page: donations unlock nothing.
 - **Email** (`internal/mail`, `email.go`, only with `SMTP_HOST`; tests use `UseMailer` with a fake): new
@@ -214,7 +215,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   `LOG_ANONYMIZE_IP` shortens the IP in request and audit lines (`loggedIP`), main rotates `LOG_FILE` daily so
   `LOG_MAX_AGE_DAYS` holds.
 - **Legal pages** (`legal.go`): `DATA_DIR/legal/{imprint,privacy,terms}.md` rendered by goldmark without raw
-  HTML (`GET /app/legal/{page}`, public), or `IMPRINT_URL` & co.; the feature flags `legal_*` say where they are
+  HTML (`GET /api/app/legal/{page}`, public, shown at `/legal/{page}`), or `IMPRINT_URL` & co.; the feature flags `legal_*` say where they are
   (`utils/legal.ts`, `LegalLinks.svelte`). With terms, `POST /auth/register` needs `acceptTerms`
   (`users.terms_accepted_at`). German templates in `docs/legal`.
 - **Changed terms** (`terms.go`, `terms_changes`): instance admins record a change on `/admin` (`POST /admin/terms`,
@@ -315,6 +316,6 @@ change, never edit an applied one. Times are stored in UTC, truncated to microse
   (`TreeNode.mark`); link counts are deliberately not shown there. Space settings are tabs as well (`?tab=members`)
 - Unknown addresses end at `NotFoundPage.svelte` (the `*notfound` route; signed-out visitors at the login). `p()`
   with an empty `search: {}` builds a broken link ("…undefined"): leave `search` out instead
-- Links: build every `href` with `p()` from `router.ts`. Hardcoded `/space/...` strings miss the `/app` base and turn into full page loads when served by the backend
+- Links: build every `href` with `p()` from `router.ts`; hardcoded `/space/...` strings bypass the router and turn into full page loads
 - `api/client.ts` — auth handling, `errorMessage()` to surface problem detail texts
 - `sdk/` — generated, do not edit (see API-first)

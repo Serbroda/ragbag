@@ -3,7 +3,7 @@
 	import type { AdminUserDto } from 'ragbag-frontend-sdk';
 	import { Button, Input } from 'flowbite-svelte';
 	import { DotsHorizontalOutline } from 'flowbite-svelte-icons';
-	import { apiConfig, appBase, errorMessage } from '../api/client';
+	import { apiConfig, errorMessage } from '../api/client';
 	import { copyText } from '../utils/clipboard';
 	import { session } from '../stores/spaces.svelte';
 	import Avatar from './Avatar.svelte';
@@ -83,7 +83,7 @@
 			const reset = await api.createPasswordReset({ userId: user.id });
 			created = {
 				userId: user.id,
-				link: `${window.location.origin}${appBase()}/reset-password/${reset.token}`,
+				link: `${window.location.origin}/reset-password/${reset.token}`,
 				expiresAt: reset.expiresAt,
 			};
 		} catch (err) {

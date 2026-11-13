@@ -1,4 +1,4 @@
-// Command ragbag runs the Ragbag server: REST API under /api, frontend under /app.
+// Command ragbag runs the Ragbag server: REST API under /api, the frontend everywhere else.
 package main
 
 import (

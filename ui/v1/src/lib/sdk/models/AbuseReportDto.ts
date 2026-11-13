@@ -68,7 +68,7 @@ export interface AbuseReportDto {
      */
     spaceName?: string;
     /**
-     * The token of the reported link (/app/share/{token})
+     * The token of the reported link (/share/{token})
      */
     shareToken: string;
     /**
