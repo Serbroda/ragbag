@@ -51,6 +51,7 @@ export * from './ModelError';
 export * from './MoveCollectionDto';
 export * from './PasswordResetDto';
 export * from './PasswordResetPreviewDto';
+export * from './PersonDto';
 export * from './PlanDto';
 export * from './PlanName';
 export * from './PlanUsageDto';

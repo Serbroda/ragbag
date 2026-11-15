@@ -89,13 +89,15 @@ func (s *Server) GetSpaceNews(c echo.Context, spaceID api.ID) error {
 	for _, item := range news {
 		entry := byCollection[item.CollectionID]
 		if entry == nil {
-			entry = &api.CollectionNewsDto{CollectionId: item.CollectionID, AddedBy: []string{}, LatestAt: item.CreatedAt}
+			entry = &api.CollectionNewsDto{CollectionId: item.CollectionID, AddedBy: []string{}, People: []api.PersonDto{},
+				LatestAt: item.CreatedAt}
 			byCollection[item.CollectionID] = entry
 			result = append(result, entry)
 		}
 		entry.Count++
 		if !slices.Contains(entry.AddedBy, item.CreatedByName) {
 			entry.AddedBy = append(entry.AddedBy, item.CreatedByName)
+			entry.People = append(entry.People, api.PersonDto{Name: item.CreatedByName, AvatarId: item.CreatedByAvatar})
 		}
 	}
 	return c.JSON(http.StatusOK, result)
@@ -149,11 +151,12 @@ func (s *Server) reactionDtos(c echo.Context, bookmarkIDs []string) (map[string]
 		list := result[reaction.BookmarkID]
 		i := slices.IndexFunc(list, func(r api.ReactionDto) bool { return r.Emoji == reaction.Emoji })
 		if i < 0 {
-			list = append(list, api.ReactionDto{Emoji: reaction.Emoji, Users: []string{}})
+			list = append(list, api.ReactionDto{Emoji: reaction.Emoji, Users: []string{}, People: []api.PersonDto{}})
 			i = len(list) - 1
 		}
 		list[i].Count++
 		list[i].Users = append(list[i].Users, reaction.Name)
+		list[i].People = append(list[i].People, api.PersonDto{Name: reaction.Name, AvatarId: reaction.Avatar})
 		list[i].Reacted = list[i].Reacted || reaction.UserID == currentUser(c)
 		result[reaction.BookmarkID] = list
 	}

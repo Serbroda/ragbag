@@ -134,3 +134,25 @@ func TestSpaceBarKeepsOrderAndFolders(t *testing.T) {
 	}
 	require.NotEmpty(t, third)
 }
+
+func TestNewsAndReactionsShowAvatars(t *testing.T) {
+	e := newEnv(t)
+	owner, member := e.register(), e.register()
+	space := e.firstSpace(owner)
+	e.join(member, space, "CONTRIBUTOR", owner)
+	avatar := e.req("PUT", "/api/v1/users/me/avatar").as(owner).
+		multipart(map[string]any{"file": pngImage(t, 64, 64)}).expect(200).str("avatarId")
+	bookmark := e.createBookmark(owner, e.createCollection(owner, space, "Recipes", ""))
+
+	e.req("GET", "/api/v1/spaces/%s/news", space).as(member).expect(200).
+		has("0.people.#", 1).has("0.people.0.name", owner.Username).has("0.people.0.avatarId", avatar)
+
+	react := func(s *session) *response {
+		return e.req("PUT", "/api/v1/bookmarks/%s/reactions", bookmark).as(s).json(`{"emoji":"👍","reacted":true}`).expect(200)
+	}
+	react(owner)
+	res := react(member)
+	res.has("0.people.#", 2).has("0.people.0.avatarId", avatar).has("0.people.1.name", member.Username)
+	// Without an avatar the frontend draws initials
+	require.False(t, res.get("0.people.1.avatarId").Exists())
+}

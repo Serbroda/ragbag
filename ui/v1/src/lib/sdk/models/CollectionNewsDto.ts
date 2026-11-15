@@ -13,6 +13,14 @@
  */
 
 import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
+import type { PersonDto } from './PersonDto';
+import {
+    PersonDtoFromJSON,
+    PersonDtoFromJSONTyped,
+    PersonDtoToJSON,
+    PersonDtoToJSONTyped,
+} from './PersonDto';
+
 /**
  * 
  * @export
@@ -32,6 +40,10 @@ export interface CollectionNewsDto {
      */
     addedBy: Array<string>;
     /**
+     * The same members with their avatars, in the same order
+     */
+    people: Array<PersonDto>;
+    /**
      * 
      */
     latestAt: Date;
@@ -44,6 +56,7 @@ export function instanceOfCollectionNewsDto(value: object): value is CollectionN
     if (!('collectionId' in value) || value['collectionId'] === undefined) return false;
     if (!('count' in value) || value['count'] === undefined) return false;
     if (!('addedBy' in value) || value['addedBy'] === undefined) return false;
+    if (!('people' in value) || value['people'] === undefined) return false;
     if (!('latestAt' in value) || value['latestAt'] === undefined) return false;
     return true;
 }
@@ -61,6 +74,7 @@ export function CollectionNewsDtoFromJSONTyped(json: any, ignoreDiscriminator: b
         'collectionId': json['collectionId'],
         'count': json['count'],
         'addedBy': json['addedBy'],
+        'people': ((json['people'] as Array<any>).map(PersonDtoFromJSON)),
         'latestAt': (json['latestAt'] == null ? json['latestAt'] : parseDateTime(json['latestAt'])),
     };
 }
@@ -79,6 +93,7 @@ export function CollectionNewsDtoToJSONTyped(value?: CollectionNewsDto | null, i
         'collectionId': value['collectionId'],
         'count': value['count'],
         'addedBy': value['addedBy'],
+        'people': ((value['people'] as Array<any>).map(PersonDtoToJSON)),
         'latestAt': value['latestAt'] == null ? value['latestAt'] : serializeDateTime(value['latestAt']),
     };
 }

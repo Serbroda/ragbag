@@ -63,6 +63,7 @@ models/ModelError.ts
 models/MoveCollectionDto.ts
 models/PasswordResetDto.ts
 models/PasswordResetPreviewDto.ts
+models/PersonDto.ts
 models/PlanDto.ts
 models/PlanName.ts
 models/PlanUsageDto.ts

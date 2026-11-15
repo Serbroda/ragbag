@@ -2,11 +2,12 @@
 	import { SpaceApi } from 'ragbag-frontend-sdk';
 	import type { CollectionNewsDto } from 'ragbag-frontend-sdk';
 	import { getContext, untrack } from 'svelte';
-	import { BellOutline, FolderOutline } from 'flowbite-svelte-icons';
+	import { BellOutline } from 'flowbite-svelte-icons';
 	import { apiConfig } from '../api/client';
 	import { p } from '../router';
 	import { session } from '../stores/spaces.svelte';
 	import { timeAgo } from '../utils/format';
+	import AvatarStack from './AvatarStack.svelte';
 
 	/** Bell in the header: "3 new links in Japan 2027 · by lena", what others added since the user last looked. */
 	let { spaceId }: { spaceId: string } = $props();
@@ -107,10 +108,18 @@
 								href={p('/space/:spaceId/collections/:collectionId', {
 									params: { spaceId, collectionId: item.collectionId },
 								})}
-								class="flex items-start gap-2.5 rounded-md px-2 py-2 hover:bg-primary-500 hover:text-white"
+								class="group flex items-center gap-2.5 rounded-md px-2 py-2 hover:bg-primary-500 hover:text-white"
 								onclick={() => (open = false)}
 							>
-								<FolderOutline class="mt-0.5 h-4 w-4 shrink-0 opacity-70" />
+								<!-- Who added them: faces are quicker to recognize than names -->
+								<span class="flex w-[3.25rem] shrink-0">
+									<AvatarStack
+										people={item.people}
+										max={2}
+										class="h-7 w-7 text-[10px]"
+										ring="ring-gray-950 group-hover:ring-primary-500"
+									/>
+								</span>
 								<span class="min-w-0 flex-1">
 									<span class="block">
 										<span class="font-semibold">{item.count} new link{item.count === 1 ? '' : 's'}</span>

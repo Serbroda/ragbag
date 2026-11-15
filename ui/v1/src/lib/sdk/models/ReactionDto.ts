@@ -13,6 +13,14 @@
  */
 
 import { mapValues } from '../runtime';
+import type { PersonDto } from './PersonDto';
+import {
+    PersonDtoFromJSON,
+    PersonDtoFromJSONTyped,
+    PersonDtoToJSON,
+    PersonDtoToJSONTyped,
+} from './PersonDto';
+
 /**
  * 
  * @export
@@ -35,6 +43,10 @@ export interface ReactionDto {
      * Display names (else usernames) of everybody who reacted
      */
     users: Array<string>;
+    /**
+     * The same people with their avatars, in the same order
+     */
+    people: Array<PersonDto>;
 }
 
 /**
@@ -45,6 +57,7 @@ export function instanceOfReactionDto(value: object): value is ReactionDto {
     if (!('count' in value) || value['count'] === undefined) return false;
     if (!('reacted' in value) || value['reacted'] === undefined) return false;
     if (!('users' in value) || value['users'] === undefined) return false;
+    if (!('people' in value) || value['people'] === undefined) return false;
     return true;
 }
 
@@ -62,6 +75,7 @@ export function ReactionDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean
         'count': json['count'],
         'reacted': json['reacted'],
         'users': json['users'],
+        'people': ((json['people'] as Array<any>).map(PersonDtoFromJSON)),
     };
 }
 
@@ -80,6 +94,7 @@ export function ReactionDtoToJSONTyped(value?: ReactionDto | null, ignoreDiscrim
         'count': value['count'],
         'reacted': value['reacted'],
         'users': value['users'],
+        'people': ((value['people'] as Array<any>).map(PersonDtoToJSON)),
     };
 }
 

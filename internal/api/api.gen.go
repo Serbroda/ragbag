@@ -772,6 +772,9 @@ type CollectionNewsDto struct {
 	CollectionId ID        `json:"collectionId"`
 	Count        int       `json:"count"`
 	LatestAt     time.Time `json:"latestAt"`
+
+	// People The same members with their avatars, in the same order
+	People []PersonDto `json:"people"`
 }
 
 // CollectionShareDto defines model for CollectionShareDto.
@@ -1110,6 +1113,15 @@ type PasswordResetPreviewDto struct {
 	Valid bool `json:"valid"`
 }
 
+// PersonDto Somebody named somewhere (who added or reacted), with the avatar to show next to the name
+type PersonDto struct {
+	// AvatarId UUID
+	AvatarId *ID `json:"avatarId,omitempty"`
+
+	// Name Display name, else username
+	Name string `json:"name"`
+}
+
 // PlanDto defines model for PlanDto.
 type PlanDto struct {
 	// Free Limits, 0 is unlimited
@@ -1156,6 +1168,9 @@ type QuotasDto struct {
 type ReactionDto struct {
 	Count int    `json:"count"`
 	Emoji string `json:"emoji"`
+
+	// People The same people with their avatars, in the same order
+	People []PersonDto `json:"people"`
 
 	// Reacted Whether the current user is one of them
 	Reacted bool `json:"reacted"`

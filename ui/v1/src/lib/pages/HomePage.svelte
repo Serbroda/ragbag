@@ -21,6 +21,7 @@
 	import LinkTile from '../components/LinkTile.svelte';
 	import HeadlineBoard from '../components/HeadlineBoard.svelte';
 	import Avatar from '../components/Avatar.svelte';
+	import AvatarStack from '../components/AvatarStack.svelte';
 	import { shownName } from '../utils/format';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
 	import QuickAddModal from '../components/QuickAddModal.svelte';
@@ -54,7 +55,7 @@
 	}
 
 	let dashboard = $state<DashboardDto | null>(null);
-	let memberCount = $state<number | null>(null);
+	let members = $state<{ name: string; avatarId?: string }[] | null>(null);
 	let loading = $state(true);
 	let error = $state('');
 
@@ -72,13 +73,13 @@
 		loading = dashboard === null;
 		error = '';
 		try {
-			const [loaded, members] = await Promise.all([
+			const [loaded, loadedMembers] = await Promise.all([
 				dashboardApi().getDashboard({ spaceId: id }),
 				new SpaceApi(apiConfig()).getSpaceMembers({ spaceId: id }),
 			]);
 			if (id !== spaceId) return;
 			dashboard = loaded;
-			memberCount = members.length;
+			members = loadedMembers.map((m) => ({ name: shownName(m), avatarId: m.avatarId }));
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to load the dashboard.');
 		} finally {
@@ -264,14 +265,18 @@
 				<p class="mt-1 text-gray-600 dark:text-gray-300">{space.description}</p>
 			{/if}
 			<div class="mt-3 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-gray-500 dark:text-gray-400">
-				{#if memberCount !== null}
+				{#if members !== null}
 					<button
 						type="button"
-						class="hover:text-gray-700 hover:underline dark:hover:text-gray-200"
+						class="flex items-center gap-2 hover:text-gray-700 hover:underline dark:hover:text-gray-200"
 						title="Show members in space settings"
 						onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId }, search: { tab: 'members' } })}
 					>
-						{memberCount} member{memberCount === 1 ? '' : 's'}
+						<!-- Faces show at a glance that the space is shared; alone it would only repeat the user's own -->
+						{#if members.length > 1}
+							<AvatarStack people={members} max={5} />
+						{/if}
+						{members.length} member{members.length === 1 ? '' : 's'}
 					</button>
 				{/if}
 				{#if space?.role}
