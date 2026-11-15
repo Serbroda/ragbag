@@ -85,7 +85,10 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   (logins, failed logins as WARN, memberships, deletions); never log tokens, passwords or PINs
 - `internal/auth` — JWTs (HS256) and BCrypt passwords (8 characters to 72 bytes)
 - `internal/fetch` — SSRF-guarded fetching of user supplied URLs (every redirect and the dialed IP are checked;
-  loopback/link-local always refused, private networks unless `ALLOW_PRIVATE_HOSTS`) and the page metadata parser
+  loopback/link-local always refused, private networks unless `ALLOW_PRIVATE_HOSTS`) and the page metadata parser.
+  For sites that hide their pages from servers (YouTube's consent/bot check, X, TikTok) `oembed.go` asks their
+  oEmbed endpoint at the same time (`oembedProviders`); the page wins when it is about the same thing
+  (`embed.describes`), otherwise the embed replaces it
 - `internal/images` — avatars and space icons (`Normalize`: center crop, 256 px PNG) and link previews
   (`NormalizePreview`): content sniffing, decompression bomb check, small GIF/WebP kept as they are.
   `ImagePicker.svelte` applies a change right away when given `onupload`/`onremove` (avatar), otherwise it keeps it

@@ -34,6 +34,25 @@ func (m Metadata) Found() bool { return m.Title != "" || m.Description != "" }
 // Metadata loads a page and extracts title, description, preview image, favicon and keywords. Failures
 // return empty metadata: links are saved anyway.
 func (c *Client) Metadata(ctx context.Context, pageURL string) Metadata {
+	link, err := url.Parse(pageURL)
+	if err != nil {
+		return Metadata{}
+	}
+	endpoint := oembedEndpoint(link)
+	if endpoint == "" {
+		return c.pageMetadata(ctx, pageURL)
+	}
+	// Both at once, so sites with a provider take no longer than others
+	embedded := make(chan embed, 1)
+	go func() { embedded <- c.oembed(ctx, endpoint) }()
+	page := c.pageMetadata(ctx, pageURL)
+	if e := <-embedded; e.found() {
+		return e.over(page, link)
+	}
+	return page
+}
+
+func (c *Client) pageMetadata(ctx context.Context, pageURL string) Metadata {
 	// The start of a large page still has its head; an image is recognized by its first bytes
 	res, err := c.GetStart(ctx, pageURL, maxPageBytes)
 	if err != nil {
