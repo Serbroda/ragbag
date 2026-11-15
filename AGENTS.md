@@ -144,6 +144,10 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   after showing new links).
 - **Reactions** come from a fixed set of emojis (`reactionEmojis`, mirrored in `Reactions.svelte`); everybody who
   can read a link may react. There are deliberately no comments (nothing to moderate).
+- **Avatars of others** show only where a person is the answer to "who?": who added the news (`NewsBell.svelte`),
+  who reacted (popover on hover in `Reactions.svelte`) and the members in the dashboard header (`AvatarStack.svelte`,
+  not in spaces with one member). The API carries them as `PersonDto` (`people`, next to the plain names). Cards,
+  list rows and the sidebar deliberately stay without faces.
 - **Space bar** order and folders are personal (`space_bars`, JSON of `SpaceBarDto`); the server drops spaces the
   user is no longer a member of. Leaving a space removes the user's reactions and visits there.
 - **Public links** (`shares.go`, one per collection) show a collection and its sub-collections to anybody, without

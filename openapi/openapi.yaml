@@ -4578,11 +4578,28 @@ components:
           description: Display names (else usernames) of everybody who reacted
           items:
             type: string
+        people:
+          type: array
+          description: The same people with their avatars, in the same order
+          items:
+            $ref: '#/components/schemas/PersonDto'
       required:
         - emoji
         - count
         - reacted
         - users
+        - people
+
+    PersonDto:
+      description: Somebody named somewhere (who added or reacted), with the avatar to show next to the name
+      properties:
+        name:
+          type: string
+          description: Display name, else username
+        avatarId:
+          $ref: '#/components/schemas/ID'
+      required:
+        - name
 
     SetReactionDto:
       properties:
@@ -4796,6 +4813,11 @@ components:
           description: Display names (else usernames) of the members who added them
           items:
             type: string
+        people:
+          type: array
+          description: The same members with their avatars, in the same order
+          items:
+            $ref: '#/components/schemas/PersonDto'
         latestAt:
           type: string
           format: date-time
@@ -4803,6 +4825,7 @@ components:
         - collectionId
         - count
         - addedBy
+        - people
         - latestAt
 
     SpaceBarDto:

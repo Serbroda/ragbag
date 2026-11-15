@@ -8,6 +8,7 @@
 	import type { ReactionDto } from 'ragbag-frontend-sdk';
 	import { FaceGrinOutline } from 'flowbite-svelte-icons';
 	import { apiConfig } from '../api/client';
+	import Avatar from './Avatar.svelte';
 
 	let { bookmarkId, reactions: initial = [] }: { bookmarkId: string; reactions?: ReactionDto[] } = $props();
 
@@ -15,6 +16,9 @@
 	$effect(() => {
 		reactions = initial;
 	});
+
+	/** Who reacted, at most this many in the popover; the rest as "and 3 more" */
+	const MAX_PEOPLE = 8;
 
 	let pickerOpen = $state(false);
 	let busy = $state(false);
@@ -50,19 +54,39 @@
 
 <div class="relative z-10 flex flex-wrap items-center gap-1">
 	{#each reactions as reaction (reaction.emoji)}
-		<button
-			type="button"
-			class="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs ring-1 ring-inset transition-colors {reaction.reacted
-				? 'bg-primary-500/15 text-primary-700 ring-primary-500/40 dark:text-primary-300'
-				: 'bg-gray-100 text-gray-600 ring-transparent hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:hover:ring-gray-600'}"
-			title={reaction.users.join(', ')}
-			aria-label="{reaction.emoji} {reaction.count}, {reaction.reacted ? 'remove your reaction' : 'react'}"
-			aria-pressed={reaction.reacted}
-			onclick={(e) => toggle(reaction.emoji, e)}
-		>
-			<span class="text-sm leading-none">{reaction.emoji}</span>
-			<span class="font-medium tabular-nums">{reaction.count}</span>
-		</button>
+		<div class="group/reaction relative">
+			<button
+				type="button"
+				class="flex items-center gap-1 rounded-full px-1.5 py-0.5 text-xs ring-1 ring-inset transition-colors {reaction.reacted
+					? 'bg-primary-500/15 text-primary-700 ring-primary-500/40 dark:text-primary-300'
+					: 'bg-gray-100 text-gray-600 ring-transparent hover:ring-gray-300 dark:bg-gray-800 dark:text-gray-300 dark:hover:ring-gray-600'}"
+				aria-label="{reaction.emoji} {reaction.count} from {reaction.users.join(', ')}, {reaction.reacted
+					? 'remove your reaction'
+					: 'react'}"
+				aria-pressed={reaction.reacted}
+				onclick={(e) => toggle(reaction.emoji, e)}
+			>
+				<span class="text-sm leading-none">{reaction.emoji}</span>
+				<span class="font-medium tabular-nums">{reaction.count}</span>
+			</button>
+			<!-- Who reacted, on hover: a short delay so passing the mouse over a card shows nothing -->
+			<div
+				class="pointer-events-none invisible absolute bottom-[calc(100%+6px)] right-0 z-30 w-max max-w-52 rounded-lg bg-gray-950 p-1.5 text-xs text-gray-200 opacity-0 shadow-2xl ring-1 ring-white/10 transition-opacity group-hover/reaction:visible group-hover/reaction:opacity-100 group-hover/reaction:delay-300"
+				aria-hidden="true"
+			>
+				<ul class="flex flex-col gap-1">
+					{#each reaction.people.slice(0, MAX_PEOPLE) as person, i (i)}
+						<li class="flex min-w-0 items-center gap-2 px-1">
+							<Avatar name={person.name} imageId={person.avatarId} class="h-5 w-5 rounded-full text-[8px]" />
+							<span class="truncate">{person.name}</span>
+						</li>
+					{/each}
+				</ul>
+				{#if reaction.people.length > MAX_PEOPLE}
+					<p class="px-1 pt-1 text-gray-400">and {reaction.people.length - MAX_PEOPLE} more</p>
+				{/if}
+			</div>
+		</div>
 	{/each}
 	<div class="relative">
 		<button
