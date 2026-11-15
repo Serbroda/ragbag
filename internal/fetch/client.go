@@ -19,7 +19,8 @@ import (
 const (
 	timeout      = 10 * time.Second
 	maxRedirects = 5
-	userAgent    = "ragbag/1.0"
+	// The usual form for bots: sites see who is asking and where to find out more
+	userAgent = "Mozilla/5.0 (compatible; Ragbag/1.0; +https://ragbag.dev)"
 )
 
 var (
