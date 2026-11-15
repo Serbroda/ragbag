@@ -35,6 +35,7 @@ func TestAvatarIsCroppedScaledAndServedPublicly(t *testing.T) {
 	imageID := e.req("PUT", "/api/v1/users/me/avatar").as(user).
 		multipart(map[string]any{"file": pngImage(t, 800, 400)}).expect(200).str("avatarId")
 
+	// With transparency it stays PNG
 	res := e.req("GET", "/api/v1/images/%s", imageID).expect(200)
 	require.Equal(t, "image/png", res.Header.Get("Content-Type"))
 	require.Contains(t, res.Header.Get("Cache-Control"), "immutable")
@@ -45,6 +46,12 @@ func TestAvatarIsCroppedScaledAndServedPublicly(t *testing.T) {
 	require.Equal(t, 256, config.Height)
 
 	e.req("GET", "/api/v1/users/me").as(user).expect(200).has("avatarId", imageID)
+
+	// Photos become JPEG, which is a fraction of the size
+	photoID := e.req("PUT", "/api/v1/users/me/avatar").as(user).
+		multipart(map[string]any{"file": photoImage(t, 400, 400)}).expect(200).str("avatarId")
+	res = e.req("GET", "/api/v1/images/%s", photoID).expect(200)
+	require.Equal(t, "image/jpeg", res.Header.Get("Content-Type"))
 }
 
 func TestReplacingOrRemovingTheAvatarDeletesTheOldImage(t *testing.T) {
@@ -100,8 +107,8 @@ func TestOwnPreviewImagesOfLinks(t *testing.T) {
 	require.Equal(t, "image/jpeg", res.Header.Get("Content-Type"))
 	config, err := jpeg.DecodeConfig(bytes.NewReader([]byte(res.Body)))
 	require.NoError(t, err)
-	require.Equal(t, 1200, config.Width)
-	require.Equal(t, 500, config.Height)
+	require.Equal(t, 800, config.Width)
+	require.Equal(t, 333, config.Height)
 	e.req("PUT", "/api/v1/bookmarks/%s/image", bookmark).as(viewer).multipart(map[string]any{"file": pngImage(t, 10, 10)}).expect(403)
 	// Transparency survives as PNG
 	transparentID := e.req("PUT", "/api/v1/bookmarks/%s/image", bookmark).as(owner).

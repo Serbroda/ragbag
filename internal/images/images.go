@@ -1,6 +1,6 @@
-// Package images turns uploads into avatars and space icons (square PNGs of at most 256 px) and into preview
+// Package images turns uploads into avatars and space icons (squares of at most 256 px) and into preview
 // images of links (scaled down, aspect ratio kept). Re-encoding keeps them small, strips metadata such as GPS
-// positions and guarantees that only real images are served.
+// positions and guarantees that only real images are served. Opaque images become JPEG, the others PNG.
 package images
 
 import (
@@ -21,8 +21,12 @@ const (
 	// GIF (maybe animated) and WebP cannot be re-encoded without losing quality, so they are kept up to this size
 	maxOriginalBytes = 1 << 20
 	Size             = 256
-	// Preview images of links are scaled down to fit this box, never cropped
-	MaxPreviewSize = 1200
+	// Preview images of links are scaled down to fit this box, never cropped: cards show them at most about
+	// 400 px wide, so this is sharp on high resolution screens as well
+	MaxPreviewSize = 800
+	// JPEG quality: avatars are looked at closely, previews are small and many
+	iconQuality    = 85
+	previewQuality = 75
 	// A tiny PNG can claim gigapixel dimensions: refuse before decoding
 	maxPixels = 50_000_000
 )
@@ -36,25 +40,27 @@ var (
 // Normalize returns the content type and bytes of an avatar or icon to store.
 func Normalize(data []byte) (string, []byte, error) {
 	return normalize(data, func(source image.Image) (string, []byte, error) {
-		var out bytes.Buffer
-		err := png.Encode(&out, squared(source))
-		return "image/png", out.Bytes(), err
+		return encode(squared(source), iconQuality)
 	})
 }
 
 // NormalizePreview returns the content type and bytes of a link's preview image to store: at most
-// MaxPreviewSize on each side, JPEG unless it has transparency.
+// MaxPreviewSize on each side.
 func NormalizePreview(data []byte) (string, []byte, error) {
 	return normalize(data, func(source image.Image) (string, []byte, error) {
-		scaled := fit(source, MaxPreviewSize)
-		var out bytes.Buffer
-		if transparent(scaled) {
-			err := png.Encode(&out, scaled)
-			return "image/png", out.Bytes(), err
-		}
-		err := jpeg.Encode(&out, scaled, &jpeg.Options{Quality: 85})
-		return "image/jpeg", out.Bytes(), err
+		return encode(fit(source, MaxPreviewSize), previewQuality)
 	})
+}
+
+// encode writes JPEG, or PNG when the image has transparency (logos, the random planets).
+func encode(img image.Image, quality int) (string, []byte, error) {
+	var out bytes.Buffer
+	if transparent(img) {
+		err := (&png.Encoder{CompressionLevel: png.BestCompression}).Encode(&out, img)
+		return "image/png", out.Bytes(), err
+	}
+	err := jpeg.Encode(&out, img, &jpeg.Options{Quality: quality})
+	return "image/jpeg", out.Bytes(), err
 }
 
 func normalize(data []byte, encode func(image.Image) (string, []byte, error)) (string, []byte, error) {

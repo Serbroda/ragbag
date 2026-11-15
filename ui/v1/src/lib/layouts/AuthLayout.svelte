@@ -581,6 +581,9 @@
 		showAddModal = true;
 	}
 
+	// The collection page's menu offers a sub-collection of the one shown
+	setContext('new-collection', (parentId: string) => openAddModal(parentId));
+
 	async function handleCreateCollection() {
 		if (!canCreateCollections) return;
 		const name = newCollectionName.trim();

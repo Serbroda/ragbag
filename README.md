@@ -321,7 +321,7 @@ Unlimited unless set; on a public instance they keep single accounts from fillin
 | `QUOTA_LINKS_PER_USER`        | Links a user added in any space, trashed ones until the trash is emptied   | `10000` |
 | `QUOTA_SPACES_PER_USER`       | Spaces a user owns (the first one of a new account is always created)      | `10`    |
 | `QUOTA_COLLECTIONS_PER_SPACE` | Collections of a space, trashed ones included                              | `500`   |
-| `QUOTA_UPLOAD_MB_PER_USER`    | Uploaded images: avatar, space icons and preview images (about 100–600 KB each) | `200` |
+| `QUOTA_UPLOAD_MB_PER_USER`    | Uploaded images: avatar, space icons and preview images (about 10–100 KB each) | `200` |
 
 Imports count as well; one that would exceed a quota is refused as a whole (the preview already says so).
 Images uploaded before Ragbag 0.15 count for nobody.

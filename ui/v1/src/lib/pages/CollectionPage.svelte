@@ -55,6 +55,8 @@
 	type LockAction = (collectionId: string, label: string) => Promise<void>;
 	const lockForMe = getContext<LockAction | undefined>('lock-collection');
 	const unlockForMe = getContext<LockAction | undefined>('unlock-collection');
+	const newCollection = getContext<((parentId: string) => void) | undefined>('new-collection');
+	const canCreateCollections = $derived((hasSpacePermission?.('CREATE_COLLECTIONS') ?? false) && !collection?.query);
 
 	let bookmarks = $state<BookmarkDto[]>([]);
 	/** Tags picked above the links; a link has to have all of them. */
@@ -710,6 +712,18 @@
 							<div
 								class="absolute right-0 top-10 z-20 w-44 rounded-md border border-gray-200 bg-white py-1 text-sm shadow-lg dark:border-gray-700 dark:bg-gray-800"
 							>
+								{#if canCreateCollections && newCollection}
+									<button
+										class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
+										onclick={() => {
+											openHeaderMenu = false;
+											newCollection(collectionId);
+										}}
+									>
+										New sub-collection…
+									</button>
+									<div class="my-1 h-px bg-gray-100 dark:bg-gray-700"></div>
+								{/if}
 								<button
 									class="w-full px-3 py-1.5 text-left text-gray-700 hover:bg-gray-100 dark:text-gray-200 dark:hover:bg-gray-700"
 									onclick={() => {

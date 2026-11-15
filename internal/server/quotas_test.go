@@ -90,8 +90,12 @@ func TestUploadQuota(t *testing.T) {
 	collection := e.createCollection(user, e.firstSpace(user), "Links", "")
 	bookmark := e.createBookmark(user, collection)
 	other := e.createBookmark(user, collection)
-	// Noise stays large as JPEG (about 600 KB at 900 px): one fits, two do not
+	// Noise stays large as JPEG (about 330 KB at 800 px): three fit, four do not
 	photo := noiseImage(t, 900, 900)
+	for range 2 {
+		filler := e.createBookmark(user, collection)
+		e.req("PUT", "/api/v1/bookmarks/%s/image", filler).as(user).multipart(map[string]any{"file": photo}).expect(200)
+	}
 	e.req("PUT", "/api/v1/bookmarks/%s/image", bookmark).as(user).multipart(map[string]any{"file": photo}).expect(200)
 	res := e.req("PUT", "/api/v1/bookmarks/%s/image", other).as(user).multipart(map[string]any{"file": photo}).expect(403)
 	require.Contains(t, res.str("detail"), "1 MB")
