@@ -89,7 +89,7 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   For sites that hide their pages from servers (YouTube's consent/bot check, X, TikTok) `oembed.go` asks their
   oEmbed endpoint at the same time (`oembedProviders`); the page wins when it is about the same thing
   (`embed.describes`), otherwise the embed replaces it
-- `internal/images` — avatars and space icons (`Normalize`: center crop, 256 px PNG) and link previews
+- `internal/images` — avatars and space icons (`Normalize`: center crop, 256 px) and link previews
   (`NormalizePreview`): content sniffing, decompression bomb check, small GIF/WebP kept as they are.
   `ImagePicker.svelte` applies a change right away when given `onupload`/`onremove` (avatar), otherwise it keeps it
   in `bind:change` until the surrounding form saves (space settings, creating a space).
@@ -156,8 +156,8 @@ When changing the API: edit the spec, `make generate`, implement the new method 
   them out without extra code; queries that do not use those joins must filter `deleted_at IS NULL` themselves.
   The trash lists what the user could see (`hiddenCollectionsOf(…, withTrash=false)`), restoring brings back
   favorites, reactions and pins, `PurgeOldTrash` (hourly from main) deletes after 30 days.
-- **Preview images**: shown is an upload (`image_id`, `images.NormalizePreview`: scaled to 1200 px, aspect kept,
-  JPEG unless transparent) over an own address (`image_url`) over the page's `og_image`, none if `image_hidden`
+- **Preview images**: shown is an upload (`image_id`, `images.NormalizePreview`: scaled to 800 px, aspect kept,
+  JPEG quality 75) over an own address (`image_url`) over the page's `og_image`, none if `image_hidden`
   (`previewImage()` in the frontend, the same order for public shares). Addresses are loaded by the browser,
   never cached. Links that point straight to an image become their own preview (`fetch.isImage`, by content
   type or first bytes). Unused uploads are deleted by the hourly job (`DeleteOrphanImages`).
