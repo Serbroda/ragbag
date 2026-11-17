@@ -147,7 +147,9 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Avatars of others** show only where a person is the answer to "who?": who added the news (`NewsBell.svelte`),
   who reacted (popover on hover in `Reactions.svelte`) and the members in the dashboard header (`AvatarStack.svelte`,
   not in spaces with one member). The API carries them as `PersonDto` (`people`, next to the plain names). Cards,
-  list rows and the sidebar deliberately stay without faces.
+  list rows and the sidebar deliberately stay without faces. A click on those faces opens `MembersPanel.svelte`
+  over the content (grouped by role, large groups as a grid, search from 20), never a permanent column; its
+  `linkCount` only counts links outside the user's `hiddenCollections`. Managing members stays in the settings.
 - **Space bar** order and folders are personal (`space_bars`, JSON of `SpaceBarDto`); the server drops spaces the
   user is no longer a member of. Leaving a space removes the user's reactions and visits there.
 - **Public links** (`shares.go`, one per collection) show a collection and its sub-collections to anybody, without

@@ -1347,8 +1347,12 @@ type SpaceMemberDto struct {
 	AvatarId *ID `json:"avatarId,omitempty"`
 
 	// DisplayName Shown instead of the username where set (not unique)
-	DisplayName *string             `json:"displayName,omitempty"`
-	Role        SpaceMemberRoleEnum `json:"role"`
+	DisplayName *string   `json:"displayName,omitempty"`
+	JoinedAt    time.Time `json:"joinedAt"`
+
+	// LinkCount Links the member added that the requesting user can see (only in the member list)
+	LinkCount *int                `json:"linkCount,omitempty"`
+	Role      SpaceMemberRoleEnum `json:"role"`
 
 	// UserId UUID
 	UserId   ID     `json:"userId"`

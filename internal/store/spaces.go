@@ -126,12 +126,13 @@ func (s *Store) SpacesForUser(ctx context.Context, userID string) ([]SpaceWithRo
 // --- Members ---
 
 type Member struct {
-	SpaceID       string  `db:"space_id"`
-	UserID        string  `db:"user_id"`
-	Role          string  `db:"role"`
-	Username      string  `db:"username"`
-	DisplayName   *string `db:"display_name"`
-	AvatarImageID *string `db:"avatar_image_id"`
+	SpaceID       string    `db:"space_id"`
+	UserID        string    `db:"user_id"`
+	Role          string    `db:"role"`
+	Username      string    `db:"username"`
+	DisplayName   *string   `db:"display_name"`
+	AvatarImageID *string   `db:"avatar_image_id"`
+	JoinedAt      time.Time `db:"joined_at"`
 }
 
 // Name is the display name, else the username.
@@ -142,8 +143,8 @@ func (m *Member) Name() string {
 	return m.Username
 }
 
-const memberSelect = `SELECT m.space_id, m.user_id, m.role, u.username, u.display_name, u.avatar_image_id
-	FROM space_members m JOIN users u ON u.id = m.user_id`
+const memberSelect = `SELECT m.space_id, m.user_id, m.role, u.username, u.display_name, u.avatar_image_id,
+	m.created_at AS joined_at FROM space_members m JOIN users u ON u.id = m.user_id`
 
 // MemberRole returns ErrNotFound if the user is not a member.
 func (s *Store) MemberRole(ctx context.Context, spaceID, userID string) (string, error) {
@@ -160,6 +161,24 @@ func (s *Store) Members(ctx context.Context, spaceID string) ([]Member, error) {
 	var members []Member
 	err := s.sel(ctx, &members, memberSelect+` WHERE m.space_id = ?`, spaceID)
 	return members, err
+}
+
+// LinkCounts counts the links each member added to the space outside the hidden collections, by user id.
+func (s *Store) LinkCounts(ctx context.Context, spaceID string, hidden []string) (map[string]int, error) {
+	query, args := excludeCollections(`SELECT b.created_by, COUNT(*) AS n FROM bookmarks b`+bookmarkJoins+`
+		WHERE c.space_id = ?`, []any{spaceID}, hidden)
+	var counts []struct {
+		UserID string `db:"created_by"`
+		Count  int    `db:"n"`
+	}
+	if err := s.selIn(ctx, &counts, query+` GROUP BY b.created_by`, args...); err != nil {
+		return nil, err
+	}
+	result := make(map[string]int, len(counts))
+	for _, count := range counts {
+		result[count.UserID] = count.Count
+	}
+	return result, nil
 }
 
 func (s *Store) AddMember(ctx context.Context, spaceID, userID, role string) error {
