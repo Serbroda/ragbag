@@ -4246,10 +4246,17 @@ components:
           $ref: '#/components/schemas/ID'
         role:
           $ref: '#/components/schemas/SpaceMemberRoleEnum'
+        joinedAt:
+          type: string
+          format: date-time
+        linkCount:
+          type: integer
+          description: Links the member added that the requesting user can see (only in the member list)
       required:
         - userId
         - username
         - role
+        - joinedAt
 
     UpdateSpaceMemberDto:
       properties:

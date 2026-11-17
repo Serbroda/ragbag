@@ -50,6 +50,27 @@ func TestMembersAreListedSortedByRole(t *testing.T) {
 	f.req("GET", "/api/v1/spaces/%s", "00000000-0000-0000-0000-000000000000").as(f.owner).expect(404)
 }
 
+func TestMembersShowWhenTheyJoinedAndTheLinksTheyAddedThatTheUserSees(t *testing.T) {
+	f := newSpaceFixture(t)
+	shared := f.createCollection(f.contributor, f.space, "Shared", "")
+	f.createBookmark(f.contributor, shared)
+	f.createBookmark(f.contributor, shared)
+	secret := f.req("POST", "/api/v1/spaces/%s/collections", f.space).as(f.contributor).
+		json(`{"name":"Secret","restricted":true}`).expect(200).str("id")
+	f.createBookmark(f.contributor, secret)
+	trashed := f.createBookmark(f.contributor, shared)
+	f.req("DELETE", "/api/v1/bookmarks/%s", trashed).as(f.contributor).expect(204)
+
+	contributor := fmt.Sprintf(`#(userId==%q)`, f.contributor.UserID)
+	f.req("GET", "/api/v1/spaces/%s/members", f.space).as(f.contributor).expect(200).
+		has(contributor+".linkCount", 3).has(`#(role=="VIEWER").linkCount`, 0)
+	// Links in private collections do not count for those who cannot see them, links in the trash for nobody
+	res := f.req("GET", "/api/v1/spaces/%s/members", f.space).as(f.viewer).expect(200).has(contributor+".linkCount", 2)
+	joined, err := time.Parse(time.RFC3339, res.str(contributor+".joinedAt"))
+	require.NoError(t, err)
+	require.WithinDuration(t, time.Now(), joined, time.Minute)
+}
+
 func TestRolePermissions(t *testing.T) {
 	f := newSpaceFixture(t)
 	f.req("PUT", "/api/v1/spaces/%s", f.space).as(f.contributor).json(`{"name":"Hijacked"}`).expect(403)

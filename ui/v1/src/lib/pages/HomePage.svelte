@@ -1,6 +1,12 @@
 <script lang="ts">
 	import { SpaceApi } from 'ragbag-frontend-sdk';
-	import type { BookmarkDto, DashboardDto, DashboardSectionDto, DashboardSectionTypeEnum } from 'ragbag-frontend-sdk';
+	import type {
+		BookmarkDto,
+		DashboardDto,
+		DashboardSectionDto,
+		DashboardSectionTypeEnum,
+		SpaceMemberDto,
+	} from 'ragbag-frontend-sdk';
 	import { getContext, untrack } from 'svelte';
 	import { flip } from 'svelte/animate';
 	import { dndzone, dragHandle, dragHandleZone } from 'svelte-dnd-action';
@@ -22,6 +28,7 @@
 	import HeadlineBoard from '../components/HeadlineBoard.svelte';
 	import Avatar from '../components/Avatar.svelte';
 	import AvatarStack from '../components/AvatarStack.svelte';
+	import MembersPanel from '../components/MembersPanel.svelte';
 	import { shownName } from '../utils/format';
 	import LinkPickerModal from '../components/LinkPickerModal.svelte';
 	import QuickAddModal from '../components/QuickAddModal.svelte';
@@ -55,7 +62,8 @@
 	}
 
 	let dashboard = $state<DashboardDto | null>(null);
-	let members = $state<{ name: string; avatarId?: string }[] | null>(null);
+	let members = $state<SpaceMemberDto[] | null>(null);
+	let membersOpen = $state(false);
 	let loading = $state(true);
 	let error = $state('');
 
@@ -79,7 +87,7 @@
 			]);
 			if (id !== spaceId) return;
 			dashboard = loaded;
-			members = loadedMembers.map((m) => ({ name: shownName(m), avatarId: m.avatarId }));
+			members = loadedMembers;
 		} catch (err) {
 			error = await errorMessage(err, 'Failed to load the dashboard.');
 		} finally {
@@ -269,12 +277,13 @@
 					<button
 						type="button"
 						class="flex items-center gap-2 hover:text-gray-700 hover:underline dark:hover:text-gray-200"
-						title="Show members in space settings"
-						onclick={() => navigate('/space/:spaceId/settings', { params: { spaceId }, search: { tab: 'members' } })}
+						title="Show members"
+						aria-haspopup="dialog"
+						onclick={() => (membersOpen = true)}
 					>
 						<!-- Faces show at a glance that the space is shared; alone it would only repeat the user's own -->
 						{#if members.length > 1}
-							<AvatarStack people={members} max={5} />
+							<AvatarStack people={members.map((m) => ({ name: shownName(m), avatarId: m.avatarId }))} max={5} />
 						{/if}
 						{members.length} member{members.length === 1 ? '' : 's'}
 					</button>
@@ -542,6 +551,17 @@
 		</div>
 	{/if}
 </div>
+
+{#if members}
+	<MembersPanel
+		bind:open={membersOpen}
+		{members}
+		currentUserId={session.me?.id}
+		onmanage={space?.permissions?.includes('MANAGE_MEMBERS')
+			? () => navigate('/space/:spaceId/settings', { params: { spaceId }, search: { tab: 'members' } })
+			: undefined}
+	/>
+{/if}
 
 <LinkPickerModal
 	bind:open={pickerOpen}

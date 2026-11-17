@@ -12,7 +12,7 @@
  * Do not edit the class manually.
  */
 
-import { mapValues } from '../runtime';
+import { mapValues, parseDate, parseDateTime, serializeDate, serializeDateTime } from '../runtime';
 import type { SpaceMemberRoleEnum } from './SpaceMemberRoleEnum';
 import {
     SpaceMemberRoleEnumFromJSON,
@@ -47,6 +47,14 @@ export interface SpaceMemberDto {
      * 
      */
     role: SpaceMemberRoleEnum;
+    /**
+     * 
+     */
+    joinedAt: Date;
+    /**
+     * Links the member added that the requesting user can see (only in the member list)
+     */
+    linkCount?: number;
 }
 
 
@@ -58,6 +66,7 @@ export function instanceOfSpaceMemberDto(value: object): value is SpaceMemberDto
     if (!('userId' in value) || value['userId'] === undefined) return false;
     if (!('username' in value) || value['username'] === undefined) return false;
     if (!('role' in value) || value['role'] === undefined) return false;
+    if (!('joinedAt' in value) || value['joinedAt'] === undefined) return false;
     return true;
 }
 
@@ -76,6 +85,8 @@ export function SpaceMemberDtoFromJSONTyped(json: any, ignoreDiscriminator: bool
         'displayName': json['displayName'] == null ? undefined : json['displayName'],
         'avatarId': json['avatarId'] == null ? undefined : json['avatarId'],
         'role': SpaceMemberRoleEnumFromJSON(json['role']),
+        'joinedAt': (json['joinedAt'] == null ? json['joinedAt'] : parseDateTime(json['joinedAt'])),
+        'linkCount': json['linkCount'] == null ? undefined : json['linkCount'],
     };
 }
 
@@ -95,6 +106,8 @@ export function SpaceMemberDtoToJSONTyped(value?: SpaceMemberDto | null, ignoreD
         'displayName': value['displayName'],
         'avatarId': value['avatarId'],
         'role': SpaceMemberRoleEnumToJSON(value['role']),
+        'joinedAt': value['joinedAt'] == null ? value['joinedAt'] : serializeDateTime(value['joinedAt']),
+        'linkCount': value['linkCount'],
     };
 }
 

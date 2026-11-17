@@ -52,8 +52,8 @@ const maxDiscoverResults = 100
 
 func memberDto(member store.Member) api.SpaceMemberDto {
 	return api.SpaceMemberDto{UserId: member.UserID, Username: member.Username, DisplayName: member.DisplayName,
-		AvatarId: member.AvatarImageID,
-		Role:     api.SpaceMemberRoleEnum(member.Role)}
+		AvatarId: member.AvatarImageID, JoinedAt: member.JoinedAt,
+		Role: api.SpaceMemberRoleEnum(member.Role)}
 }
 
 func requireName(name, what string) (string, error) {
@@ -372,6 +372,15 @@ func (s *Server) GetSpaceMembers(c echo.Context, spaceID api.ID) error {
 	if err != nil {
 		return err
 	}
+	// Counted like everything else: links in collections the user cannot see do not count
+	hidden, err := s.hiddenCollections(ctxOf(c), s.store, spaceID, currentUser(c))
+	if err != nil {
+		return err
+	}
+	linkCounts, err := s.store.LinkCounts(ctxOf(c), spaceID, keys(hidden))
+	if err != nil {
+		return err
+	}
 	sort.SliceStable(members, func(i, j int) bool {
 		ri, rj := Role(members[i].Role).rank(), Role(members[j].Role).rank()
 		if ri != rj {
@@ -381,7 +390,9 @@ func (s *Server) GetSpaceMembers(c echo.Context, spaceID api.ID) error {
 	})
 	result := make([]api.SpaceMemberDto, 0, len(members))
 	for _, member := range members {
-		result = append(result, memberDto(member))
+		dto := memberDto(member)
+		dto.LinkCount = ptr(linkCounts[member.UserID])
+		result = append(result, dto)
 	}
 	return c.JSON(http.StatusOK, result)
 }
