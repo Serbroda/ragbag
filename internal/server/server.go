@@ -48,6 +48,8 @@ type Server struct {
 	mails *limiter
 	// version is written into exports and shown in the frontend
 	version string
+	// sso signs people in with the OIDC provider, nil without OIDC_ISSUER
+	sso *oidcClient
 }
 
 var _ api.ServerInterface = (*Server)(nil)
@@ -71,6 +73,9 @@ func New(cfg config.Config, st *store.Store, version string) (*Server, error) {
 	}
 	if cfg.RateLimits {
 		srv.limits = newLimits()
+	}
+	if cfg.OIDC.Issuer != "" {
+		srv.sso = newOIDCClient(cfg.OIDC, cfg.PublicURL)
 	}
 	if cfg.Mail.Host != "" {
 		sender, err := mail.NewSMTP(cfg.Mail)
@@ -119,7 +124,8 @@ func (s *Server) Handler(frontend fs.FS) *echo.Echo {
 // publicPaths can be used without being signed in.
 var publicPaths = []string{
 	"/api/app/config/features", "/api/auth/register", "/api/auth/login", "/api/auth/refresh", "/api/auth/logout",
-	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/verify-email/*", "/api/auth/resend-verification", "/api/auth/invites/*", "/api/v1/images/*", "/api/v1/shares/*",
+	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/oidc/start", "/api/auth/oidc/callback",
+	"/api/auth/oidc/signup", "/api/auth/verify-email/*", "/api/auth/resend-verification", "/api/auth/invites/*", "/api/v1/images/*", "/api/v1/shares/*",
 	"/api/v1/shares/*/reports", "/api/v1/shares/*/bookmarks/*/headlines", "/api/app/legal/*", "/api/health",
 }
 

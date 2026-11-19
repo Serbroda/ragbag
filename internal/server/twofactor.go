@@ -112,8 +112,8 @@ func (s *Server) SetupTwoFactor(c echo.Context) error {
 		return err
 	}
 	// 400, not 401: the client would treat a 401 as an expired session
-	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
-		return badRequest("The current password is wrong")
+	if err := confirmPassword(user, req.CurrentPassword); err != nil {
+		return err
 	}
 	state, err := s.store.TwoFactorState(ctxOf(c), user.ID)
 	if err != nil {
@@ -175,8 +175,8 @@ func (s *Server) DisableTwoFactor(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
-		return badRequest("The current password is wrong")
+	if err := confirmPassword(user, req.CurrentPassword); err != nil {
+		return err
 	}
 	state, err := s.store.TwoFactorState(ctxOf(c), user.ID)
 	if err != nil {

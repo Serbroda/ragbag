@@ -11,7 +11,8 @@
 		UserSettingsOutline,
 	} from 'flowbite-svelte-icons';
 	import {
-		apiConfig, changePassword, deleteAccount, errorMessage, fetchFeatureFlags, logoutEverywhere,
+		apiConfig, changePassword, connectSso, deleteAccount, disconnectSso, errorMessage, fetchFeatureFlags,
+		logoutEverywhere,
 	} from '../api/client';
 	import { navigate, p, route } from '../router';
 	import { loadMe, loadSpaces, resetSession, session, setStartSpace } from '../stores/spaces.svelte';
@@ -54,7 +55,16 @@
 	Promise.all([loadMe(), session.loaded ? Promise.resolve() : loadSpaces()]).catch(async (err) => {
 		loadError = await errorMessage(err, 'Could not load your account.');
 	});
-	fetchFeatureFlags().then((flags) => (plansEnabled = flags['plans'] === 'true')).catch(() => {});
+	// Single sign-on (OIDC_ISSUER): the provider's name, and whether it is the only way in (sso_only)
+	let sso = $state('');
+	let ssoOnly = $state(false);
+	fetchFeatureFlags()
+		.then((flags) => {
+			plansEnabled = flags['plans'] === 'true';
+			sso = flags['sso'] ?? '';
+			ssoOnly = flags['sso_only'] === 'true';
+		})
+		.catch(() => {});
 
 	// --- Profile ---
 	let displayName = $state('');
@@ -100,9 +110,10 @@
 		passwordBusy = true;
 		passwordError = '';
 		try {
-			await changePassword(currentPassword, newPassword);
+			await changePassword(hasPassword ? currentPassword : '', newPassword);
 			closePassword();
-			showToast('Password changed. Your other devices have been signed out.');
+			showToast(hasPassword ? 'Password changed. Your other devices have been signed out.' : 'Password set.');
+			if (!hasPassword) session.me = await loadMe();
 		} catch (err) {
 			passwordError = await errorMessage(err, 'Failed to change the password.');
 		} finally {
@@ -113,6 +124,40 @@
 	function closePassword() {
 		passwordOpen = false;
 		currentPassword = newPassword = confirmPassword = passwordError = '';
+	}
+
+	/** Accounts made by single sign-on set their first password without a current one */
+	const hasPassword = $derived(session.me?.hasPassword !== false);
+
+	// Back from connecting the account at the provider
+	if (route.search.sso === 'connected') showToast(`Connected. You can sign in with it now.`);
+	let ssoError = $state(typeof route.search.sso_error === 'string' ? route.search.sso_error : '');
+	let ssoBusy = $state(false);
+	let disconnectOpen = $state(false);
+
+	async function connect() {
+		ssoBusy = true;
+		ssoError = '';
+		try {
+			await connectSso();
+		} catch (err) {
+			ssoError = await errorMessage(err, 'The connection could not be started.');
+			ssoBusy = false;
+		}
+	}
+
+	async function disconnect() {
+		ssoBusy = true;
+		ssoError = '';
+		try {
+			await disconnectSso();
+			session.me = await loadMe();
+			disconnectOpen = false;
+		} catch (err) {
+			ssoError = await errorMessage(err, 'Failed to disconnect.');
+		} finally {
+			ssoBusy = false;
+		}
 	}
 
 	let pinOpen = $state(false);
@@ -295,24 +340,67 @@
 				</section>
 			{:else if tab === 'security'}
 				<section class="{card} {rows}">
+					{#if sso}
+						<SettingsItem
+							title="Single sign-on"
+							description={session.me.sso
+								? `Signed in with ${sso} as ${session.me.sso}.`
+								: `Sign in with your ${sso} login instead of the password.`}
+							status={session.me.sso ? 'Connected' : 'Not connected'}
+							tone={session.me.sso ? 'good' : 'neutral'}
+							action={session.me.sso
+								? ssoOnly && !session.me.instanceAdmin
+									? undefined
+									: 'Disconnect…'
+								: undefined}
+							bind:open={disconnectOpen}
+						>
+							{#if !session.me.sso}
+								<Button size="sm" color="light" disabled={ssoBusy} onclick={connect}>
+									{ssoBusy ? 'Opening…' : `Connect ${sso}`}
+								</Button>
+							{:else if disconnectOpen}
+								<p class="mb-2 text-sm text-gray-600 dark:text-gray-300">
+									{hasPassword
+										? `You will sign in with your password only.`
+										: `Set a password first, otherwise you could not sign in any more.`}
+								</p>
+								<div class="flex justify-end gap-2">
+									<Button size="sm" color="light" onclick={() => (disconnectOpen = false)}>Cancel</Button>
+									<Button size="sm" color="red" disabled={ssoBusy || !hasPassword} onclick={disconnect}>Disconnect</Button>
+								</div>
+							{/if}
+							{#if ssoError}
+								<p class="mt-2 text-sm text-red-500 dark:text-red-400">{ssoError}</p>
+							{/if}
+						</SettingsItem>
+					{/if}
+
 					<SettingsItem
 						title="Password"
-						description="Changing it signs out your other devices."
-						action="Change…"
+						description={hasPassword
+							? ssoOnly
+								? 'Confirms changes to your account. Changing it signs out your other devices.'
+								: 'Changing it signs out your other devices.'
+							: 'You sign in with single sign-on. A password confirms changes like deleting the account.'}
+						status={hasPassword ? undefined : 'Not set'}
+						action={hasPassword ? 'Change…' : 'Set…'}
 						bind:open={passwordOpen}
 					>
 						<form class="flex flex-col gap-2" onsubmit={savePassword}>
 							<!-- Lets password managers update the right entry -->
 							<input type="text" autocomplete="username" value={session.me.username} hidden readonly />
-							<!-- svelte-ignore a11y_autofocus -->
-							<Input
-								type="password"
-								placeholder="Current password"
-								autocomplete="current-password"
-								bind:value={currentPassword}
-								required
-								autofocus
-							/>
+							{#if hasPassword}
+								<!-- svelte-ignore a11y_autofocus -->
+								<Input
+									type="password"
+									placeholder="Current password"
+									autocomplete="current-password"
+									bind:value={currentPassword}
+									required
+									autofocus
+								/>
+							{/if}
 							<Input
 								type="password"
 								placeholder="New password (at least {MIN_PASSWORD_LENGTH} characters)"
@@ -336,9 +424,9 @@
 								<Button
 									type="submit"
 									size="sm"
-									disabled={passwordBusy || !currentPassword || newPassword.length < MIN_PASSWORD_LENGTH}
+									disabled={passwordBusy || (hasPassword && !currentPassword) || newPassword.length < MIN_PASSWORD_LENGTH}
 								>
-									{passwordBusy ? 'Saving…' : 'Change password'}
+									{passwordBusy ? 'Saving…' : hasPassword ? 'Change password' : 'Set password'}
 								</Button>
 							</div>
 						</form>

@@ -62,6 +62,7 @@ var tables = []table{
 	{name: "abuse_reports", since: 13},
 	{name: "api_tokens", since: 22},
 	{name: "terms_changes", since: 24},
+	{name: "user_identities", since: 26},
 }
 
 // Skipped holds what a backup leaves out on purpose: pending reset and confirmation links, which are only

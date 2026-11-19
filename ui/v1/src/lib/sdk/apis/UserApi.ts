@@ -39,6 +39,11 @@ import {
     DisplayNameDtoToJSON,
 } from '../models/DisplayNameDto';
 import {
+    type OidcStartDto,
+    OidcStartDtoFromJSON,
+    OidcStartDtoToJSON,
+} from '../models/OidcStartDto';
+import {
     type SetPinDto,
     SetPinDtoFromJSON,
     SetPinDtoToJSON,
@@ -229,6 +234,51 @@ export class UserApi extends runtime.BaseAPI {
      */
     async acceptTerms(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.acceptTermsRaw(initOverrides);
+    }
+
+    /**
+     * Creates request options for connectOidc without sending the request
+     */
+    async connectOidcRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/oidc`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Connect the account to the single sign-on provider; returns the provider\'s address to open
+     */
+    async connectOidcRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OidcStartDto>> {
+        const requestOptions = await this.connectOidcRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OidcStartDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Connect the account to the single sign-on provider; returns the provider\'s address to open
+     */
+    async connectOidc(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OidcStartDto> {
+        const response = await this.connectOidcRaw(initOverrides);
+        return await response.value();
     }
 
     /**
@@ -444,6 +494,50 @@ export class UserApi extends runtime.BaseAPI {
      */
     async disableTwoFactor(requestParameters: DisableTwoFactorRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.disableTwoFactorRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for disconnectOidc without sending the request
+     */
+    async disconnectOidcRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        if (this.configuration && this.configuration.accessToken) {
+            const token = this.configuration.accessToken;
+            const tokenString = await token("bearerAuth", []);
+
+            if (tokenString) {
+                headerParameters["Authorization"] = `Bearer ${tokenString}`;
+            }
+        }
+
+        let urlPath = `/v1/users/me/oidc`;
+
+        return {
+            path: urlPath,
+            method: 'DELETE',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Disconnect the account from the provider (it then needs a password to sign in)
+     */
+    async disconnectOidcRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.disconnectOidcRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Disconnect the account from the provider (it then needs a password to sign in)
+     */
+    async disconnectOidc(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.disconnectOidcRaw(initOverrides);
     }
 
     /**

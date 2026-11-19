@@ -10,7 +10,6 @@ import (
 	"time"
 
 	"github.com/Serbroda/ragbag/internal/api"
-	"github.com/Serbroda/ragbag/internal/auth"
 	"github.com/Serbroda/ragbag/internal/db"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/labstack/echo/v4"
@@ -40,8 +39,8 @@ func (s *Server) DeleteAccount(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	if !auth.CheckPassword(user.PasswordHash, req.Password) {
-		return badRequest("The password is wrong")
+	if err := confirmPassword(user, req.Password); err != nil {
+		return err
 	}
 	if err := s.store.InTx(ctxOf(c), func(tx *store.Store) error {
 		return s.removeAccount(c, tx, user, false)

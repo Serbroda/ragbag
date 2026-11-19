@@ -61,8 +61,8 @@ func (s *Server) SetPin(c echo.Context) error {
 		return err
 	}
 	// 400, not 401: the client would treat a 401 as an expired session
-	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
-		return badRequest("The current password is wrong")
+	if err := confirmPassword(user, req.CurrentPassword); err != nil {
+		return err
 	}
 	if err := auth.ValidatePIN(req.Pin); err != nil {
 		return badRequest("%s", err.Error())

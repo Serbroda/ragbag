@@ -5,8 +5,9 @@
 	import type { InvitePreviewDto } from 'ragbag-frontend-sdk';
 	import {
 		errorMessage, login, register, fetchFeatureFlags, requestPasswordReset, pendingInvite, getRegistrationInvite,
-		needsTwoFactorCode, needsEmailConfirmation, resendVerification, retryAfter,
+		needsTwoFactorCode, needsEmailConfirmation, resendVerification, retryAfter, startSso, finishSso,
 	} from '../api/client';
+	import SsoSignup from '../components/SsoSignup.svelte';
 	import { route } from '../router';
 	import { continueAfterSignIn } from '../utils/signin';
 	import { legalLinks, type LegalLink } from '../utils/legal';
@@ -37,14 +38,58 @@
 		}).catch(() => {});
 	}
 
+	// Single sign-on (OIDC_ISSUER): the provider's name for the button; with sso_only the password form is only
+	// a fallback for instance admins
+	let sso = $state('');
+	let ssoOnly = $state(false);
+	let ssoCreatesAccounts = $state(false);
+	let showPasswordForm = $state(false);
+	let leavingForSso = $state(false);
+
 	$effect(() => {
 		fetchFeatureFlags().then((flags) => {
 			registrationEnabled = flags['registration_enabled'] === 'true';
 			emailEnabled = flags['email'] === 'true';
+			sso = flags['sso'] ?? '';
+			ssoOnly = flags['sso_only'] === 'true';
+			ssoCreatesAccounts = flags['sso_signup'] === 'true';
 		}).catch(() => {
 			registrationEnabled = false;
 		});
 	});
+
+	async function signInWithSso() {
+		error = '';
+		leavingForSso = true;
+		try {
+			await startSso();
+		} catch (err) {
+			error = await errorMessage(err, 'The sign-in could not be started. Please try again.');
+			leavingForSso = false;
+		}
+	}
+
+	// Back from the provider: signed in (the refresh cookie is set), new here (the ticket is in the fragment, which
+	// never reaches a server log) or with an error
+	let ssoSignupTicket = $state<URLSearchParams | null>(null);
+	let finishingSso = $state(route.search.sso === 'done');
+	if (route.search.sso === 'done') {
+		finishSso().then((signedIn) => {
+			if (signedIn) continueAfterSignIn();
+			else {
+				finishingSso = false;
+				error = 'The sign-in could not be finished. Please try again.';
+			}
+		});
+	} else if (route.search.sso === 'signup' && location.hash.length > 1) {
+		ssoSignupTicket = new URLSearchParams(location.hash.slice(1));
+		history.replaceState(history.state, '', location.pathname);
+	}
+
+	function cancelSsoSignup() {
+		ssoSignupTicket = null;
+		history.replaceState(history.state, '', '/login');
+	}
 	let username = $state('');
 	let displayName = $state('');
 	let email = $state('');
@@ -53,7 +98,7 @@
 	// Second step of signing in to an account with two-factor authentication
 	let codeStep = $state(false);
 	let code = $state('');
-	let error = $state('');
+	let error = $state(typeof route.search.sso_error === 'string' ? route.search.sso_error : '');
 	// Set after a password reset, which sends the user here
 	let success = $state(route.search.reset ? 'Your password has been changed. Sign in with the new one.' : '');
 	let loading = $state(false);
@@ -187,7 +232,9 @@
 </script>
 
 <CenteredScreen
-	subtitle={isForgot
+	subtitle={ssoSignupTicket
+		? 'Create your account'
+		: isForgot
 		? 'Reset your password'
 		: isRegister
 			? 'Create your account'
@@ -196,6 +243,22 @@
 				: 'Welcome back! Sign in to continue.'}
 >
 
+		{#if finishingSso}
+			<p class="text-center text-sm text-gray-500 dark:text-gray-400">Signing in…</p>
+		{:else if ssoSignupTicket}
+			<SsoSignup
+				ticket={ssoSignupTicket.get('ticket') ?? ''}
+				email={ssoSignupTicket.get('email') ?? ''}
+				proposedUsername={ssoSignupTicket.get('username') ?? ''}
+				proposedName={ssoSignupTicket.get('name') ?? ''}
+				provider={sso || 'single sign-on'}
+				allowed={ssoCreatesAccounts || inviteRegisters}
+				inviteToken={inviteRegisters ? (inviteToken ?? undefined) : undefined}
+				{terms}
+				{privacy}
+				oncancel={cancelSsoSignup}
+			/>
+		{:else}
 		{#if invite?.valid && !success}
 			<p class="mb-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				{invite.invitedBy ?? 'Someone'} invited you to join
@@ -222,6 +285,24 @@
 			</p>
 		{/if}
 
+		{#if sso && !isRegister && !isForgot && !codeStep}
+			<Button color={ssoOnly ? 'primary' : 'alternative'} class="w-full" disabled={leavingForSso} onclick={signInWithSso}>
+				{leavingForSso ? 'Opening…' : `Sign in with ${sso}`}
+			</Button>
+			{#if !ssoOnly}
+				<div class="my-4 flex items-center gap-3 text-xs text-gray-500">
+					<span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>or<span class="h-px flex-1 bg-gray-200 dark:bg-gray-700"></span>
+				</div>
+			{/if}
+		{/if}
+
+		{#if ssoOnly && !showPasswordForm && !codeStep}
+			<div class="mt-4 text-center text-xs">
+				<button type="button" class="text-gray-500 hover:underline dark:text-gray-400" onclick={() => (showPasswordForm = true)}>
+					Administrators: sign in with a password
+				</button>
+			</div>
+		{:else}
 		<form onsubmit={handleSubmit} class="flex flex-col gap-4">
 			{#if codeStep}
 				<div>
@@ -318,8 +399,8 @@
 			</div>
 		{/if}
 
-		{#if codeStep}
-			<!-- Nothing else to choose in the second step -->
+		{#if codeStep || ssoOnly}
+			<!-- Nothing else to choose in the second step; with single sign-on only, passwords are for admins -->
 		{:else if isForgot}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				<button type="button" class="font-medium text-primary-600 hover:underline dark:text-primary-500" onclick={toggleForgot}>
@@ -340,7 +421,9 @@
 			{/if}
 		{/if}
 
-		{#if (registrationEnabled || inviteRegisters) && !isForgot && !codeStep}
+		{/if}
+
+		{#if (registrationEnabled || inviteRegisters) && !ssoOnly && !isForgot && !codeStep}
 			<div class="mt-4 text-center text-sm text-gray-500 dark:text-gray-400">
 				{#if isRegister}
 					Already have an account?
@@ -354,5 +437,6 @@
 					</button>
 				{/if}
 			</div>
+		{/if}
 		{/if}
 </CenteredScreen>

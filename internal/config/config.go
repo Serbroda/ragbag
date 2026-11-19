@@ -43,6 +43,8 @@ type Config struct {
 	// LegalURLs point to legal pages elsewhere (IMPRINT_URL, PRIVACY_URL, TERMS_URL), by page; without one
 	// the page is DATA_DIR/legal/<page>.md
 	LegalURLs map[string]string
+	// OIDC is the single sign-on provider, used when OIDC.Issuer is set
+	OIDC OIDC
 	// SupportURL is a donation page (Ko-fi & co.) linked in the app; donations unlock nothing
 	SupportURL string
 	Backups    Backups
@@ -50,6 +52,21 @@ type Config struct {
 	// AnonymizeIPs logs IPv4 addresses without their last byte and IPv6 ones by their /48 (rate limits still
 	// count the full address)
 	AnonymizeIPs bool
+}
+
+// OIDC signs people in with an OpenID Connect provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …).
+type OIDC struct {
+	// Issuer is the provider's address; its /.well-known/openid-configuration tells the rest
+	Issuer       string
+	ClientID     string
+	ClientSecret string
+	// Name is shown on the button ("Sign in with Authentik")
+	Name string
+	// AutoRegister lets people the provider knows create an account here, also while REGISTRATION_ENABLED is off
+	AutoRegister bool
+	// Only hides the password form: passwords then only confirm changes, and only instance admins may still
+	// sign in with one (in case the provider is down)
+	Only bool
 }
 
 // Backups are made by the server itself into Dir every Interval when Keep (the number kept) is above 0.
@@ -153,6 +170,30 @@ func Load() (Config, error) {
 		if !strings.HasPrefix(cfg.PublicURL, "https://") && !strings.HasPrefix(cfg.PublicURL, "http://") {
 			return cfg, errors.New("PUBLIC_URL is required with SMTP_HOST, e.g. https://ragbag.example.com (links in emails)")
 		}
+	}
+
+	cfg.OIDC = OIDC{
+		// Exactly as the provider spells it (Authentik ends it with a slash): it has to match the tokens
+		Issuer:       env("OIDC_ISSUER", ""),
+		ClientID:     env("OIDC_CLIENT_ID", ""),
+		ClientSecret: os.Getenv("OIDC_CLIENT_SECRET"),
+		Name:         env("OIDC_NAME", "single sign-on"),
+		AutoRegister: envBool("OIDC_AUTO_REGISTER", false),
+		Only:         envBool("OIDC_ONLY", false),
+	}
+	if cfg.OIDC.Issuer != "" {
+		if !strings.HasPrefix(cfg.OIDC.Issuer, "https://") && !strings.HasPrefix(cfg.OIDC.Issuer, "http://") {
+			return cfg, fmt.Errorf("OIDC_ISSUER must be an http(s) address, not %q", cfg.OIDC.Issuer)
+		}
+		if cfg.OIDC.ClientID == "" {
+			return cfg, errors.New("OIDC_CLIENT_ID is required with OIDC_ISSUER")
+		}
+		// The provider sends people back to an address registered with it, never one taken from a request
+		if !strings.HasPrefix(cfg.PublicURL, "https://") && !strings.HasPrefix(cfg.PublicURL, "http://") {
+			return cfg, errors.New("PUBLIC_URL is required with OIDC_ISSUER, e.g. https://ragbag.example.com")
+		}
+	} else if cfg.OIDC.Only {
+		return cfg, errors.New("OIDC_ONLY needs OIDC_ISSUER")
 	}
 
 	cfg.SupportURL = env("SUPPORT_URL", "")

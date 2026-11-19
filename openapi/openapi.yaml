@@ -153,6 +153,84 @@ paths:
         '429':
           $ref: '#/components/responses/TooManyRequests'
 
+  /auth/oidc/start:
+    post:
+      summary: >
+        Start signing in with the single sign-on provider (OIDC_ISSUER, public): returns its address to open; a
+        cookie ties the answer to this browser
+      operationId: startOidcLogin
+      tags:
+        - Authentication
+      security: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OidcStartDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+
+  /auth/oidc/callback:
+    get:
+      summary: >
+        Where the provider sends the browser back (public). Redirects into the app: signed in (/login?sso=done,
+        refresh cookie set), to choose a username for a new account (/login?sso=signup#…), to the settings after
+        connecting an account, or with sso_error
+      operationId: oidcCallback
+      tags:
+        - Authentication
+      security: [ ]
+      parameters:
+        - in: query
+          name: code
+          schema:
+            type: string
+        - in: query
+          name: state
+          schema:
+            type: string
+        - in: query
+          name: error
+          schema:
+            type: string
+      responses:
+        '302':
+          description: Back into the app
+
+  /auth/oidc/signup:
+    post:
+      summary: >
+        Create the account of somebody the provider knows (OIDC_AUTO_REGISTER or an invite that registers) with
+        the ticket from the callback; signs in, unless the provider did not confirm the email address and the
+        server sends a confirmation link (202)
+      operationId: oidcSignup
+      tags:
+        - Authentication
+      security: [ ]
+      requestBody:
+        required: true
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OidcSignupRequest'
+      responses:
+        '200':
+          description: Signed in
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/LoginResponse'
+        '202':
+          description: Created; the email address has to be confirmed with the link sent to it first
+        '400':
+          $ref: '#/components/responses/BadRequest'
+        '403':
+          $ref: '#/components/responses/Forbidden'
+        '409':
+          $ref: '#/components/responses/Conflict'
+
   /auth/verify-email/{token}:
     post:
       summary: Confirm the email address of a new account with the link from the email (public); signs in
@@ -1215,6 +1293,36 @@ paths:
           $ref: '#/components/responses/NoContent'
         '400':
           $ref: '#/components/responses/BadRequest'
+
+  /v1/users/me/oidc:
+    post:
+      summary: Connect the account to the single sign-on provider; returns the provider's address to open
+      operationId: connectOidc
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/OidcStartDto'
+        '404':
+          $ref: '#/components/responses/NotFound'
+    delete:
+      summary: Disconnect the account from the provider (it then needs a password to sign in)
+      operationId: disconnectOidc
+      tags:
+        - User
+      security:
+        - bearerAuth: [ ]
+      responses:
+        '204':
+          $ref: '#/components/responses/NoContent'
+        '409':
+          $ref: '#/components/responses/Conflict'
 
   /v1/users/me/unlock:
     post:
@@ -3801,6 +3909,7 @@ components:
       properties:
         currentPassword:
           type: string
+          description: Empty for accounts without a password yet (made by single sign-on)
         newPassword:
           type: string
           minLength: 8
@@ -3903,6 +4012,32 @@ components:
         - title
         - html
 
+    OidcStartDto:
+      properties:
+        url:
+          type: string
+          description: The provider's sign-in page; open it in this browser tab
+      required:
+        - url
+
+    OidcSignupRequest:
+      properties:
+        ticket:
+          type: string
+          description: From the callback's redirect, valid for 15 minutes
+        username:
+          type: string
+        displayName:
+          type: string
+        acceptTerms:
+          type: boolean
+        inviteToken:
+          type: string
+          description: A space invite to join (it may also allow the account while registration is closed)
+      required:
+        - ticket
+        - username
+
     UserDto:
       properties:
         id:
@@ -3950,6 +4085,14 @@ components:
         openReports:
           type: integer
           description: Unresolved reports of public links (instance admins only)
+        hasPassword:
+          type: boolean
+          description: False for accounts made by single sign-on until they set one; only set for the current user
+        sso:
+          type: string
+          description: >
+            Connected to the single sign-on provider, as which (its email address, else "connected"); only set
+            for the current user
       required:
         - id
         - username

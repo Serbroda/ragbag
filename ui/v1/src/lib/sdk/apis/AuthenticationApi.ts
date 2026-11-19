@@ -39,6 +39,16 @@ import {
     LoginResponseToJSON,
 } from '../models/LoginResponse';
 import {
+    type OidcSignupRequest,
+    OidcSignupRequestFromJSON,
+    OidcSignupRequestToJSON,
+} from '../models/OidcSignupRequest';
+import {
+    type OidcStartDto,
+    OidcStartDtoFromJSON,
+    OidcStartDtoToJSON,
+} from '../models/OidcStartDto';
+import {
     type PasswordResetPreviewDto,
     PasswordResetPreviewDtoFromJSON,
     PasswordResetPreviewDtoToJSON,
@@ -97,6 +107,28 @@ export interface LoginOperationRequest {
      * 
      */
     loginRequest: LoginRequest;
+}
+
+export interface OidcCallbackRequest {
+    /**
+     * 
+     */
+    code?: string;
+    /**
+     * 
+     */
+    state?: string;
+    /**
+     * 
+     */
+    error?: string;
+}
+
+export interface OidcSignupOperationRequest {
+    /**
+     * 
+     */
+    oidcSignupRequest: OidcSignupRequest;
 }
 
 export interface RefreshRequest {
@@ -494,6 +526,108 @@ export class AuthenticationApi extends runtime.BaseAPI {
     }
 
     /**
+     * Creates request options for oidcCallback without sending the request
+     */
+    async oidcCallbackRequestOpts(requestParameters: OidcCallbackRequest): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        if (requestParameters['code'] != null) {
+            queryParameters['code'] = requestParameters['code'];
+        }
+
+        if (requestParameters['state'] != null) {
+            queryParameters['state'] = requestParameters['state'];
+        }
+
+        if (requestParameters['error'] != null) {
+            queryParameters['error'] = requestParameters['error'];
+        }
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/auth/oidc/callback`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Where the provider sends the browser back (public). Redirects into the app: signed in (/login?sso=done, refresh cookie set), to choose a username for a new account (/login?sso=signup#…), to the settings after connecting an account, or with sso_error 
+     */
+    async oidcCallbackRaw(requestParameters: OidcCallbackRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<void>> {
+        const requestOptions = await this.oidcCallbackRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.VoidApiResponse(response);
+    }
+
+    /**
+     * Where the provider sends the browser back (public). Redirects into the app: signed in (/login?sso=done, refresh cookie set), to choose a username for a new account (/login?sso=signup#…), to the settings after connecting an account, or with sso_error 
+     */
+    async oidcCallback(requestParameters: OidcCallbackRequest = {}, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
+        await this.oidcCallbackRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for oidcSignup without sending the request
+     */
+    async oidcSignupRequestOpts(requestParameters: OidcSignupOperationRequest): Promise<runtime.RequestOpts> {
+        if (requestParameters['oidcSignupRequest'] == null) {
+            throw new runtime.RequiredError(
+                'oidcSignupRequest',
+                'Required parameter "oidcSignupRequest" was null or undefined when calling oidcSignup().'
+            );
+        }
+
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+        headerParameters['Content-Type'] = 'application/json';
+
+
+        let urlPath = `/auth/oidc/signup`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+            body: OidcSignupRequestToJSON(requestParameters['oidcSignupRequest']),
+        };
+    }
+
+    /**
+     * Create the account of somebody the provider knows (OIDC_AUTO_REGISTER or an invite that registers) with the ticket from the callback; signs in, unless the provider did not confirm the email address and the server sends a confirmation link (202) 
+     */
+    async oidcSignupRaw(requestParameters: OidcSignupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<LoginResponse>> {
+        const requestOptions = await this.oidcSignupRequestOpts(requestParameters);
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => LoginResponseFromJSON(jsonValue));
+    }
+
+    /**
+     * Create the account of somebody the provider knows (OIDC_AUTO_REGISTER or an invite that registers) with the ticket from the callback; signs in, unless the provider did not confirm the email address and the server sends a confirmation link (202) 
+     */
+    async oidcSignup(requestParameters: OidcSignupOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<LoginResponse | null | undefined > {
+        const response = await this.oidcSignupRaw(requestParameters, initOverrides);
+        switch (response.raw.status) {
+            case 200:
+                return await response.value();
+            case 202:
+                return null;
+            default:
+                return await response.value();
+        }
+    }
+
+    /**
      * Creates request options for refresh without sending the request
      */
     async refreshRequestOpts(requestParameters: RefreshRequest): Promise<runtime.RequestOpts> {
@@ -739,6 +873,43 @@ export class AuthenticationApi extends runtime.BaseAPI {
      */
     async resetPassword(requestParameters: ResetPasswordOperationRequest, initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<void> {
         await this.resetPasswordRaw(requestParameters, initOverrides);
+    }
+
+    /**
+     * Creates request options for startOidcLogin without sending the request
+     */
+    async startOidcLoginRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/auth/oidc/start`;
+
+        return {
+            path: urlPath,
+            method: 'POST',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * Start signing in with the single sign-on provider (OIDC_ISSUER, public): returns its address to open; a cookie ties the answer to this browser 
+     */
+    async startOidcLoginRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<OidcStartDto>> {
+        const requestOptions = await this.startOidcLoginRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        return new runtime.JSONApiResponse(response, (jsonValue) => OidcStartDtoFromJSON(jsonValue));
+    }
+
+    /**
+     * Start signing in with the single sign-on provider (OIDC_ISSUER, public): returns its address to open; a cookie ties the answer to this browser 
+     */
+    async startOidcLogin(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<OidcStartDto> {
+        const response = await this.startOidcLoginRaw(initOverrides);
+        return await response.value();
     }
 
     /**

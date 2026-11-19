@@ -696,6 +696,7 @@ type BookmarkMetadataDto struct {
 
 // ChangePasswordRequest defines model for ChangePasswordRequest.
 type ChangePasswordRequest struct {
+	// CurrentPassword Empty for accounts without a password yet (made by single sign-on)
 	CurrentPassword string `json:"currentPassword"`
 	NewPassword     string `json:"newPassword"`
 }
@@ -1095,6 +1096,25 @@ type MoveCollectionDto struct {
 
 	// ParentId Target parent collection ID, or null to move to root
 	ParentId *ID `json:"parentId,omitempty"`
+}
+
+// OidcSignupRequest defines model for OidcSignupRequest.
+type OidcSignupRequest struct {
+	AcceptTerms *bool   `json:"acceptTerms,omitempty"`
+	DisplayName *string `json:"displayName,omitempty"`
+
+	// InviteToken A space invite to join (it may also allow the account while registration is closed)
+	InviteToken *string `json:"inviteToken,omitempty"`
+
+	// Ticket From the callback's redirect, valid for 15 minutes
+	Ticket   string `json:"ticket"`
+	Username string `json:"username"`
+}
+
+// OidcStartDto defines model for OidcStartDto.
+type OidcStartDto struct {
+	// Url The provider's sign-in page; open it in this browser tab
+	Url string `json:"url"`
 }
 
 // PasswordResetDto defines model for PasswordResetDto.
@@ -1587,6 +1607,9 @@ type UserDto struct {
 	DisplayName *string `json:"displayName,omitempty"`
 	Email       string  `json:"email"`
 
+	// HasPassword False for accounts made by single sign-on until they set one; only set for the current user
+	HasPassword *bool `json:"hasPassword,omitempty"`
+
 	// HasPin Has a PIN to unlock locked collections
 	HasPin *bool `json:"hasPin,omitempty"`
 
@@ -1601,6 +1624,9 @@ type UserDto struct {
 
 	// OpenReports Unresolved reports of public links (instance admins only)
 	OpenReports *int `json:"openReports,omitempty"`
+
+	// Sso Connected to the single sign-on provider, as which (its email address, else "connected"); only set for the current user
+	Sso *string `json:"sso,omitempty"`
 
 	// StartSpaceId Opened on start instead of the last visited space; unset when the user leaves it
 	StartSpaceId *ID `json:"startSpaceId,omitempty"`
@@ -1627,6 +1653,13 @@ type TooManyRequests = Error
 
 // GetLegalPageParamsPage defines parameters for GetLegalPage.
 type GetLegalPageParamsPage string
+
+// OidcCallbackParams defines parameters for OidcCallback.
+type OidcCallbackParams struct {
+	Code  *string `form:"code,omitempty" json:"code,omitempty"`
+	State *string `form:"state,omitempty" json:"state,omitempty"`
+	Error *string `form:"error,omitempty" json:"error,omitempty"`
+}
 
 // RefreshParams defines parameters for Refresh.
 type RefreshParams struct {
@@ -1686,6 +1719,9 @@ type GetSpaceHeadlinesParams struct {
 
 // LoginJSONRequestBody defines body for Login for application/json ContentType.
 type LoginJSONRequestBody = LoginRequest
+
+// OidcSignupJSONRequestBody defines body for OidcSignup for application/json ContentType.
+type OidcSignupJSONRequestBody = OidcSignupRequest
 
 // ChangePasswordJSONRequestBody defines body for ChangePassword for application/json ContentType.
 type ChangePasswordJSONRequestBody = ChangePasswordRequest
@@ -1827,6 +1863,15 @@ type ServerInterface interface {
 	// LogoutAll Logout from all devices
 	// (GET /auth/logout/all)
 	LogoutAll(ctx echo.Context) error
+	// OidcCallback Where the provider sends the browser back (public). Redirects into the app: signed in (/login?sso=done, refresh cookie set), to choose a username for a new account (/login?sso=signup#…), to the settings after connecting an account, or with sso_error
+	// (GET /auth/oidc/callback)
+	OidcCallback(ctx echo.Context, params OidcCallbackParams) error
+	// OidcSignup Create the account of somebody the provider knows (OIDC_AUTO_REGISTER or an invite that registers) with the ticket from the callback; signs in, unless the provider did not confirm the email address and the server sends a confirmation link (202)
+	// (POST /auth/oidc/signup)
+	OidcSignup(ctx echo.Context) error
+	// StartOidcLogin Start signing in with the single sign-on provider (OIDC_ISSUER, public): returns its address to open; a cookie ties the answer to this browser
+	// (POST /auth/oidc/start)
+	StartOidcLogin(ctx echo.Context) error
 	// ChangePassword Change the own password; signs out all other devices and returns new tokens for this one
 	// (POST /auth/password)
 	ChangePassword(ctx echo.Context) error
@@ -2145,6 +2190,12 @@ type ServerInterface interface {
 	// SetDisplayName Set the display name, shown instead of the username; empty removes it
 	// (PUT /v1/users/me/display-name)
 	SetDisplayName(ctx echo.Context) error
+	// DisconnectOidc Disconnect the account from the provider (it then needs a password to sign in)
+	// (DELETE /v1/users/me/oidc)
+	DisconnectOidc(ctx echo.Context) error
+	// ConnectOidc Connect the account to the single sign-on provider; returns the provider's address to open
+	// (POST /v1/users/me/oidc)
+	ConnectOidc(ctx echo.Context) error
 	// SetPin Set or change the PIN that unlocks the user's locked collections (needs the account password)
 	// (PUT /v1/users/me/pin)
 	SetPin(ctx echo.Context) error
@@ -2259,6 +2310,56 @@ func (w *ServerInterfaceWrapper) LogoutAll(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.LogoutAll(ctx)
+	return err
+}
+
+// OidcCallback converts echo context to params.
+func (w *ServerInterfaceWrapper) OidcCallback(ctx echo.Context) error {
+	var err error
+
+	// Parameter object where we will unmarshal all parameters from the context
+	var params OidcCallbackParams
+	// ------------- Optional query parameter "code" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "code", ctx.QueryParams(), &params.Code, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter code: %s", err))
+	}
+
+	// ------------- Optional query parameter "state" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "state", ctx.QueryParams(), &params.State, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter state: %s", err))
+	}
+
+	// ------------- Optional query parameter "error" -------------
+
+	err = runtime.BindQueryParameterWithOptions("form", true, false, "error", ctx.QueryParams(), &params.Error, runtime.BindQueryParameterOptions{Type: "string", Format: ""})
+	if err != nil {
+		return echo.NewHTTPError(http.StatusBadRequest, fmt.Sprintf("Invalid format for parameter error: %s", err))
+	}
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.OidcCallback(ctx, params)
+	return err
+}
+
+// OidcSignup converts echo context to params.
+func (w *ServerInterfaceWrapper) OidcSignup(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.OidcSignup(ctx)
+	return err
+}
+
+// StartOidcLogin converts echo context to params.
+func (w *ServerInterfaceWrapper) StartOidcLogin(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.StartOidcLogin(ctx)
 	return err
 }
 
@@ -3872,6 +3973,24 @@ func (w *ServerInterfaceWrapper) SetDisplayName(ctx echo.Context) error {
 	return err
 }
 
+// DisconnectOidc converts echo context to params.
+func (w *ServerInterfaceWrapper) DisconnectOidc(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.DisconnectOidc(ctx)
+	return err
+}
+
+// ConnectOidc converts echo context to params.
+func (w *ServerInterfaceWrapper) ConnectOidc(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.ConnectOidc(ctx)
+	return err
+}
+
 // SetPin converts echo context to params.
 func (w *ServerInterfaceWrapper) SetPin(ctx echo.Context) error {
 	var err error
@@ -4058,6 +4177,9 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/auth/register", wrapper.Register, options.OperationMiddlewares["register"]...)
 	router.GET(options.BaseURL+"/auth/invites/:token", wrapper.GetRegistrationInvite, options.OperationMiddlewares["getRegistrationInvite"]...)
 	router.POST(options.BaseURL+"/auth/login", wrapper.Login, options.OperationMiddlewares["login"]...)
+	router.POST(options.BaseURL+"/auth/oidc/start", wrapper.StartOidcLogin, options.OperationMiddlewares["startOidcLogin"]...)
+	router.GET(options.BaseURL+"/auth/oidc/callback", wrapper.OidcCallback, options.OperationMiddlewares["oidcCallback"]...)
+	router.POST(options.BaseURL+"/auth/oidc/signup", wrapper.OidcSignup, options.OperationMiddlewares["oidcSignup"]...)
 	router.POST(options.BaseURL+"/auth/verify-email/:token", wrapper.VerifyEmail, options.OperationMiddlewares["verifyEmail"]...)
 	router.POST(options.BaseURL+"/auth/resend-verification", wrapper.ResendVerification, options.OperationMiddlewares["resendVerification"]...)
 	router.POST(options.BaseURL+"/auth/refresh", wrapper.Refresh, options.OperationMiddlewares["refresh"]...)
@@ -4102,6 +4224,8 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	router.POST(options.BaseURL+"/v1/users/me/two-factor/setup", wrapper.SetupTwoFactor, options.OperationMiddlewares["setupTwoFactor"]...)
 	router.POST(options.BaseURL+"/v1/users/me/two-factor/enable", wrapper.EnableTwoFactor, options.OperationMiddlewares["enableTwoFactor"]...)
 	router.POST(options.BaseURL+"/v1/users/me/two-factor/disable", wrapper.DisableTwoFactor, options.OperationMiddlewares["disableTwoFactor"]...)
+	router.DELETE(options.BaseURL+"/v1/users/me/oidc", wrapper.DisconnectOidc, options.OperationMiddlewares["disconnectOidc"]...)
+	router.POST(options.BaseURL+"/v1/users/me/oidc", wrapper.ConnectOidc, options.OperationMiddlewares["connectOidc"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock", wrapper.Unlock, options.OperationMiddlewares["unlock"]...)
 	router.POST(options.BaseURL+"/v1/users/me/unlock/renew", wrapper.RenewUnlock, options.OperationMiddlewares["renewUnlock"]...)
 	router.GET(options.BaseURL+"/v1/users/me/space-bar", wrapper.GetSpaceBar, options.OperationMiddlewares["getSpaceBar"]...)

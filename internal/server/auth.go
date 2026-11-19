@@ -32,6 +32,12 @@ func (s *Server) FeatureFlags(c echo.Context) error {
 		// Free and Pro (PLANS_ENABLED)
 		"plans": strconv.FormatBool(s.cfg.Plans.Enabled),
 	}
+	// Single sign-on: the button's name, whether it is the only way in and whether it creates accounts
+	if s.sso != nil {
+		flags["sso"] = s.cfg.OIDC.Name
+		flags["sso_only"] = strconv.FormatBool(s.cfg.OIDC.Only)
+		flags["sso_signup"] = strconv.FormatBool(s.cfg.OIDC.AutoRegister)
+	}
 	// A donation page linked in the app
 	if s.cfg.SupportURL != "" {
 		flags["support_url"] = s.cfg.SupportURL
@@ -54,6 +60,9 @@ func (s *Server) Register(c echo.Context) error {
 	if req.InviteToken != nil {
 		inviteToken = *req.InviteToken
 	}
+	if s.cfg.OIDC.Only {
+		return forbidden("Accounts are created by signing in with %s", s.cfg.OIDC.Name)
+	}
 	if !s.cfg.RegistrationOpen && inviteToken == "" {
 		return forbidden("Registration is disabled")
 	}
@@ -68,7 +77,7 @@ func (s *Server) Register(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	user, invite, err := s.createUser(c, req.Username, req.Email, req.Password, name, inviteToken, !s.mailEnabled())
+	user, invite, err := s.createUser(c, req.Username, req.Email, req.Password, name, inviteToken, !s.mailEnabled(), nil)
 	if err != nil {
 		return err
 	}
@@ -89,8 +98,9 @@ func (s *Server) Register(c echo.Context) error {
 
 // createUser registers an account with its own first space, like Discord gives you a server, and joins the
 // space of the invite (if any). Unconfirmed ones get a confirmation link instead and both with the confirmation.
+// Accounts made by single sign-on have no password and come with their identity at the provider.
 func (s *Server) createUser(c echo.Context, username, email, password string, name *string, inviteToken string,
-	confirmed bool) (*store.User, *store.Invite, error) {
+	confirmed bool, identity *store.Identity) (*store.User, *store.Invite, error) {
 	username = strings.ToLower(strings.TrimSpace(username))
 	email = strings.ToLower(strings.TrimSpace(email))
 	if username == "" || len(username) > 80 || strings.ContainsFunc(username, unicode.IsSpace) {
@@ -103,9 +113,12 @@ func (s *Server) createUser(c echo.Context, username, email, password string, na
 	if !strings.Contains(email, "@") || len(email) > 250 {
 		return nil, nil, badRequest("Invalid email address")
 	}
-	hash, err := auth.HashPassword(password)
-	if err != nil {
-		return nil, nil, err
+	hash := ""
+	var err error
+	if password != "" {
+		if hash, err = auth.HashPassword(password); err != nil {
+			return nil, nil, err
+		}
 	}
 	var user *store.User
 	var invite *store.Invite
@@ -124,6 +137,15 @@ func (s *Server) createUser(c echo.Context, username, email, password string, na
 		}
 		if user, err = tx.CreateUser(ctxOf(c), username, email, hash, name, confirmed); err != nil {
 			return err
+		}
+		if identity != nil {
+			if _, err := tx.IdentityBySubject(ctxOf(c), identity.Issuer, identity.Subject); err == nil {
+				return conflict("This login is connected to another account already")
+			}
+			identity.UserID = user.ID
+			if err := tx.AddIdentity(ctxOf(c), *identity); err != nil {
+				return err
+			}
 		}
 		if invite != nil {
 			// Counted now, so a single use invite cannot create several accounts waiting for their confirmation
@@ -163,6 +185,10 @@ func (s *Server) registrationInvite(c echo.Context, tx *store.Store, token strin
 
 func (s *Server) inviteRegisters(c echo.Context, tx *store.Store, invite *store.Invite) bool {
 	if s.cfg.RegistrationOpen {
+		return true
+	}
+	// Whoever the provider knows may have an account anyway
+	if signup, _ := c.Get(ssoSignupKey).(bool); signup && s.cfg.OIDC.AutoRegister {
 		return true
 	}
 	creator, err := tx.UserByID(ctxOf(c), invite.CreatedBy)
@@ -231,6 +257,10 @@ func (s *Server) Login(c echo.Context) error {
 		audit(c, slog.LevelWarn, "login of a blocked account refused")
 		return blockedMessage(user)
 	}
+	// Passwords only confirm changes then; admins keep them as a way in should the provider be down
+	if s.cfg.OIDC.Only && !s.isAdmin(user) {
+		return forbidden("Sign in with %s", s.cfg.OIDC.Name)
+	}
 	if err := s.loginSecondFactor(c, user, req.Code, account); err != nil {
 		return err
 	}
@@ -297,8 +327,9 @@ func (s *Server) ChangePassword(c echo.Context) error {
 	if err != nil {
 		return err
 	}
-	// 400, not 401: the client would treat a 401 as an expired session
-	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
+	// 400, not 401: the client would treat a 401 as an expired session. Accounts made by single sign-on set
+	// their first password without one
+	if user.PasswordHash != "" && !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
 		return badRequest("The current password is wrong")
 	}
 	if err := auth.ValidatePassword(req.NewPassword); err != nil {

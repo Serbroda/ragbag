@@ -143,6 +143,44 @@ export async function login(username: string, password: string, code?: string): 
 	loginPassword = password;
 }
 
+// --- Single sign-on (OIDC_ISSUER) ---
+
+/** Leaves for the provider's sign-in page; it sends the browser back to /login (see LoginPage). */
+export async function startSso(): Promise<void> {
+	const { url } = await new AuthenticationApi(anonConfig()).startOidcLogin();
+	window.location.href = url;
+}
+
+/** Back from the provider (sso=done): the server set the refresh cookie, which gives the access token. */
+export async function finishSso(): Promise<boolean> {
+	return refreshAccessToken();
+}
+
+/**
+ * Creates the account of somebody the provider knows, with the ticket from the redirect. False when the email
+ * address has to be confirmed first (a link was sent).
+ */
+export async function ssoSignup(
+	ticket: string, username: string, displayName?: string, acceptTerms = false, inviteToken?: string,
+): Promise<boolean> {
+	const response = await new AuthenticationApi(anonConfig()).oidcSignup({
+		oidcSignupRequest: { ticket, username, displayName, acceptTerms, inviteToken },
+	});
+	if (!response) return false;
+	setAccessToken(response.accessToken);
+	return true;
+}
+
+/** Leaves for the provider to connect the signed-in account; it sends the browser back to the settings. */
+export async function connectSso(): Promise<void> {
+	const { url } = await new UserApi(apiConfig()).connectOidc();
+	window.location.href = url;
+}
+
+export async function disconnectSso(): Promise<void> {
+	await new UserApi(apiConfig()).disconnectOidc();
+}
+
 /** A failed login whose password was right: the code of the authenticator app is missing or wrong. */
 export function needsTwoFactorCode(err: unknown): boolean {
 	return err instanceof ResponseError && err.response.headers.get('X-Ragbag-Two-Factor') === 'required';

@@ -20,7 +20,7 @@ import { mapValues } from '../runtime';
  */
 export interface ChangePasswordRequest {
     /**
-     * 
+     * Empty for accounts without a password yet (made by single sign-on)
      */
     currentPassword: string;
     /**

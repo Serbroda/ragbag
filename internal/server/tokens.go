@@ -8,7 +8,6 @@ import (
 	"time"
 
 	"github.com/Serbroda/ragbag/internal/api"
-	"github.com/Serbroda/ragbag/internal/auth"
 	"github.com/Serbroda/ragbag/internal/store"
 	"github.com/labstack/echo/v4"
 )
@@ -145,8 +144,8 @@ func (s *Server) CreateApiToken(c echo.Context) error {
 		return err
 	}
 	// 400, not 401: the client would treat a 401 as an expired session
-	if !auth.CheckPassword(user.PasswordHash, req.CurrentPassword) {
-		return badRequest("The current password is wrong")
+	if err := confirmPassword(user, req.CurrentPassword); err != nil {
+		return err
 	}
 	if !s.apiTokensFor(user) {
 		return forbidden(tokensNeedPro + ": account menu → Plan")
