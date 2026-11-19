@@ -238,6 +238,20 @@ When changing the API: edit the spec, `make generate`, implement the new method 
 - **Auth**: access tokens (`type=ACCESS`) in the `Authorization` header, refresh tokens (`type=REFRESH`) in an
   httpOnly cookie scoped to `/api/auth/refresh`, `Secure` automatically for HTTPS incl. `X-Forwarded-Proto`. Both
   carry `token_version`; logout everywhere, password changes and resets increment it.
+- **Single sign-on** (`oidc.go`, `config.OIDC`, only with `OIDC_ISSUER` and `PUBLIC_URL`): OpenID Connect
+  authorization code flow with PKCE and a nonce (`go-oidc`, provider discovered on first use, own HTTP client
+  without SSRF guard: the admin chose it). `POST /auth/oidc/start` (or `POST /users/me/oidc` to connect) returns
+  the provider's address and sets the `oidc_state` cookie (path `/api/auth/oidc`, SameSite Lax); flows and sign-up
+  tickets live in memory. The callback always redirects into the app: `/login?sso=done` with the refresh cookie
+  (the login page trades it via refresh), `/login?sso=signup#ticket=…` (fragment, never logged) for people without
+  an account, `/settings/security?sso=connected`, or `sso_error`. Accounts are identified by issuer and subject
+  (`user_identities`), never by email; an email of an existing account refuses the sign-up. `POST
+  /auth/oidc/signup` needs `OIDC_AUTO_REGISTER` or an invite (with auto register any usable invite, `ssoSignupKey`)
+  and goes through `createUser` with an empty `password_hash`. Such accounts set their first password without the
+  current one (`ChangePassword`); every other password confirmation goes through `confirmPassword`.
+  `OIDC_ONLY` refuses password logins of non-admins and registration with a password; disconnecting needs a
+  password (and is closed with `OIDC_ONLY` for non-admins). These sign-ins skip TOTP. Tests use a fake provider
+  (`oidc_test.go`).
 - **Two-factor authentication** (`twofactor.go`, `auth/totp.go`, `TwoFactorSettings.svelte`): TOTP, off unless
   the user turns it on (`POST /users/me/two-factor/setup` with the password → secret and `otpauth://` address,
   `…/enable` with the first code → 10 recovery codes shown once, `…/disable` with password and a code). `POST

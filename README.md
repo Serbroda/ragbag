@@ -65,6 +65,8 @@ It is a single Go binary with an embedded **Svelte** frontend, running on **SQLi
 - **Two-factor authentication** with any authenticator app (TOTP), turned on and off by each user in their
   settings; ten recovery codes for a lost phone. Password reset links never get around it. Who lost app and codes
   is helped by an admin (*Reset 2FA* in the accounts list), an admin by `ragbag reset-2fa <username>` on the server.
+- **Single sign-on** with any OpenID Connect provider (Authentik, Authelia, Keycloak, Pocket ID, Google, …), next
+  to passwords or instead of them (see [Single sign-on](#single-sign-on)).
 - **API tokens** for scripts, shortcuts and apps, read only or read & write, created and revoked in the settings
   (see [API](#api)).
 - Registration can be switched off once everybody has an account.
@@ -203,9 +205,10 @@ Everything is configured with environment variables. For local runs the server a
 | `RATE_LIMIT_ENABLED`    | Rate limits against password guessing, bot sign-ups and floods (see below) | `true`       |
 | `SMTP_HOST`, `SMTP_PORT`, `SMTP_USERNAME`, `SMTP_PASSWORD`, `SMTP_FROM`, `SMTP_TLS` | Sending email: account confirmation and password reset (see below) | – (no email), port `587` |
 | `IMPRINT_URL`, `PRIVACY_URL`, `TERMS_URL` | Legal pages elsewhere instead of files in `DATA_DIR/legal` (see *Legal pages*) | – |
-| `PUBLIC_URL`            | Address of the instance for links in emails and chat previews, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` | – |
+| `PUBLIC_URL`            | Address of the instance for links in emails and chat previews, e.g. `https://ragbag.example.com`; required with `SMTP_HOST` and `OIDC_ISSUER` | – |
 | `QUOTA_LINKS_PER_USER`, `QUOTA_SPACES_PER_USER`, `QUOTA_COLLECTIONS_PER_SPACE`, `QUOTA_UPLOAD_MB_PER_USER` | Quotas for public instances (see below) | unlimited |
 | `PLANS_ENABLED`, `QUOTA_PRO_*`, `PLANS_FREE_API_TOKENS` | Free and Pro plans, Pro granted by admins (see *Plans*) | off |
+| `OIDC_ISSUER` & co.     | Single sign-on with an OpenID Connect provider, see [Single sign-on](#single-sign-on) | –                       |
 | `SUPPORT_URL`           | Donation page (Ko-fi & co.) linked in the app, https only               | –                       |
 | `ALLOW_PRIVATE_HOSTS`   | Let *Fetch details* and image addresses reach your own network (192.168.x.x); loopback stays blocked | `false` |
 | `SECURE_COOKIE`         | Force the `Secure` flag on the login cookie (it is set automatically for HTTPS) | `false`    |
@@ -310,6 +313,22 @@ At most three mails per account every hour or so, whoever asks. `SMTP_TLS` is `s
 `tls` (default for port 465) or `none` (only for a relay on the same host). Without `SMTP_HOST` nothing changes:
 accounts can sign in right away and instance admins hand out reset links. Accounts that existed before count as
 confirmed, and so do those waiting when email is turned off again.
+
+### Single sign-on
+
+Optional, with any OpenID Connect provider. Register Ragbag there as a confidential client with the redirect
+address `<PUBLIC_URL>/api/auth/oidc/callback` and the scopes `openid profile email`, then set `OIDC_ISSUER`
+(exactly as the provider spells it), `OIDC_CLIENT_ID`, `OIDC_CLIENT_SECRET`, `OIDC_NAME` (the button says *Sign in
+with …*) and `PUBLIC_URL`.
+
+- **Existing accounts** connect themselves under *Settings → Security*. Accounts are never connected by their
+  email address: whoever could set any address at the provider could otherwise take over accounts here.
+- **New accounts**: with `OIDC_AUTO_REGISTER=true` everybody the provider knows can create one (choosing a
+  username), also while registration is off; otherwise only with an invite. They have no password until they set
+  one in the settings; it then confirms changes like deleting the account.
+- **`OIDC_ONLY=true`** hides the password form and closes registration with a password. Only instance admins
+  still sign in with their password (*Administrators: sign in with a password*), in case the provider is down.
+- Signing in this way skips Ragbag's own two-factor authentication: the provider asks for its own.
 
 ### Quotas
 

@@ -79,6 +79,15 @@ export interface UserDto {
      * Unresolved reports of public links (instance admins only)
      */
     openReports?: number;
+    /**
+     * False for accounts made by single sign-on until they set one; only set for the current user
+     */
+    hasPassword?: boolean;
+    /**
+     * Connected to the single sign-on provider, as which (its email address, else "connected"); only set for the current user
+     * 
+     */
+    sso?: string;
 }
 
 /**
@@ -115,6 +124,8 @@ export function UserDtoFromJSONTyped(json: any, ignoreDiscriminator: boolean): U
         'termsPending': json['termsPending'] == null ? undefined : json['termsPending'],
         'termsChangeAt': json['termsChangeAt'] == null ? undefined : (parseDateTime(json['termsChangeAt'])),
         'openReports': json['openReports'] == null ? undefined : json['openReports'],
+        'hasPassword': json['hasPassword'] == null ? undefined : json['hasPassword'],
+        'sso': json['sso'] == null ? undefined : json['sso'],
     };
 }
 
@@ -143,6 +154,8 @@ export function UserDtoToJSONTyped(value?: UserDto | null, ignoreDiscriminator: 
         'termsPending': value['termsPending'],
         'termsChangeAt': value['termsChangeAt'] == null ? value['termsChangeAt'] : serializeDateTime(value['termsChangeAt']),
         'openReports': value['openReports'],
+        'hasPassword': value['hasPassword'],
+        'sso': value['sso'],
     };
 }
 

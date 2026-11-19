@@ -61,6 +61,8 @@ models/LoginRequest.ts
 models/LoginResponse.ts
 models/ModelError.ts
 models/MoveCollectionDto.ts
+models/OidcSignupRequest.ts
+models/OidcStartDto.ts
 models/PasswordResetDto.ts
 models/PasswordResetPreviewDto.ts
 models/PersonDto.ts

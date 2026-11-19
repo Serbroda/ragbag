@@ -49,6 +49,8 @@ export * from './LoginRequest';
 export * from './LoginResponse';
 export * from './ModelError';
 export * from './MoveCollectionDto';
+export * from './OidcSignupRequest';
+export * from './OidcStartDto';
 export * from './PasswordResetDto';
 export * from './PasswordResetPreviewDto';
 export * from './PersonDto';
