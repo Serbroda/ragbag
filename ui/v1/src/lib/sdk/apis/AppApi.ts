@@ -163,6 +163,47 @@ export class AppApi extends runtime.BaseAPI {
         return await response.value();
     }
 
+    /**
+     * Creates request options for openApiSpec without sending the request
+     */
+    async openApiSpecRequestOpts(): Promise<runtime.RequestOpts> {
+        const queryParameters: any = {};
+
+        const headerParameters: runtime.HTTPHeaders = {};
+
+
+        let urlPath = `/openapi.yaml`;
+
+        return {
+            path: urlPath,
+            method: 'GET',
+            headers: headerParameters,
+            query: queryParameters,
+        };
+    }
+
+    /**
+     * This description of the API (public), as this instance implements it: for Postman, Bruno, code generators and the like 
+     */
+    async openApiSpecRaw(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<runtime.ApiResponse<string>> {
+        const requestOptions = await this.openApiSpecRequestOpts();
+        const response = await this.request(requestOptions, initOverrides);
+
+        if (this.isJsonMime(response.headers.get('content-type'))) {
+            return new runtime.JSONApiResponse<string>(response);
+        } else {
+            return new runtime.TextApiResponse(response) as any;
+        }
+    }
+
+    /**
+     * This description of the API (public), as this instance implements it: for Postman, Bruno, code generators and the like 
+     */
+    async openApiSpec(initOverrides?: RequestInit | runtime.InitOverrideFunction): Promise<string> {
+        const response = await this.openApiSpecRaw(initOverrides);
+        return await response.value();
+    }
+
 }
 
 /**

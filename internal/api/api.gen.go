@@ -1902,6 +1902,9 @@ type ServerInterface interface {
 	// Health For monitoring (public); 503 when the database does not answer
 	// (GET /health)
 	Health(ctx echo.Context) error
+	// OpenApiSpec This description of the API (public), as this instance implements it: for Postman, Bruno, code generators and the like
+	// (GET /openapi.yaml)
+	OpenApiSpec(ctx echo.Context) error
 	// DownloadBackup Backup of the whole installation (format "ragbag-instance", gzip compressed JSON): accounts with their password hashes, spaces, links, images, everything except pending reset and confirmation links
 	// (GET /v1/admin/backup)
 	DownloadBackup(ctx echo.Context) error
@@ -2485,6 +2488,15 @@ func (w *ServerInterfaceWrapper) Health(ctx echo.Context) error {
 
 	// Invoke the callback with all the unmarshaled arguments
 	err = w.Handler.Health(ctx)
+	return err
+}
+
+// OpenApiSpec converts echo context to params.
+func (w *ServerInterfaceWrapper) OpenApiSpec(ctx echo.Context) error {
+	var err error
+
+	// Invoke the callback with all the unmarshaled arguments
+	err = w.Handler.OpenApiSpec(ctx)
 	return err
 }
 
@@ -4172,6 +4184,7 @@ func RegisterHandlersWithOptions(router EchoRouter, si ServerInterface, options 
 	}
 
 	router.GET(options.BaseURL+"/app/config/features", wrapper.FeatureFlags, options.OperationMiddlewares["featureFlags"]...)
+	router.GET(options.BaseURL+"/openapi.yaml", wrapper.OpenApiSpec, options.OperationMiddlewares["openApiSpec"]...)
 	router.GET(options.BaseURL+"/health", wrapper.Health, options.OperationMiddlewares["health"]...)
 	router.GET(options.BaseURL+"/app/legal/:page", wrapper.GetLegalPage, options.OperationMiddlewares["getLegalPage"]...)
 	router.POST(options.BaseURL+"/auth/register", wrapper.Register, options.OperationMiddlewares["register"]...)

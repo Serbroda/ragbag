@@ -228,8 +228,10 @@ Everything is configured with environment variables. For local runs the server a
 ### API
 
 Everything the app does goes through the REST API under `/api/v1`, described in
-[`openapi/openapi.yaml`](openapi/openapi.yaml). Scripts and apps use it with a **personal API token** from the
-settings (*Apps & API*), sent as `Authorization: Bearer rb_…`:
+[`openapi/openapi.yaml`](openapi/openapi.yaml): browsable at [ragbag.dev/api/reference](https://ragbag.dev/api/reference/),
+and every instance serves the file of its own version at `/api/openapi.yaml` (for Postman, Bruno, code
+generators). Scripts and apps use it with a **personal API token** from the settings (*Apps & API*), sent as
+`Authorization: Bearer rb_…`:
 
 ```bash
 TOKEN=rb_…; URL=https://ragbag.example.org/api/v1

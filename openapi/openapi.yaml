@@ -19,6 +19,23 @@ paths:
               schema:
                 $ref: '#/components/schemas/FeatureFlags'
 
+  /openapi.yaml:
+    get:
+      summary: >
+        This description of the API (public), as this instance implements it: for Postman, Bruno, code
+        generators and the like
+      operationId: openApiSpec
+      tags:
+        - App
+      security: [ ]
+      responses:
+        '200':
+          description: OK
+          content:
+            application/yaml:
+              schema:
+                type: string
+
   /health:
     get:
       summary: For monitoring (public); 503 when the database does not answer

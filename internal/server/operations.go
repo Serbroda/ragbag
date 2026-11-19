@@ -12,6 +12,7 @@ import (
 
 	"github.com/Serbroda/ragbag/internal/api"
 	"github.com/Serbroda/ragbag/internal/backup"
+	"github.com/Serbroda/ragbag/openapi"
 	"github.com/labstack/echo/v4"
 )
 
@@ -132,6 +133,14 @@ func (s *Server) DownloadStoredBackup(c echo.Context, name string) error {
 }
 
 // Health is for monitoring (Uptime Kuma & co.) and the container's health check.
+// OpenApiSpec serves the spec built into this version. Any origin may read it: it is public and documentation
+// viewers in the browser (ragbag.dev's API reference) load it from elsewhere.
+func (s *Server) OpenApiSpec(c echo.Context) error {
+	c.Response().Header().Set("Access-Control-Allow-Origin", "*")
+	c.Response().Header().Set("Cache-Control", "public, max-age=3600")
+	return c.Blob(http.StatusOK, "application/yaml; charset=utf-8", openapi.Spec)
+}
+
 func (s *Server) Health(c echo.Context) error {
 	ctx, cancel := context.WithTimeout(ctxOf(c), 3*time.Second)
 	defer cancel()
