@@ -21,6 +21,16 @@ func TestHealth(t *testing.T) {
 	e.req("GET", "/api/health").expect(503).has("status", "unavailable")
 }
 
+func TestEveryInstanceServesItsOwnAPIDescription(t *testing.T) {
+	e := newEnv(t)
+	res := e.req("GET", "/api/openapi.yaml").expect(200)
+	require.True(t, strings.HasPrefix(res.Body, "openapi: 3."), res.Body[:40])
+	require.Contains(t, res.Body, "/v1/spaces/{spaceId}/collections:")
+	require.Equal(t, "application/yaml; charset=utf-8", res.Header.Get("Content-Type"))
+	// Public, for viewers on other sites too
+	require.Equal(t, "*", res.Header.Get("Access-Control-Allow-Origin"))
+}
+
 func TestStoredBackups(t *testing.T) {
 	e := newEnv(t, func(cfg *config.Config) {
 		cfg.Backups = config.Backups{Dir: filepath.Join(cfg.DataDir, "backups"), Keep: 2, Interval: 24 * time.Hour}

@@ -23,6 +23,7 @@ COPY go.mod go.sum ./
 RUN --mount=type=cache,target=/go/pkg/mod go mod download
 COPY cmd cmd
 COPY internal internal
+COPY openapi openapi
 COPY ui/ui.go ui/
 COPY --from=ui /build/ui/v1/dist ui/v1/dist
 COPY --from=version /version /version

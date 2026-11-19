@@ -12,7 +12,7 @@
 	} from 'flowbite-svelte-icons';
 	import {
 		apiConfig, changePassword, connectSso, deleteAccount, disconnectSso, errorMessage, fetchFeatureFlags,
-		logoutEverywhere,
+		logoutEverywhere, openApiUrl,
 	} from '../api/client';
 	import { navigate, p, route } from '../router';
 	import { loadMe, loadSpaces, resetSession, session, setStartSpace } from '../stores/spaces.svelte';
@@ -552,6 +552,20 @@
 						>
 					</SettingsItem>
 					<ApiTokenSettings open={tab === 'apps'} />
+					<SettingsItem
+						title="API documentation"
+						description="Every endpoint with examples, and the OpenAPI file of this instance for Postman, Bruno or code generators: it matches exactly the version running here."
+					>
+						<div class="flex flex-wrap gap-x-4 gap-y-1 text-sm font-medium">
+							<a href="https://ragbag.dev/api/reference/" target="_blank" rel="noopener noreferrer" class="text-primary-600 hover:underline dark:text-primary-500">
+								API reference ↗
+							</a>
+							<!-- Not an app route: served by the server itself -->
+							<a href={openApiUrl} target="_blank" rel="noopener" class="text-primary-600 hover:underline dark:text-primary-500">
+								OpenAPI file of this instance
+							</a>
+						</div>
+					</SettingsItem>
 				</section>
 			{:else}
 				<section class="{card} {rows}">

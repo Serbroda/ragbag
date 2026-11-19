@@ -344,6 +344,9 @@ export function imageUrl(imageId: string): string {
 	return `${BASE_PATH}/v1/images/${imageId}`;
 }
 
+/** The API description of this instance (the Vite dev server has no /api of its own) */
+export const openApiUrl = `${BASE_PATH}/openapi.yaml`;
+
 /** Extracts the `detail` of a ProblemDetail error response, falling back to the given message. */
 export async function errorMessage(err: unknown, fallback: string): Promise<string> {
 	if (err instanceof ResponseError) {

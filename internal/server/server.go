@@ -127,6 +127,7 @@ var publicPaths = []string{
 	"/api/auth/password-reset", "/api/auth/password-reset/*", "/api/auth/oidc/start", "/api/auth/oidc/callback",
 	"/api/auth/oidc/signup", "/api/auth/verify-email/*", "/api/auth/resend-verification", "/api/auth/invites/*", "/api/v1/images/*", "/api/v1/shares/*",
 	"/api/v1/shares/*/reports", "/api/v1/shares/*/bookmarks/*/headlines", "/api/app/legal/*", "/api/health",
+	"/api/openapi.yaml",
 }
 
 func isPublic(requestPath string) bool {

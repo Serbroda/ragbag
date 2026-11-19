@@ -64,7 +64,9 @@ as root only to chown a bind-mounted `/data` to the `ragbag` user (uid 1000), th
 - `ui/v1/src/lib/sdk/` (openapi-generator typescript-fetch via a container), imported as
   `ragbag-frontend-sdk` through a Vite/tsconfig alias
 
-When changing the API: edit the spec, `make generate`, implement the new method in `internal/server`.
+When changing the API: edit the spec, `make generate`, implement the new method in `internal/server`. The spec
+is also embedded (`openapi/openapi.go`) and served at `/api/openapi.yaml` (public, any origin), so every instance
+describes exactly its own version; ragbag.dev's API reference is synced from it (`npm run sync-api` there).
 
 ### Packages
 - `cmd/ragbag` — main: config, database, setup admin, HTTP server with graceful shutdown;
